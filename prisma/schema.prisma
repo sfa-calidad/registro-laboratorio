@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Ingreso {
+  id            Int       @id @default(autoincrement())
+  hrRemito      String
+  fecha         DateTime
+  origen        String
+  producto1     String
+  producto2     String?
+  observacion   String?
+  precinto      String?
+  fechaAnalisis DateTime?
+  createdAt     DateTime  @default(now())
+  rotulos       Rotulo[]
+}
+
+model Despacho {
+  id            Int      @id @default(autoincrement())
+  hrContrato    String
+  fecha         DateTime
+  destino       String
+  producto      String
+  deposito      String?
+  idTransporte  String
+  observacion   String?
+  precintSFA    String?
+  precintAduana String?
+  createdAt     DateTime @default(now())
+  rotulos       Rotulo[]
+}
+
+model Rotulo {
+  id         Int       @id @default(autoincrement())
+  tipo       String
+  data       Json
+  ingresoId  Int?
+  despachoId Int?
+  ingreso    Ingreso?  @relation(fields: [ingresoId], references: [id])
+  despacho   Despacho? @relation(fields: [despachoId], references: [id])
+  createdAt  DateTime  @default(now())
+}
+
+model Producto {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+}
