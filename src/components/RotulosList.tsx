@@ -1,5 +1,6 @@
 'use client'
 import { formatDate } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 
 const TIPO_LABELS: Record<string, string> = {
   INGRESOS: 'Ingreso',
@@ -24,6 +25,8 @@ type Rotulo = {
 }
 
 export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
+  const router = useRouter()
+
   function handlePrint(rotulo: Rotulo) {
     const data = (rotulo.data ?? {}) as Record<string, string>
     const w = window.open('', '_blank')
@@ -38,46 +41,56 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   return (
     <div>
       <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">#</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Tipo</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Referencia</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Fecha</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Acciones</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">#</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Tipo</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Referencia</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Fecha</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {rotulos.map((r) => (
               <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-3 text-gray-400">#{r.id}</td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-2 text-gray-400">#{r.id}</td>
+                <td className="px-3 py-2">
                   <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                     {TIPO_LABELS[r.tipo] || r.tipo}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs font-mono">
+                <td className="px-3 py-2 text-xs font-mono">
                   {r.ingreso
                     ? `${r.ingreso.hrRemito} — ${r.ingreso.origen}`
                     : r.despacho
                     ? `${r.despacho.hrContrato} — ${r.despacho.destino}`
                     : '—'}
                 </td>
-                <td className="px-4 py-3">{formatDate(r.createdAt)}</td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-2">{formatDate(r.createdAt)}</td>
+                <td className="px-3 py-2">
                   <button
                     onClick={() => handlePrint(r)}
-                    className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                   >
                     Imprimir rótulo
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('¿Eliminar este rótulo?')) return
+                      await fetch(`/api/rotulos/${r.id}`, { method: 'DELETE' })
+                      router.refresh()
+                    }}
+                    className="text-red-500 hover:text-red-700 text-sm font-medium ml-2"
+                  >
+                    Eliminar
                   </button>
                 </td>
               </tr>
             ))}
             {rotulos.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-3 py-8 text-center text-gray-400">
                   Sin rótulos generados
                 </td>
               </tr>

@@ -1,0 +1,41 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
+
+const schema = z.object({
+  hrRemito: z.string().min(1),
+  fecha: z.string(),
+  origen: z.string().min(1),
+  producto1: z.string().min(1),
+  producto2: z.string().optional(),
+  observacion: z.string().optional(),
+  precinto: z.string().optional(),
+  operador: z.string().optional(),
+})
+
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const body = await req.json()
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+
+  const ingreso = await prisma.ingreso.update({
+    where: { id: Number(id) },
+    data: {
+      ...parsed.data,
+      fecha: new Date(parsed.data.fecha),
+      producto2: parsed.data.producto2 || null,
+      observacion: parsed.data.observacion || null,
+      precinto: parsed.data.precinto || null,
+      operador: parsed.data.operador || null,
+    },
+  })
+  return NextResponse.json(ingreso)
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  await prisma.rotulo.deleteMany({ where: { ingresoId: Number(id) } })
+  await prisma.ingreso.delete({ where: { id: Number(id) } })
+  return NextResponse.json({ ok: true })
+}

@@ -19,6 +19,19 @@ type Despacho = {
 
 type Producto = { id: number; nombre: string }
 
+const emptyForm = {
+  hrContrato: '',
+  fecha: todayISO(),
+  destino: '',
+  producto: '',
+  deposito: '',
+  idTransporte: '',
+  observacion: '',
+  precintSFA: '',
+  precintAduana: '',
+  operador: '',
+}
+
 export default function DespachosList({
   despachos,
   productos,
@@ -28,20 +41,10 @@ export default function DespachosList({
 }) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({
-    hrContrato: '',
-    fecha: todayISO(),
-    destino: '',
-    producto: '',
-    deposito: '',
-    idTransporte: '',
-    observacion: '',
-    precintSFA: '',
-    precintAduana: '',
-    operador: '',
-  })
+  const [form, setForm] = useState(emptyForm)
 
   const filtered = despachos.filter(
     (d) =>
@@ -51,28 +54,72 @@ export default function DespachosList({
       d.idTransporte.toLowerCase().includes(search.toLowerCase())
   )
 
+  function openNew() {
+    setEditingId(null)
+    setForm({ ...emptyForm, fecha: todayISO() })
+    setShowForm(true)
+  }
+
+  function openEdit(d: Despacho) {
+    setEditingId(d.id)
+    setForm({
+      hrContrato: d.hrContrato,
+      fecha: new Date(d.fecha).toISOString().split('T')[0],
+      destino: d.destino,
+      producto: d.producto,
+      deposito: d.deposito || '',
+      idTransporte: d.idTransporte,
+      observacion: d.observacion || '',
+      precintSFA: d.precintSFA || '',
+      precintAduana: d.precintAduana || '',
+      operador: d.operador || '',
+    })
+    setShowForm(true)
+  }
+
+  function openDuplicate(d: Despacho) {
+    setEditingId(null)
+    setForm({
+      hrContrato: d.hrContrato,
+      fecha: todayISO(),
+      destino: d.destino,
+      producto: d.producto,
+      deposito: d.deposito || '',
+      idTransporte: '',
+      observacion: d.observacion || '',
+      precintSFA: '',
+      precintAduana: '',
+      operador: d.operador || '',
+    })
+    setShowForm(true)
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('¿Eliminar este despacho? También se eliminarán sus rótulos asociados.')) return
+    await fetch(`/api/despachos/${id}`, { method: 'DELETE' })
+    router.refresh()
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    const res = await fetch('/api/despachos', {
-      method: 'POST',
+    const url = editingId ? `/api/despachos/${editingId}` : '/api/despachos'
+    const method = editingId ? 'PUT' : 'POST'
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
     if (res.ok) {
-      const newDespacho = await res.json()
+      const saved = await res.json()
       setShowForm(false)
-      setForm({ hrContrato: '', fecha: todayISO(), destino: '', producto: '', deposito: '', idTransporte: '', observacion: '', precintSFA: '', precintAduana: '', operador: '' })
+      setForm(emptyForm)
       router.refresh()
-      if (confirm('Despacho registrado. ¿Generar rótulo ahora?')) {
+      if (!editingId && confirm('Despacho guardado. ¿Generar rótulo ahora?')) {
         await fetch('/api/rotulos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tipo: 'SALIDAS',
-            data: { ...form, id: newDespacho.id },
-            despachoId: newDespacho.id,
-          }),
+          body: JSON.stringify({ tipo: 'SALIDAS', data: { ...form, id: saved.id }, despachoId: saved.id }),
         })
         router.push('/rotulos')
       }
@@ -82,24 +129,24 @@ export default function DespachosList({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-3">
         <input
           type="text"
           placeholder="Buscar por HR, destino, producto o transporte..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border rounded-lg px-3 py-2 text-sm w-80"
+          className="border rounded-lg px-3 py-2 text-base w-80"
         />
         <div className="flex gap-2">
           <a
             href="/api/despachos/export"
             download
-            className="border border-green-600 text-green-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-50"
+            className="border border-green-600 text-green-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-50"
           >
             Exportar CSV
           </a>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={openNew}
             className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700"
           >
             + Nuevo Despacho
@@ -111,34 +158,36 @@ export default function DespachosList({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <form
             onSubmit={handleSubmit}
-            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto"
           >
-            <h3 className="text-lg font-bold mb-4">Nuevo Despacho</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <h3 className="text-lg font-bold mb-3">
+              {editingId ? 'Editar Despacho' : 'Nuevo Despacho'}
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">HR / Contrato *</label>
                 <input required value={form.hrContrato} onChange={(e) => setForm({ ...form, hrContrato: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Fecha *</label>
                 <input type="date" required value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">ID Transporte / Patente *</label>
                 <input required value={form.idTransporte} onChange={(e) => setForm({ ...form, idTransporte: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Destino / Cliente *</label>
                 <input required value={form.destino} onChange={(e) => setForm({ ...form, destino: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Producto *</label>
                 <select required value={form.producto} onChange={(e) => setForm({ ...form, producto: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base">
                   <option value="">Seleccionar...</option>
                   {productos.map((p) => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
                 </select>
@@ -146,28 +195,28 @@ export default function DespachosList({
               <div>
                 <label className="text-sm font-medium text-gray-700">Depósito / Tanque</label>
                 <input value={form.deposito} onChange={(e) => setForm({ ...form, deposito: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Precinto SFA</label>
                 <input value={form.precintSFA} onChange={(e) => setForm({ ...form, precintSFA: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Precinto Aduana</label>
                 <input value={form.precintAduana} onChange={(e) => setForm({ ...form, precintAduana: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Observación</label>
                 <textarea value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })}
-                  rows={2} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  rows={2} className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Operador / Firma</label>
                 <input value={form.operador} onChange={(e) => setForm({ ...form, operador: e.target.value })}
                   placeholder="Nombre de quien registra"
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
@@ -175,7 +224,7 @@ export default function DespachosList({
                 className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancelar</button>
               <button type="submit" disabled={loading}
                 className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
-                {loading ? 'Guardando...' : 'Guardar Despacho'}
+                {loading ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Guardar Despacho'}
               </button>
             </div>
           </form>
@@ -183,35 +232,43 @@ export default function DespachosList({
       )}
 
       <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">HR / Contrato</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Fecha</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Destino</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Producto</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Transporte</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Precinto SFA</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Precinto Aduana</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Operador</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">HR / Contrato</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Fecha</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Destino</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Producto</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Transporte</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Precinto SFA</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Precinto Aduana</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Operador</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((d) => (
               <tr key={d.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono text-xs">{d.hrContrato}</td>
-                <td className="px-4 py-3">{formatDate(d.fecha)}</td>
-                <td className="px-4 py-3">{d.destino}</td>
-                <td className="px-4 py-3">{d.producto}</td>
-                <td className="px-4 py-3 font-mono text-xs">{d.idTransporte}</td>
-                <td className="px-4 py-3">{d.precintSFA || '—'}</td>
-                <td className="px-4 py-3">{d.precintAduana || '—'}</td>
-                <td className="px-4 py-3">{d.operador || '—'}</td>
+                <td className="px-3 py-2 font-mono text-sm">{d.hrContrato}</td>
+                <td className="px-3 py-2">{formatDate(d.fecha)}</td>
+                <td className="px-3 py-2">{d.destino}</td>
+                <td className="px-3 py-2">{d.producto}</td>
+                <td className="px-3 py-2 font-mono text-sm">{d.idTransporte}</td>
+                <td className="px-3 py-2">{d.precintSFA || '—'}</td>
+                <td className="px-3 py-2">{d.precintAduana || '—'}</td>
+                <td className="px-3 py-2">{d.operador || '—'}</td>
+                <td className="px-3 py-2">
+                  <div className="flex gap-2 text-sm">
+                    <button onClick={() => openEdit(d)} className="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+                    <button onClick={() => openDuplicate(d)} className="text-gray-500 hover:text-gray-700 font-medium">Duplicar</button>
+                    <button onClick={() => handleDelete(d.id)} className="text-red-500 hover:text-red-700 font-medium">Eliminar</button>
+                  </div>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={9} className="px-3 py-6 text-center text-gray-400 text-base">
                   Sin registros
                 </td>
               </tr>

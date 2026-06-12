@@ -17,6 +17,17 @@ type Ingreso = {
 
 type Producto = { id: number; nombre: string }
 
+const emptyForm = {
+  hrRemito: '',
+  fecha: todayISO(),
+  origen: '',
+  producto1: '',
+  producto2: '',
+  observacion: '',
+  precinto: '',
+  operador: '',
+}
+
 export default function IngresosList({
   ingresos,
   productos,
@@ -26,18 +37,10 @@ export default function IngresosList({
 }) {
   const router = useRouter()
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({
-    hrRemito: '',
-    fecha: todayISO(),
-    origen: '',
-    producto1: '',
-    producto2: '',
-    observacion: '',
-    precinto: '',
-    operador: '',
-  })
+  const [form, setForm] = useState(emptyForm)
 
   const filtered = ingresos.filter(
     (i) =>
@@ -46,28 +49,68 @@ export default function IngresosList({
       i.producto1.toLowerCase().includes(search.toLowerCase())
   )
 
+  function openNew() {
+    setEditingId(null)
+    setForm({ ...emptyForm, fecha: todayISO() })
+    setShowForm(true)
+  }
+
+  function openEdit(i: Ingreso) {
+    setEditingId(i.id)
+    setForm({
+      hrRemito: i.hrRemito,
+      fecha: new Date(i.fecha).toISOString().split('T')[0],
+      origen: i.origen,
+      producto1: i.producto1,
+      producto2: i.producto2 || '',
+      observacion: i.observacion || '',
+      precinto: i.precinto || '',
+      operador: i.operador || '',
+    })
+    setShowForm(true)
+  }
+
+  function openDuplicate(i: Ingreso) {
+    setEditingId(null)
+    setForm({
+      hrRemito: i.hrRemito,
+      fecha: todayISO(),
+      origen: i.origen,
+      producto1: i.producto1,
+      producto2: i.producto2 || '',
+      observacion: i.observacion || '',
+      precinto: '',
+      operador: i.operador || '',
+    })
+    setShowForm(true)
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('¿Eliminar este ingreso? También se eliminarán sus rótulos asociados.')) return
+    await fetch(`/api/ingresos/${id}`, { method: 'DELETE' })
+    router.refresh()
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    const res = await fetch('/api/ingresos', {
-      method: 'POST',
+    const url = editingId ? `/api/ingresos/${editingId}` : '/api/ingresos'
+    const method = editingId ? 'PUT' : 'POST'
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
     if (res.ok) {
-      const newIngreso = await res.json()
+      const saved = await res.json()
       setShowForm(false)
-      setForm({ hrRemito: '', fecha: todayISO(), origen: '', producto1: '', producto2: '', observacion: '', precinto: '', operador: '' })
+      setForm(emptyForm)
       router.refresh()
-      if (confirm('Ingreso registrado. ¿Generar rótulo ahora?')) {
+      if (!editingId && confirm('Ingreso guardado. ¿Generar rótulo ahora?')) {
         await fetch('/api/rotulos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tipo: 'INGRESOS',
-            data: { ...form, id: newIngreso.id },
-            ingresoId: newIngreso.id,
-          }),
+          body: JSON.stringify({ tipo: 'INGRESOS', data: { ...form, id: saved.id }, ingresoId: saved.id }),
         })
         router.push('/rotulos')
       }
@@ -77,24 +120,24 @@ export default function IngresosList({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-3">
         <input
           type="text"
           placeholder="Buscar por HR, origen o producto..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border rounded-lg px-3 py-2 text-sm w-72"
+          className="border rounded-lg px-3 py-2 text-base w-80"
         />
         <div className="flex gap-2">
           <a
             href="/api/ingresos/export"
             download
-            className="border border-green-600 text-green-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-50"
+            className="border border-green-600 text-green-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-50"
           >
             Exportar CSV
           </a>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={openNew}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
           >
             + Nuevo Ingreso
@@ -106,34 +149,36 @@ export default function IngresosList({
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <form
             onSubmit={handleSubmit}
-            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg"
+            className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-lg max-h-[90vh] overflow-y-auto"
           >
-            <h3 className="text-lg font-bold mb-4">Nuevo Ingreso</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <h3 className="text-lg font-bold mb-3">
+              {editingId ? 'Editar Ingreso' : 'Nuevo Ingreso'}
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">HR / Remito *</label>
                 <input required value={form.hrRemito} onChange={(e) => setForm({ ...form, hrRemito: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Fecha *</label>
                 <input type="date" required value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Precinto</label>
                 <input value={form.precinto} onChange={(e) => setForm({ ...form, precinto: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Origen / Proveedor *</label>
                 <input required value={form.origen} onChange={(e) => setForm({ ...form, origen: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Producto 1 *</label>
                 <select required value={form.producto1} onChange={(e) => setForm({ ...form, producto1: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base">
                   <option value="">Seleccionar...</option>
                   {productos.map((p) => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
                 </select>
@@ -141,7 +186,7 @@ export default function IngresosList({
               <div>
                 <label className="text-sm font-medium text-gray-700">Producto 2</label>
                 <select value={form.producto2} onChange={(e) => setForm({ ...form, producto2: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base">
                   <option value="">Ninguno</option>
                   {productos.map((p) => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
                 </select>
@@ -149,13 +194,13 @@ export default function IngresosList({
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Observación</label>
                 <textarea value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })}
-                  rows={2} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  rows={2} className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Operador / Firma</label>
                 <input value={form.operador} onChange={(e) => setForm({ ...form, operador: e.target.value })}
                   placeholder="Nombre de quien registra"
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
@@ -163,7 +208,7 @@ export default function IngresosList({
                 className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancelar</button>
               <button type="submit" disabled={loading}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {loading ? 'Guardando...' : 'Guardar Ingreso'}
+                {loading ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Guardar Ingreso'}
               </button>
             </div>
           </form>
@@ -171,35 +216,41 @@ export default function IngresosList({
       )}
 
       <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">HR / Remito</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Fecha</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Origen</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Producto 1</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Producto 2</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Observación</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Precinto</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Operador</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">HR / Remito</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Fecha</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Origen</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Producto 1</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Producto 2</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Precinto</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Operador</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((i) => (
               <tr key={i.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-3 font-mono text-xs">{i.hrRemito}</td>
-                <td className="px-4 py-3">{formatDate(i.fecha)}</td>
-                <td className="px-4 py-3">{i.origen}</td>
-                <td className="px-4 py-3">{i.producto1}</td>
-                <td className="px-4 py-3 text-gray-500">{i.producto2 || '—'}</td>
-                <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{i.observacion || '—'}</td>
-                <td className="px-4 py-3">{i.precinto || '—'}</td>
-                <td className="px-4 py-3">{i.operador || '—'}</td>
+                <td className="px-3 py-2 font-mono text-sm">{i.hrRemito}</td>
+                <td className="px-3 py-2">{formatDate(i.fecha)}</td>
+                <td className="px-3 py-2">{i.origen}</td>
+                <td className="px-3 py-2">{i.producto1}</td>
+                <td className="px-3 py-2 text-gray-500">{i.producto2 || '—'}</td>
+                <td className="px-3 py-2">{i.precinto || '—'}</td>
+                <td className="px-3 py-2">{i.operador || '—'}</td>
+                <td className="px-3 py-2">
+                  <div className="flex gap-2 text-sm">
+                    <button onClick={() => openEdit(i)} className="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+                    <button onClick={() => openDuplicate(i)} className="text-gray-500 hover:text-gray-700 font-medium">Duplicar</button>
+                    <button onClick={() => handleDelete(i.id)} className="text-red-500 hover:text-red-700 font-medium">Eliminar</button>
+                  </div>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={8} className="px-3 py-6 text-center text-gray-400 text-base">
                   Sin registros
                 </td>
               </tr>
