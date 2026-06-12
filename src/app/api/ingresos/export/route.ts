@@ -1,12 +1,27 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
-  const ingresos = await prisma.ingreso.findMany({ orderBy: { fecha: 'desc' } })
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const desde = searchParams.get('desde')
+  const hasta = searchParams.get('hasta')
+
+  const where: { fecha?: { gte?: Date; lte?: Date } } = {}
+  if (desde || hasta) {
+    where.fecha = {}
+    if (desde) where.fecha.gte = new Date(desde)
+    if (hasta) {
+      const h = new Date(hasta)
+      h.setHours(23, 59, 59, 999)
+      where.fecha.lte = h
+    }
+  }
+
+  const ingresos = await prisma.ingreso.findMany({ where, orderBy: { fecha: 'desc' } })
 
   const headers = ['ID', 'HR/Remito', 'Fecha', 'Origen', 'Producto 1', 'Producto 2', 'Observación', 'Precinto', 'Operador', 'Creado']
   const rows = ingresos.map((i) => [

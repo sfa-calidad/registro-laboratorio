@@ -42,6 +42,18 @@ export default function IngresosList({
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [showExport, setShowExport] = useState(false)
+  const [exportDesde, setExportDesde] = useState('')
+  const [exportHasta, setExportHasta] = useState('')
+
+  function handleExport() {
+    const params = new URLSearchParams()
+    if (exportDesde) params.set('desde', exportDesde)
+    if (exportHasta) params.set('hasta', exportHasta)
+    const qs = params.toString()
+    window.location.href = `/api/ingresos/export${qs ? `?${qs}` : ''}`
+    setShowExport(false)
+  }
 
   const filtered = ingresos.filter(
     (i) =>
@@ -130,13 +142,12 @@ export default function IngresosList({
           className="border rounded-lg px-3 py-2 text-base w-80"
         />
         <div className="flex gap-2">
-          <a
-            href="/api/ingresos/export"
-            download
+          <button
+            onClick={() => setShowExport(true)}
             className="border border-green-600 text-green-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-50"
           >
             Exportar CSV
-          </a>
+          </button>
           <button
             onClick={openNew}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
@@ -145,6 +156,33 @@ export default function IngresosList({
           </button>
         </div>
       </div>
+
+      {showExport && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl p-5 w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-3">Exportar CSV</h3>
+            <p className="text-sm text-gray-500 mb-3">Dejá las fechas vacías para exportar todo.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Desde</label>
+                <input type="date" value={exportDesde} onChange={(e) => setExportDesde(e.target.value)}
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">Hasta</label>
+                <input type="date" value={exportHasta} onChange={(e) => setExportHasta(e.target.value)}
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4 justify-end">
+              <button type="button" onClick={() => setShowExport(false)}
+                className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancelar</button>
+              <button type="button" onClick={handleExport}
+                className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700">Descargar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
