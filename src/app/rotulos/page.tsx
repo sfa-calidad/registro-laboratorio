@@ -4,10 +4,11 @@ import RotulosList from '@/components/RotulosList'
 export const dynamic = 'force-dynamic'
 
 export default async function RotulosPage() {
-  const rotulos = await prisma.rotulo.findMany({
+  const raw = await prisma.rotulo.findMany({
     orderBy: { createdAt: 'desc' },
     include: { ingreso: true, despacho: true },
   })
+  const rotulos = raw.map((r) => ({ ...r, data: JSON.parse(r.data) }))
 
   return (
     <div>

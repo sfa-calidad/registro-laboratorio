@@ -14,7 +14,8 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
     include: { ingreso: true, despacho: true },
   })
-  return NextResponse.json(rotulos)
+  const parsed = rotulos.map((r) => ({ ...r, data: JSON.parse(r.data) }))
+  return NextResponse.json(parsed)
 }
 
 export async function POST(req: NextRequest) {
@@ -22,6 +23,13 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const rotulo = await prisma.rotulo.create({ data: parsed.data })
-  return NextResponse.json(rotulo, { status: 201 })
+  const rotulo = await prisma.rotulo.create({
+    data: {
+      tipo: parsed.data.tipo,
+      data: JSON.stringify(parsed.data.data),
+      ingresoId: parsed.data.ingresoId,
+      despachoId: parsed.data.despachoId,
+    },
+  })
+  return NextResponse.json({ ...rotulo, data: JSON.parse(rotulo.data) }, { status: 201 })
 }
