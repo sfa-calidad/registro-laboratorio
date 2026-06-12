@@ -134,18 +134,21 @@ function buildLabelHTML(tipo: string, data: Record<string, string>): string {
   <meta charset="utf-8">
   <title>Rótulo</title>
   <style>
-    @page { size: A5; margin: 10mm; }
-    body { font-family: Arial, sans-serif; font-size: 11px; margin: 0; }
-    .label { border: 2px solid #000; padding: 8px; width: 100%; box-sizing: border-box; }
-    .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px; }
-    .company { font-size: 14px; font-weight: bold; }
-    .tipo { font-size: 12px; font-weight: bold; color: #333; margin-top: 2px; }
+    @page { size: 100mm 45mm; margin: 2mm; }
+    body { font-family: Arial, sans-serif; font-size: 8px; margin: 0; padding: 0; }
+    .label { border: 1px solid #000; padding: 3px; width: 96mm; min-height: 39mm; box-sizing: border-box; }
+    .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 3px; }
+    .company { font-size: 10px; font-weight: bold; }
+    .tipo { font-size: 8px; font-weight: bold; color: #333; margin-top: 1px; }
     table { width: 100%; border-collapse: collapse; }
-    td { padding: 3px 4px; vertical-align: top; }
-    td:first-child { font-weight: bold; width: 38%; color: #555; }
+    td { padding: 1px 2px; vertical-align: top; line-height: 1.3; }
+    td:first-child { font-weight: bold; width: 35%; color: #555; }
     tr { border-bottom: 1px solid #eee; }
     tr:last-child { border-bottom: none; }
-    @media print { body { -webkit-print-color-adjust: exact; } }
+    @media print {
+      body { -webkit-print-color-adjust: exact; }
+      @page { size: 100mm 45mm; margin: 2mm; }
+    }
   </style>
 </head>
 <body>

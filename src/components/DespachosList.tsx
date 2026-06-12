@@ -163,6 +163,12 @@ export default function DespachosList({
                 <textarea value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })}
                   rows={2} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
               </div>
+              <div className="col-span-2">
+                <label className="text-sm font-medium text-gray-700">Operador / Firma</label>
+                <input value={form.operador} onChange={(e) => setForm({ ...form, operador: e.target.value })}
+                  placeholder="Nombre de quien registra"
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+              </div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
               <button type="button" onClick={() => setShowForm(false)}
@@ -187,6 +193,7 @@ export default function DespachosList({
               <th className="text-left px-4 py-3 font-medium text-gray-600">Transporte</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Precinto SFA</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Precinto Aduana</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Operador</th>
             </tr>
           </thead>
           <tbody>
@@ -199,11 +206,12 @@ export default function DespachosList({
                 <td className="px-4 py-3 font-mono text-xs">{d.idTransporte}</td>
                 <td className="px-4 py-3">{d.precintSFA || '—'}</td>
                 <td className="px-4 py-3">{d.precintAduana || '—'}</td>
+                <td className="px-4 py-3">{d.operador || '—'}</td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                   Sin registros
                 </td>
               </tr>
