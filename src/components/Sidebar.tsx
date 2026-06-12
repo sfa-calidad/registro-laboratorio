@@ -7,6 +7,7 @@ const links = [
   { href: '/ingresos', label: 'Ingresos', icon: '🚛' },
   { href: '/despachos', label: 'Despachos', icon: '📦' },
   { href: '/rotulos', label: 'Rótulos', icon: '🏷️' },
+  { href: '/configuracion', label: 'Configuración', icon: '⚙️' },
 ]
 
 export default function Sidebar() {

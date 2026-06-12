@@ -12,6 +12,7 @@ type Ingreso = {
   producto2: string | null
   observacion: string | null
   precinto: string | null
+  operador: string | null
 }
 
 type Producto = { id: number; nombre: string }
@@ -35,6 +36,7 @@ export default function IngresosList({
     producto2: '',
     observacion: '',
     precinto: '',
+    operador: '',
   })
 
   const filtered = ingresos.filter(
@@ -55,7 +57,7 @@ export default function IngresosList({
     if (res.ok) {
       const newIngreso = await res.json()
       setShowForm(false)
-      setForm({ hrRemito: '', fecha: todayISO(), origen: '', producto1: '', producto2: '', observacion: '', precinto: '' })
+      setForm({ hrRemito: '', fecha: todayISO(), origen: '', producto1: '', producto2: '', observacion: '', precinto: '', operador: '' })
       router.refresh()
       if (confirm('Ingreso registrado. ¿Generar rótulo ahora?')) {
         await fetch('/api/rotulos', {
@@ -83,12 +85,21 @@ export default function IngresosList({
           onChange={(e) => setSearch(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm w-72"
         />
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
-        >
-          + Nuevo Ingreso
-        </button>
+        <div className="flex gap-2">
+          <a
+            href="/api/ingresos/export"
+            download
+            className="border border-green-600 text-green-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-50"
+          >
+            Exportar CSV
+          </a>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+          >
+            + Nuevo Ingreso
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -140,6 +151,12 @@ export default function IngresosList({
                 <textarea value={form.observacion} onChange={(e) => setForm({ ...form, observacion: e.target.value })}
                   rows={2} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
               </div>
+              <div className="col-span-2">
+                <label className="text-sm font-medium text-gray-700">Operador / Firma</label>
+                <input value={form.operador} onChange={(e) => setForm({ ...form, operador: e.target.value })}
+                  placeholder="Nombre de quien registra"
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" />
+              </div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">
               <button type="button" onClick={() => setShowForm(false)}
@@ -164,6 +181,7 @@ export default function IngresosList({
               <th className="text-left px-4 py-3 font-medium text-gray-600">Producto 2</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Observación</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Precinto</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Operador</th>
             </tr>
           </thead>
           <tbody>
@@ -176,11 +194,12 @@ export default function IngresosList({
                 <td className="px-4 py-3 text-gray-500">{i.producto2 || '—'}</td>
                 <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{i.observacion || '—'}</td>
                 <td className="px-4 py-3">{i.precinto || '—'}</td>
+                <td className="px-4 py-3">{i.operador || '—'}</td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                   Sin registros
                 </td>
               </tr>

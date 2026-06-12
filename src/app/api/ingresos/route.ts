@@ -10,7 +10,10 @@ const schema = z.object({
   producto2: z.string().optional(),
   observacion: z.string().optional(),
   precinto: z.string().optional(),
+  operador: z.string().optional(),
 })
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const ingresos = await prisma.ingreso.findMany({ orderBy: { fecha: 'desc' } })
@@ -29,6 +32,7 @@ export async function POST(req: NextRequest) {
       producto2: parsed.data.producto2 || null,
       observacion: parsed.data.observacion || null,
       precinto: parsed.data.precinto || null,
+      operador: parsed.data.operador || null,
     },
   })
   return NextResponse.json(ingreso, { status: 201 })

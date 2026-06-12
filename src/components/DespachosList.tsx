@@ -14,6 +14,7 @@ type Despacho = {
   observacion: string | null
   precintSFA: string | null
   precintAduana: string | null
+  operador: string | null
 }
 
 type Producto = { id: number; nombre: string }
@@ -39,6 +40,7 @@ export default function DespachosList({
     observacion: '',
     precintSFA: '',
     precintAduana: '',
+    operador: '',
   })
 
   const filtered = despachos.filter(
@@ -60,7 +62,7 @@ export default function DespachosList({
     if (res.ok) {
       const newDespacho = await res.json()
       setShowForm(false)
-      setForm({ hrContrato: '', fecha: todayISO(), destino: '', producto: '', deposito: '', idTransporte: '', observacion: '', precintSFA: '', precintAduana: '' })
+      setForm({ hrContrato: '', fecha: todayISO(), destino: '', producto: '', deposito: '', idTransporte: '', observacion: '', precintSFA: '', precintAduana: '', operador: '' })
       router.refresh()
       if (confirm('Despacho registrado. ¿Generar rótulo ahora?')) {
         await fetch('/api/rotulos', {
@@ -88,12 +90,21 @@ export default function DespachosList({
           onChange={(e) => setSearch(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm w-80"
         />
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700"
-        >
-          + Nuevo Despacho
-        </button>
+        <div className="flex gap-2">
+          <a
+            href="/api/despachos/export"
+            download
+            className="border border-green-600 text-green-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-50"
+          >
+            Exportar CSV
+          </a>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700"
+          >
+            + Nuevo Despacho
+          </button>
+        </div>
       </div>
 
       {showForm && (

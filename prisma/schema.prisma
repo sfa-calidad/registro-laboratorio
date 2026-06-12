@@ -17,6 +17,7 @@ model Ingreso {
   producto2     String?
   observacion   String?
   precinto      String?
+  operador      String?
   fechaAnalisis DateTime?
   createdAt     DateTime  @default(now())
   rotulos       Rotulo[]
@@ -33,8 +34,15 @@ model Despacho {
   observacion   String?
   precintSFA    String?
   precintAduana String?
+  operador      String?
   createdAt     DateTime @default(now())
   rotulos       Rotulo[]
+}
+
+model Configuracion {
+  id             Int    @id @default(autoincrement())
+  clave          String @unique
+  valor          String
 }
 
 model Rotulo {
