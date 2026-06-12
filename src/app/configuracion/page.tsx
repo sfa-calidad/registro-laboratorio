@@ -7,6 +7,7 @@ const DEFAULTS: Record<string, string> = {
   empresa: 'Laboratorio SFA',
   etiquetaAncho: '100',
   etiquetaAlto: '45',
+  etiquetaFuente: '9',
   operadorPredeterminado: '',
 }
 

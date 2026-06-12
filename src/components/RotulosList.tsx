@@ -1,4 +1,5 @@
 'use client'
+import { useState, useEffect } from 'react'
 import { formatDate } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
@@ -26,12 +27,25 @@ type Rotulo = {
 
 export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   const router = useRouter()
+  const [config, setConfig] = useState({
+    etiquetaAncho: '100',
+    etiquetaAlto: '45',
+    etiquetaFuente: '9',
+    empresa: 'Laboratorio SFA',
+  })
+
+  useEffect(() => {
+    fetch('/api/configuracion')
+      .then((r) => r.json())
+      .then((data) => setConfig(data))
+      .catch(() => {})
+  }, [])
 
   function handlePrint(rotulo: Rotulo) {
-    const data = (rotulo.data ?? {}) as Record<string, string>
+    const data = rotulo.data as Record<string, string>
     const w = window.open('', '_blank')
     if (!w) return
-    const content = buildLabelHTML(rotulo.tipo, data)
+    const content = buildLabelHTML(rotulo.tipo, data, config)
     w.document.write(content)
     w.document.close()
     w.focus()
@@ -102,7 +116,15 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   )
 }
 
-function buildLabelHTML(tipo: string, data: Record<string, string>): string {
+function buildLabelHTML(
+  tipo: string,
+  data: Record<string, string>,
+  config: { etiquetaAncho: string; etiquetaAlto: string; etiquetaFuente: string; empresa: string }
+): string {
+  const w = config.etiquetaAncho || '100'
+  const h = config.etiquetaAlto || '45'
+  const fs = Number(config.etiquetaFuente || '9')
+  const empresa = config.empresa || 'Laboratorio SFA'
   const esIngreso = tipo === 'INGRESOS' || tipo === 'SFA_INGRESO'
 
   const rows = esIngreso
@@ -147,27 +169,27 @@ function buildLabelHTML(tipo: string, data: Record<string, string>): string {
   <meta charset="utf-8">
   <title>Rótulo</title>
   <style>
-    @page { size: 100mm 45mm; margin: 2mm; }
-    body { font-family: Arial, sans-serif; font-size: 8px; margin: 0; padding: 0; }
-    .label { border: 1px solid #000; padding: 3px; width: 96mm; min-height: 39mm; box-sizing: border-box; }
-    .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 3px; }
-    .company { font-size: 10px; font-weight: bold; }
-    .tipo { font-size: 8px; font-weight: bold; color: #333; margin-top: 1px; }
+    @page { size: ${w}mm ${h}mm; margin: 2mm; }
+    body { font-family: Arial, sans-serif; font-size: ${fs}pt; margin: 0; padding: 0; }
+    .label { border: 1px solid #000; padding: 3px; width: calc(${w}mm - 6mm); min-height: calc(${h}mm - 6mm); box-sizing: border-box; }
+    .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 3px; }
+    .company { font-size: ${fs + 3}pt; font-weight: bold; }
+    .tipo { font-size: ${fs + 1}pt; font-weight: bold; color: #333; margin-top: 1px; }
     table { width: 100%; border-collapse: collapse; }
-    td { padding: 1px 2px; vertical-align: top; line-height: 1.3; }
-    td:first-child { font-weight: bold; width: 35%; color: #555; }
+    td { padding: 2px 3px; vertical-align: top; line-height: 1.4; }
+    td:first-child { font-weight: bold; width: 35%; color: #444; }
     tr { border-bottom: 1px solid #eee; }
     tr:last-child { border-bottom: none; }
     @media print {
       body { -webkit-print-color-adjust: exact; }
-      @page { size: 100mm 45mm; margin: 2mm; }
+      @page { size: ${w}mm ${h}mm; margin: 2mm; }
     }
   </style>
 </head>
 <body>
   <div class="label">
     <div class="header">
-      <div class="company">LABORATORIO SFA</div>
+      <div class="company">${empresa}</div>
       <div class="tipo">${tipoLabel[tipo] || tipo}</div>
     </div>
     <table>

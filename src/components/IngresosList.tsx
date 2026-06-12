@@ -36,6 +36,7 @@ export default function IngresosList({
   productos: Producto[]
 }) {
   const router = useRouter()
+  const [copiedId, setCopiedId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
@@ -243,6 +244,19 @@ export default function IngresosList({
                   <div className="flex gap-2 text-sm">
                     <button onClick={() => openEdit(i)} className="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
                     <button onClick={() => openDuplicate(i)} className="text-gray-500 hover:text-gray-700 font-medium">Duplicar</button>
+                    <button
+                      onClick={() => {
+                        const msg = `Ingresó un camión con ${i.producto1}${i.producto2 ? ` y ${i.producto2}` : ''} de ${i.origen} con HR/Remito ${i.hrRemito}, está OK de calidad.`
+                        navigator.clipboard.writeText(msg).then(() => {
+                          setCopiedId(i.id)
+                          setTimeout(() => setCopiedId(null), 2000)
+                        })
+                      }}
+                      className={`font-medium ${copiedId === i.id ? 'text-green-600' : 'text-amber-600 hover:text-amber-800'}`}
+                      title="Copiar mensaje para carga/descarga"
+                    >
+                      {copiedId === i.id ? '✓ Copiado' : 'Copiar'}
+                    </button>
                     <button onClick={() => handleDelete(i.id)} className="text-red-500 hover:text-red-700 font-medium">Eliminar</button>
                   </div>
                 </td>

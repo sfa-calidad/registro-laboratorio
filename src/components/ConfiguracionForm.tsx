@@ -65,6 +65,18 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
             />
           </div>
         </div>
+        <div>
+          <label className="text-sm font-medium text-gray-700">Tamaño de fuente base (pt)</label>
+          <input
+            type="number"
+            min="6"
+            max="16"
+            value={form.etiquetaFuente}
+            onChange={(e) => setForm({ ...form, etiquetaFuente: e.target.value })}
+            className="mt-1 w-32 border rounded-lg px-3 py-2 text-sm"
+          />
+          <p className="text-xs text-gray-400 mt-1">Recomendado: 9–12pt para etiquetas 100×45mm</p>
+        </div>
         <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
           <strong>Vista previa de tamaño:</strong>{' '}
           <span
