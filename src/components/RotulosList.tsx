@@ -158,14 +158,15 @@ function buildLabelHTML(tipo: string, data: Record<string, string>, config: { et
   }
 
   return `<!DOCTYPE html>
-<html>
+<html style="color-scheme: light;">
 <head>
   <meta charset="utf-8">
+  <meta name="color-scheme" content="light">
   <title>Rótulo</title>
   <style>
     @page { size: ${w}mm ${h}mm; margin: 2mm; }
     * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; font-size: ${fs}pt; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: ${fs}pt; margin: 0; padding: 0; background: #fff !important; color: #000 !important; color-scheme: light; }
     .label { border: 1px solid #000; padding: 3px; width: calc(${w}mm - 5mm); min-height: calc(${h}mm - 5mm); }
     .header { display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 3px; gap: 6px; }
     .logo { max-height: ${fs * 2.5}pt; max-width: 40%; object-fit: contain; }
