@@ -287,6 +287,7 @@ export default function DespachosList({
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Transporte</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Precinto SFA</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Precinto Aduana</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Observación</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Operador</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Acciones</th>
             </tr>
@@ -301,6 +302,7 @@ export default function DespachosList({
                 <td className="px-3 py-2 font-mono text-sm">{d.idTransporte}</td>
                 <td className="px-3 py-2">{d.precintSFA || '—'}</td>
                 <td className="px-3 py-2">{d.precintAduana || '—'}</td>
+                <td className="px-3 py-2 max-w-xs truncate text-gray-600" title={d.observacion || ''}>{d.observacion || '—'}</td>
                 <td className="px-3 py-2">{d.operador || '—'}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2 text-sm">
@@ -313,7 +315,7 @@ export default function DespachosList({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-3 py-6 text-center text-gray-400 text-base">
+                <td colSpan={10} className="px-3 py-6 text-center text-gray-400 text-base">
                   Sin registros
                 </td>
               </tr>

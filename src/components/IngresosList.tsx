@@ -271,6 +271,7 @@ export default function IngresosList({
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Producto 1</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Producto 2</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Precinto</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Observación</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Operador</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Acciones</th>
             </tr>
@@ -284,6 +285,7 @@ export default function IngresosList({
                 <td className="px-3 py-2">{i.producto1}</td>
                 <td className="px-3 py-2 text-gray-500">{i.producto2 || '—'}</td>
                 <td className="px-3 py-2">{i.precinto || '—'}</td>
+                <td className="px-3 py-2 max-w-xs truncate text-gray-600" title={i.observacion || ''}>{i.observacion || '—'}</td>
                 <td className="px-3 py-2">{i.operador || '—'}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2 text-sm">
@@ -309,7 +311,7 @@ export default function IngresosList({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-gray-400 text-base">
+                <td colSpan={9} className="px-3 py-6 text-center text-gray-400 text-base">
                   Sin registros
                 </td>
               </tr>
