@@ -1,8 +1,11 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
-const links = [
+type Role = 'supervisor' | 'analista' | null
+
+const baseLinks = [
   {
     href: '/',
     label: 'Dashboard',
@@ -34,6 +37,19 @@ const links = [
     ),
   },
   {
+    href: '/tareas',
+    label: 'Tareas',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <line x1="9" y1="3" x2="9" y2="21"/>
+        <line x1="15" y1="3" x2="15" y2="21"/>
+        <line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="3" y1="15" x2="21" y2="15"/>
+      </svg>
+    ),
+  },
+  {
     href: '/rotulos',
     label: 'Rótulos',
     icon: (
@@ -55,8 +71,30 @@ const links = [
   },
 ]
 
+const supervisorLinks = [
+  {
+    href: '/estadisticas',
+    label: 'Estadísticas',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"/>
+        <line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+    ),
+  },
+]
+
 export default function Sidebar() {
   const pathname = usePathname()
+  const [role, setRole] = useState<Role>(null)
+
+  useEffect(() => {
+    fetch('/api/me').then(r => r.json()).then(d => setRole(d.role)).catch(() => {})
+  }, [])
+
+  const links = role === 'supervisor' ? [...baseLinks, ...supervisorLinks] : baseLinks
+
   return (
     <aside className="w-56 bg-slate-800 text-white flex flex-col">
       <div className="p-4 border-b border-slate-700">
@@ -80,6 +118,9 @@ export default function Sidebar() {
         ))}
       </nav>
       <div className="p-3 border-t border-slate-700 space-y-2">
+        {role && (
+          <div className="text-xs text-slate-400 px-3 capitalize">{role}</div>
+        )}
         <button
           onClick={async () => {
             await fetch('/api/auth/logout', { method: 'POST' })
@@ -90,7 +131,7 @@ export default function Sidebar() {
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Cerrar sesión
         </button>
-        <div className="text-xs text-slate-500 px-3">v1.2.0</div>
+        <div className="text-xs text-slate-500 px-3">v1.3.0</div>
       </div>
     </aside>
   )

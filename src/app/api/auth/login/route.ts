@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
-  const { password } = await req.json()
-  const appPassword = process.env.APP_PASSWORD || 'laboratorio2024'
+  const { password, role } = await req.json()
 
-  if (password !== appPassword) {
+  const supervisorPwd = process.env.SUPERVISOR_PASSWORD || process.env.APP_PASSWORD || 'laboratorio2024'
+  const analistaPwd = process.env.ANALISTA_PASSWORD || process.env.APP_PASSWORD || 'laboratorio2024'
+
+  let matchedRole: string | null = null
+  if (role === 'supervisor' && password === supervisorPwd) {
+    matchedRole = 'supervisor'
+  } else if (role === 'analista' && password === analistaPwd) {
+    matchedRole = 'analista'
+  }
+
+  if (!matchedRole) {
     return NextResponse.json({ error: 'Contraseña incorrecta' }, { status: 401 })
   }
 
-  const res = NextResponse.json({ ok: true })
-  res.cookies.set('lab_session', `authenticated_${appPassword}`, {
+  const res = NextResponse.json({ ok: true, role: matchedRole })
+  res.cookies.set('lab_session', `authenticated_${matchedRole}`, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: 60 * 60 * 24 * 30,
     path: '/',
   })
   return res

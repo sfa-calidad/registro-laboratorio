@@ -19,6 +19,7 @@ type Despacho = {
 
 type Producto = { id: number; nombre: string }
 type Contacto = { id: number; nombre: string }
+type Analista = { id: number; nombre: string; apellido: string }
 
 const emptyForm = {
   hrContrato: '',
@@ -42,6 +43,7 @@ export default function DespachosList({
 }) {
   const router = useRouter()
   const [clientes, setClientes] = useState<Contacto[]>([])
+  const [analistas, setAnalistas] = useState<Analista[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
@@ -53,6 +55,7 @@ export default function DespachosList({
 
   useEffect(() => {
     fetch('/api/contactos?tipo=cliente').then(r => r.json()).then(setClientes)
+    fetch('/api/analistas').then(r => r.json()).then(setAnalistas)
   }, [])
 
   function handleExport() {
@@ -259,9 +262,13 @@ export default function DespachosList({
               </div>
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Operador / Firma</label>
-                <input value={form.operador} onChange={(e) => setForm({ ...form, operador: e.target.value })}
-                  placeholder="Nombre de quien registra"
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
+                <select value={form.operador} onChange={(e) => setForm({ ...form, operador: e.target.value })}
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base">
+                  <option value="">— Sin operador —</option>
+                  {analistas.map(a => (
+                    <option key={a.id} value={`${a.nombre} ${a.apellido}`}>{a.nombre} {a.apellido}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="flex gap-2 mt-4 justify-end">

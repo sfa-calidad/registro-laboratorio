@@ -22,6 +22,14 @@ async function main() {
       create: { nombre },
     })
   }
+  const columnas = ['Pendiente', 'En Progreso', 'Completado']
+  for (let i = 0; i < columnas.length; i++) {
+    await prisma.columnaKanban.upsert({
+      where: { nombre: columnas[i] },
+      update: {},
+      create: { nombre: columnas[i], orden: i + 1 },
+    })
+  }
   console.log('Seed completado')
 }
 

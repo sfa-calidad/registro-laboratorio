@@ -68,3 +68,39 @@ model Contacto {
 
   @@unique([nombre, tipo])
 }
+
+model Analista {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  apellido  String
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  tareasF1  Tarea[]  @relation("firma1")
+  tareasF2  Tarea[]  @relation("firma2")
+
+  @@unique([nombre, apellido])
+}
+
+model ColumnaKanban {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique
+  orden  Int
+  tareas Tarea[]
+}
+
+model Tarea {
+  id               Int           @id @default(autoincrement())
+  titulo           String
+  descripcion      String?
+  columnaId        Int
+  columna          ColumnaKanban @relation(fields: [columnaId], references: [id])
+  analistaId1      Int?
+  analistaId2      Int?
+  firma1           Analista?     @relation("firma1", fields: [analistaId1], references: [id])
+  firma2           Analista?     @relation("firma2", fields: [analistaId2], references: [id])
+  prioridad        String?
+  fechaVencimiento DateTime?
+  creadoPor        String
+  completadaAt     DateTime?
+  createdAt        DateTime      @default(now())
+}

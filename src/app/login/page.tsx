@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [role, setRole] = useState<'supervisor' | 'analista'>('analista')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,7 +18,7 @@ function LoginForm() {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ password, role }),
     })
     if (res.ok) {
       const from = searchParams.get('from') || '/'
@@ -36,6 +37,25 @@ function LoginForm() {
           <p className="text-gray-500 text-sm mt-1">Gestión de Movimientos</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Rol</label>
+            <div className="flex rounded-lg border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setRole('analista')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${role === 'analista' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                Analista
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('supervisor')}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${role === 'supervisor' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+              >
+                Supervisor
+              </button>
+            </div>
+          </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Contraseña</label>
             <input

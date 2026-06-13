@@ -11,10 +11,17 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
   const [newContacto, setNewContacto] = useState('')
   const [newContactoTipo, setNewContactoTipo] = useState<'proveedor'|'cliente'>('proveedor')
   const [logoPreview, setLogoPreview] = useState<string>(values.logo || '')
+  const [analistas, setAnalistas] = useState<{id:number,nombre:string,apellido:string}[]>([])
+  const [newAnalistaNombre, setNewAnalistaNombre] = useState('')
+  const [newAnalistaApellido, setNewAnalistaApellido] = useState('')
+  const [columnas, setColumnas] = useState<{id:number,nombre:string,orden:number}[]>([])
+  const [newColumna, setNewColumna] = useState('')
 
   useEffect(() => {
     fetch('/api/productos').then(r => r.json()).then(setProductos)
     fetch('/api/contactos').then(r => r.json()).then(setContactos)
+    fetch('/api/analistas').then(r => r.json()).then(setAnalistas)
+    fetch('/api/columnas').then(r => r.json()).then(setColumnas)
   }, [])
 
   function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -82,6 +89,65 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
 
   const proveedores = contactos.filter(c => c.tipo === 'proveedor')
   const clientes = contactos.filter(c => c.tipo === 'cliente')
+
+  async function addAnalista() {
+    if (!newAnalistaNombre.trim() || !newAnalistaApellido.trim()) return
+    const res = await fetch('/api/analistas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: newAnalistaNombre.trim(), apellido: newAnalistaApellido.trim() }),
+    })
+    if (res.ok) {
+      const a = await res.json()
+      setAnalistas(as => [...as, a].sort((x,y) => x.apellido.localeCompare(y.apellido)))
+      setNewAnalistaNombre('')
+      setNewAnalistaApellido('')
+    }
+  }
+
+  async function deleteAnalista(id: number) {
+    await fetch(`/api/analistas/${id}`, { method: 'DELETE' })
+    setAnalistas(as => as.filter(a => a.id !== id))
+  }
+
+  async function addColumna() {
+    if (!newColumna.trim()) return
+    const maxOrden = columnas.reduce((m, c) => Math.max(m, c.orden), 0)
+    const res = await fetch('/api/columnas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: newColumna.trim(), orden: maxOrden + 1 }),
+    })
+    if (res.ok) {
+      const c = await res.json()
+      setColumnas(cs => [...cs, c])
+      setNewColumna('')
+    }
+  }
+
+  async function deleteColumna(id: number) {
+    const res = await fetch(`/api/columnas/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setColumnas(cs => cs.filter(c => c.id !== id))
+    } else {
+      const data = await res.json()
+      alert(data.error || 'No se puede eliminar')
+    }
+  }
+
+  async function moveColumna(id: number, direction: 'up' | 'down') {
+    const sorted = [...columnas].sort((a, b) => a.orden - b.orden)
+    const idx = sorted.findIndex(c => c.id === id)
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= sorted.length) return
+    const a = sorted[idx]
+    const b = sorted[swapIdx]
+    await Promise.all([
+      fetch(`/api/columnas/${a.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orden: b.orden }) }),
+      fetch(`/api/columnas/${b.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orden: a.orden }) }),
+    ])
+    setColumnas(cs => cs.map(c => c.id === a.id ? { ...c, orden: b.orden } : c.id === b.id ? { ...c, orden: a.orden } : c))
+  }
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -209,6 +275,51 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
             </ul>
           </div>
         </div>
+      </div>
+      <div className="bg-white rounded-xl shadow p-5 space-y-3">
+        <h3 className="font-semibold text-gray-700 border-b pb-2">Analistas</h3>
+        <div className="flex gap-2">
+          <input value={newAnalistaNombre} onChange={(e) => setNewAnalistaNombre(e.target.value)}
+            placeholder="Nombre" className="flex-1 border rounded-lg px-3 py-2 text-base" />
+          <input value={newAnalistaApellido} onChange={(e) => setNewAnalistaApellido(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAnalista())}
+            placeholder="Apellido" className="flex-1 border rounded-lg px-3 py-2 text-base" />
+          <button type="button" onClick={addAnalista}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Agregar</button>
+        </div>
+        <ul className="space-y-1 max-h-48 overflow-y-auto">
+          {analistas.map(a => (
+            <li key={a.id} className="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50 text-base">
+              <span>{a.nombre} {a.apellido}</span>
+              <button onClick={() => deleteAnalista(a.id)} className="text-red-400 hover:text-red-600 text-sm">Desactivar</button>
+            </li>
+          ))}
+          {analistas.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin analistas registrados</li>}
+        </ul>
+      </div>
+
+      <div className="bg-white rounded-xl shadow p-5 space-y-3">
+        <h3 className="font-semibold text-gray-700 border-b pb-2">Columnas del Tablero</h3>
+        <div className="flex gap-2">
+          <input value={newColumna} onChange={(e) => setNewColumna(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addColumna())}
+            placeholder="Nombre de columna" className="flex-1 border rounded-lg px-3 py-2 text-base" />
+          <button type="button" onClick={addColumna}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Agregar</button>
+        </div>
+        <ul className="space-y-1">
+          {[...columnas].sort((a,b) => a.orden - b.orden).map((c, idx, arr) => (
+            <li key={c.id} className="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50 text-base">
+              <span>{c.nombre}</span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => moveColumna(c.id, 'up')} disabled={idx === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 px-1">↑</button>
+                <button onClick={() => moveColumna(c.id, 'down')} disabled={idx === arr.length - 1} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 px-1">↓</button>
+                <button onClick={() => deleteColumna(c.id)} className="text-red-400 hover:text-red-600 text-sm ml-1">Eliminar</button>
+              </div>
+            </li>
+          ))}
+          {columnas.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin columnas</li>}
+        </ul>
       </div>
     </div>
   )

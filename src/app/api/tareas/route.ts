@@ -1,0 +1,50 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
+import { getRoleFromRequest } from '@/lib/auth'
+
+export const dynamic = 'force-dynamic'
+
+const schema = z.object({
+  titulo: z.string().min(1),
+  descripcion: z.string().optional(),
+  columnaId: z.number().int(),
+  analistaId1: z.number().int().nullable().optional(),
+  analistaId2: z.number().int().nullable().optional(),
+  prioridad: z.enum(['alta', 'media', 'baja']).optional(),
+  fechaVencimiento: z.string().optional().nullable(),
+})
+
+const include = {
+  columna: true,
+  firma1: true,
+  firma2: true,
+}
+
+export async function GET() {
+  const tareas = await prisma.tarea.findMany({
+    include,
+    orderBy: { createdAt: 'asc' },
+  })
+  return NextResponse.json(tareas)
+}
+
+export async function POST(req: NextRequest) {
+  const role = getRoleFromRequest(req)
+  if (!role) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const body = await req.json()
+  const parsed = schema.safeParse(body)
+  if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+
+  const { fechaVencimiento, ...rest } = parsed.data
+  const tarea = await prisma.tarea.create({
+    data: {
+      ...rest,
+      creadoPor: role,
+      fechaVencimiento: fechaVencimiento ? new Date(fechaVencimiento) : null,
+    },
+    include,
+  })
+  return NextResponse.json(tarea, { status: 201 })
+}
