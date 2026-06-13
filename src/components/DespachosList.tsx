@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatDate, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
@@ -18,6 +18,7 @@ type Despacho = {
 }
 
 type Producto = { id: number; nombre: string }
+type Contacto = { id: number; nombre: string }
 
 const emptyForm = {
   hrContrato: '',
@@ -40,6 +41,7 @@ export default function DespachosList({
   productos: Producto[]
 }) {
   const router = useRouter()
+  const [clientes, setClientes] = useState<Contacto[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [search, setSearch] = useState('')
@@ -48,6 +50,10 @@ export default function DespachosList({
   const [showExport, setShowExport] = useState(false)
   const [exportDesde, setExportDesde] = useState('')
   const [exportHasta, setExportHasta] = useState('')
+
+  useEffect(() => {
+    fetch('/api/contactos?tipo=cliente').then(r => r.json()).then(setClientes)
+  }, [])
 
   function handleExport() {
     const params = new URLSearchParams()
@@ -124,17 +130,14 @@ export default function DespachosList({
     })
     if (res.ok) {
       const saved = await res.json()
+      await fetch('/api/rotulos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo: 'SALIDAS', data: { ...form, id: saved.id }, despachoId: saved.id }),
+      })
       setShowForm(false)
       setForm(emptyForm)
       router.refresh()
-      if (!editingId && confirm('Despacho guardado. ¿Generar rótulo ahora?')) {
-        await fetch('/api/rotulos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tipo: 'SALIDAS', data: { ...form, id: saved.id }, despachoId: saved.id }),
-        })
-        router.push('/rotulos')
-      }
     }
     setLoading(false)
   }
@@ -220,7 +223,11 @@ export default function DespachosList({
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Destino / Cliente *</label>
                 <input required value={form.destino} onChange={(e) => setForm({ ...form, destino: e.target.value })}
+                  list="clientes-list"
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
+                <datalist id="clientes-list">
+                  {clientes.map(c => <option key={c.id} value={c.nombre} />)}
+                </datalist>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Producto *</label>

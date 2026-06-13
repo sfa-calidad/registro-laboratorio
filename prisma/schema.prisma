@@ -60,3 +60,11 @@ model Producto {
   id     Int    @id @default(autoincrement())
   nombre String @unique
 }
+
+model Contacto {
+  id     Int    @id @default(autoincrement())
+  nombre String
+  tipo   String // "proveedor" | "cliente"
+
+  @@unique([nombre, tipo])
+}

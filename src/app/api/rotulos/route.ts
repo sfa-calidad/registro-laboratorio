@@ -31,5 +31,13 @@ export async function POST(req: NextRequest) {
       despachoId: parsed.data.despachoId,
     },
   })
+
+  // Keep only last 10
+  const all = await prisma.rotulo.findMany({ orderBy: { createdAt: 'desc' }, select: { id: true } })
+  if (all.length > 10) {
+    const toDelete = all.slice(10).map(r => r.id)
+    await prisma.rotulo.deleteMany({ where: { id: { in: toDelete } } })
+  }
+
   return NextResponse.json({ ...rotulo, data: JSON.parse(rotulo.data) }, { status: 201 })
 }

@@ -32,6 +32,7 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
     etiquetaAlto: '45',
     etiquetaFuente: '9',
     empresa: 'Laboratorio SFA',
+    logo: '',
   })
 
   useEffect(() => {
@@ -116,45 +117,38 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   )
 }
 
-function buildLabelHTML(
-  tipo: string,
-  data: Record<string, string>,
-  config: { etiquetaAncho: string; etiquetaAlto: string; etiquetaFuente: string; empresa: string }
-): string {
+function buildLabelHTML(tipo: string, data: Record<string, string>, config: { etiquetaAncho: string; etiquetaAlto: string; etiquetaFuente: string; empresa: string; logo: string }): string {
   const w = config.etiquetaAncho || '100'
   const h = config.etiquetaAlto || '45'
   const fs = Number(config.etiquetaFuente || '9')
   const empresa = config.empresa || 'Laboratorio SFA'
-  const esIngreso = tipo === 'INGRESOS' || tipo === 'SFA_INGRESO'
+  const logo = config.logo
 
-  const rows = esIngreso
+  const esSalida = tipo === 'SALIDAS' || tipo === 'SFA_SALIDA'
+
+  const rows = esSalida
     ? [
+        ['Destino', data.destino || ''],
+        ['Contrato', data.hrContrato || ''],
+        ['Transporte', data.idTransporte || ''],
+        ['Fecha', data.fecha || ''],
+        ['Operador', data.operador || ''],
+      ]
+    : [
         ['Proveedor', data.origen || data.proveedor || ''],
         ['Producto', data.producto1 || data.producto || ''],
-        ['Producto 2', data.producto2 || ''],
+        ...(data.producto2 ? [['Producto 2', data.producto2]] : []),
         ['HR / Remito', data.hrRemito || ''],
         ['Fecha', data.fecha || ''],
         ['Precinto', data.precinto || ''],
-        ['Observación', data.observacion || ''],
-      ]
-    : [
-        ['Proveedor', 'SFA'],
-        ['Producto', data.producto || ''],
-        ['Cliente', data.destino || ''],
-        ['Transporte', data.idTransporte || ''],
-        ['HR / Contrato', data.hrContrato || ''],
-        ['Depósito', data.deposito || ''],
-        ['Precinto SFA', data.precintSFA || ''],
-        ['Precinto Aduana', data.precintAduana || ''],
-        ['Fecha', data.fecha || ''],
-        ['Observación', data.observacion || ''],
+        ['Operador', data.operador || ''],
       ]
 
   const tipoLabel: Record<string, string> = {
     INGRESOS: 'MUESTRA DE INGRESO',
     SALIDAS: 'MUESTRA DE SALIDA',
-    SFA_INGRESO: 'SFA – MUESTRA DE INGRESO',
-    SFA_SALIDA: 'SFA – MUESTRA DE SALIDA',
+    SFA_INGRESO: 'SFA – INGRESO',
+    SFA_SALIDA: 'SFA – SALIDA',
     MUESTRA_ESP: 'MUESTRA ESPECIAL',
     DHSH: 'DHSH – MOVIMIENTO INTERNO',
     OLEOCHEM: 'OLEOCHEM',
@@ -170,33 +164,33 @@ function buildLabelHTML(
   <title>Rótulo</title>
   <style>
     @page { size: ${w}mm ${h}mm; margin: 2mm; }
+    * { box-sizing: border-box; }
     body { font-family: Arial, sans-serif; font-size: ${fs}pt; margin: 0; padding: 0; }
-    .label { border: 1px solid #000; padding: 3px; width: calc(${w}mm - 6mm); min-height: calc(${h}mm - 6mm); box-sizing: border-box; }
-    .header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 3px; }
+    .label { border: 1px solid #000; padding: 3px; width: calc(${w}mm - 5mm); min-height: calc(${h}mm - 5mm); }
+    .header { display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 3px; gap: 6px; }
+    .logo { max-height: ${fs * 2.5}pt; max-width: 40%; object-fit: contain; }
+    .header-text { text-align: center; }
     .company { font-size: ${fs + 3}pt; font-weight: bold; }
-    .tipo { font-size: ${fs + 1}pt; font-weight: bold; color: #333; margin-top: 1px; }
+    .tipo { font-size: ${fs}pt; font-weight: bold; color: #333; }
     table { width: 100%; border-collapse: collapse; }
-    td { padding: 2px 3px; vertical-align: top; line-height: 1.4; }
-    td:first-child { font-weight: bold; width: 35%; color: #444; }
+    td { padding: 1px 3px; vertical-align: top; line-height: 1.4; }
+    td:first-child { font-weight: bold; width: 38%; color: #444; }
     tr { border-bottom: 1px solid #eee; }
     tr:last-child { border-bottom: none; }
-    @media print {
-      body { -webkit-print-color-adjust: exact; }
-      @page { size: ${w}mm ${h}mm; margin: 2mm; }
-    }
+    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } @page { size: ${w}mm ${h}mm; margin: 2mm; } }
   </style>
 </head>
 <body>
   <div class="label">
     <div class="header">
-      <div class="company">${empresa}</div>
-      <div class="tipo">${tipoLabel[tipo] || tipo}</div>
+      ${logo ? `<img src="${logo}" class="logo" alt="logo" />` : ''}
+      <div class="header-text">
+        ${!logo ? `<div class="company">${empresa}</div>` : ''}
+        <div class="tipo">${tipoLabel[tipo] || tipo}</div>
+      </div>
     </div>
     <table>
-      ${rows
-        .filter(([, v]) => v)
-        .map(([k, v]) => `<tr><td>${k}:</td><td>${v}</td></tr>`)
-        .join('\n      ')}
+      ${rows.filter(([, v]) => v).map(([k, v]) => `<tr><td>${k}:</td><td>${v}</td></tr>`).join('\n      ')}
     </table>
   </div>
 </body>

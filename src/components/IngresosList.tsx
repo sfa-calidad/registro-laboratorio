@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatDate, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
@@ -16,6 +16,7 @@ type Ingreso = {
 }
 
 type Producto = { id: number; nombre: string }
+type Contacto = { id: number; nombre: string }
 
 const emptyForm = {
   hrRemito: '',
@@ -36,6 +37,7 @@ export default function IngresosList({
   productos: Producto[]
 }) {
   const router = useRouter()
+  const [proveedores, setProveedores] = useState<Contacto[]>([])
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -45,6 +47,10 @@ export default function IngresosList({
   const [showExport, setShowExport] = useState(false)
   const [exportDesde, setExportDesde] = useState('')
   const [exportHasta, setExportHasta] = useState('')
+
+  useEffect(() => {
+    fetch('/api/contactos?tipo=proveedor').then(r => r.json()).then(setProveedores)
+  }, [])
 
   function handleExport() {
     const params = new URLSearchParams()
@@ -116,17 +122,14 @@ export default function IngresosList({
     })
     if (res.ok) {
       const saved = await res.json()
+      await fetch('/api/rotulos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo: 'INGRESOS', data: { ...form, id: saved.id }, ingresoId: saved.id }),
+      })
       setShowForm(false)
       setForm(emptyForm)
       router.refresh()
-      if (!editingId && confirm('Ingreso guardado. ¿Generar rótulo ahora?')) {
-        await fetch('/api/rotulos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tipo: 'INGRESOS', data: { ...form, id: saved.id }, ingresoId: saved.id }),
-        })
-        router.push('/rotulos')
-      }
     }
     setLoading(false)
   }
@@ -212,7 +215,11 @@ export default function IngresosList({
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">Origen / Proveedor *</label>
                 <input required value={form.origen} onChange={(e) => setForm({ ...form, origen: e.target.value })}
+                  list="proveedores-list"
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
+                <datalist id="proveedores-list">
+                  {proveedores.map(p => <option key={p.id} value={p.nombre} />)}
+                </datalist>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Producto 1 *</label>

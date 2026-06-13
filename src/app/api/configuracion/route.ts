@@ -9,6 +9,7 @@ const DEFAULTS: Record<string, string> = {
   etiquetaAlto: '45',
   etiquetaFuente: '9',
   operadorPredeterminado: '',
+  logo: '',
 }
 
 export async function GET() {
