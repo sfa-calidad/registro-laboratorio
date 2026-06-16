@@ -36,12 +36,12 @@ export default async function Dashboard() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h2>
+      <h2 className="text-2xl font-bold text-brand-dark mb-6">Dashboard</h2>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Ingresos hoy" value={ingresosHoy} color="blue" />
-        <StatCard label="Despachos hoy" value={despachosHoy} color="green" />
-        <StatCard label="Tareas pendientes" value={tareasPendientes} color="slate" />
+        <StatCard label="Ingresos hoy" value={ingresosHoy} color="green" />
+        <StatCard label="Despachos hoy" value={despachosHoy} color="mustard" />
+        <StatCard label="Tareas pendientes" value={tareasPendientes} color="dark" />
         <StatCard label="Tareas vencidas" value={tareasVencidas} color="red" />
       </div>
 
@@ -118,10 +118,10 @@ export default async function Dashboard() {
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   const colors: Record<string, string> = {
-    blue: 'bg-blue-50 border-blue-200 text-blue-700',
-    green: 'bg-green-50 border-green-200 text-green-700',
-    slate: 'bg-slate-50 border-slate-200 text-slate-700',
-    red: 'bg-red-50 border-red-200 text-red-700',
+    green: 'bg-brand-green-light border-brand-green text-brand-green-dark',
+    mustard: 'bg-amber-50 border-brand-mustard text-brand-mustard-dark',
+    dark: 'bg-slate-50 border-slate-300 text-brand-dark',
+    red: 'bg-red-50 border-brand-red text-brand-red-dark',
   }
   return (
     <div className={`rounded-xl border p-4 ${colors[color]}`}>

@@ -27,7 +27,7 @@ const PERIODOS = [
   { label: 'Todo el tiempo', days: 0 },
 ]
 
-const PIE_COLORS = ['#34d399', '#60a5fa', '#d1d5db']
+const PIE_COLORS = ['#8bc53f', '#e0a32a', '#d1d5db']
 
 function isInPeriod(date: string | Date, days: number): boolean {
   if (!days) return true
@@ -82,7 +82,7 @@ export default function EstadisticasView({ analistas, tareas, ingresos, despacho
           <button
             key={p.days}
             onClick={() => setPeriodo(p.days)}
-            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${periodo === p.days ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
+            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${periodo === p.days ? 'bg-brand-green text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
           >
             {p.label}
           </button>
@@ -102,8 +102,8 @@ export default function EstadisticasView({ analistas, tareas, ingresos, despacho
                 <YAxis type="category" dataKey="nombre" width={120} tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="completadas" name="Completadas" stackId="t" fill="#34d399" />
-                <Bar dataKey="enProgreso" name="En progreso" stackId="t" fill="#60a5fa" />
+                <Bar dataKey="completadas" name="Completadas" stackId="t" fill="#8bc53f" />
+                <Bar dataKey="enProgreso" name="En progreso" stackId="t" fill="#e0a32a" />
                 <Bar dataKey="pendientes" name="Pendientes" stackId="t" fill="#d1d5db" />
               </BarChart>
             </ResponsiveContainer>
@@ -139,8 +139,8 @@ export default function EstadisticasView({ analistas, tareas, ingresos, despacho
               <YAxis type="category" dataKey="nombre" width={120} tick={{ fontSize: 12 }} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="ingresos" name="Ingresos" fill="#10b981" />
-              <Bar dataKey="despachos" name="Despachos" fill="#fb923c" />
+              <Bar dataKey="ingresos" name="Ingresos" fill="#6fa32e" />
+              <Bar dataKey="despachos" name="Despachos" fill="#b6394a" />
             </BarChart>
           </ResponsiveContainer>
         )}

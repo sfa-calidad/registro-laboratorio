@@ -71,7 +71,7 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
               <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
                 <td className="px-3 py-2 text-gray-400">#{r.id}</td>
                 <td className="px-3 py-2">
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                  <span className="bg-brand-green-light text-brand-green-dark text-xs px-2 py-1 rounded-full">
                     {TIPO_LABELS[r.tipo] || r.tipo}
                   </span>
                 </td>
@@ -86,7 +86,7 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
                 <td className="px-3 py-2">
                   <button
                     onClick={() => handlePrint(r)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    className="text-brand-green-dark hover:text-brand-green text-sm font-medium"
                   >
                     Imprimir rótulo
                   </button>

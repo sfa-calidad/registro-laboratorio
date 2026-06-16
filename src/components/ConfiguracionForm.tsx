@@ -226,7 +226,7 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
 
         <div className="flex items-center gap-3">
           <button type="submit" disabled={loading}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            className="bg-brand-green text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-brand-green-dark disabled:opacity-50">
             {loading ? 'Guardando...' : 'Guardar cambios'}
           </button>
           {saved && <span className="text-green-600 text-sm font-medium">✓ Guardado</span>}
@@ -240,7 +240,7 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addProducto())}
             placeholder="Nombre del producto" className="flex-1 border rounded-lg px-3 py-2 text-base" />
           <button type="button" onClick={addProducto}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Agregar</button>
+            className="bg-brand-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-green-dark">Agregar</button>
         </div>
         <ul className="space-y-1 max-h-48 overflow-y-auto">
           {productos.map(p => (
@@ -260,7 +260,7 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addContacto())}
             placeholder="Nombre" className="flex-1 border rounded-lg px-3 py-2 text-base" />
           <button type="button" onClick={addContacto}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Agregar</button>
+            className="bg-brand-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-green-dark">Agregar</button>
         </div>
         <ul className="space-y-1 max-h-48 overflow-y-auto">
           {contactos.map(c => (
@@ -281,7 +281,7 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAnalista())}
             placeholder="Apellido" className="flex-1 border rounded-lg px-3 py-2 text-base" />
           <button type="button" onClick={addAnalista}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Agregar</button>
+            className="bg-brand-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-green-dark">Agregar</button>
         </div>
         <ul className="space-y-1 max-h-48 overflow-y-auto">
           {analistas.map(a => (
@@ -299,7 +299,7 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
               {analistasInactivos.map(a => (
                 <li key={a.id} className="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50 text-base text-gray-400">
                   <span>{a.nombre} {a.apellido}</span>
-                  <button onClick={() => reactivarAnalista(a.id)} className="text-blue-400 hover:text-blue-600 text-sm">Reactivar</button>
+                  <button onClick={() => reactivarAnalista(a.id)} className="text-brand-green hover:text-brand-green-dark text-sm">Reactivar</button>
                 </li>
               ))}
             </ul>
@@ -314,7 +314,7 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addColumna())}
             placeholder="Nombre de columna" className="flex-1 border rounded-lg px-3 py-2 text-base" />
           <button type="button" onClick={addColumna}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Agregar</button>
+            className="bg-brand-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-green-dark">Agregar</button>
         </div>
         <ul className="space-y-1">
           {[...columnas].sort((a,b) => a.orden - b.orden).map((c, idx, arr) => (

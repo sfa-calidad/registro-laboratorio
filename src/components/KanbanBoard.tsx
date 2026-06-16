@@ -188,7 +188,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
         <select
           value={filterAnalistaId}
           onChange={e => setFilterAnalistaId(e.target.value)}
-          className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
         >
           <option value="">Todos</option>
           {analistas.map(a => (
@@ -211,7 +211,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                 <span className="font-semibold text-gray-700 text-sm">{col.nombre}</span>
                 <span className="text-xs text-gray-400 bg-white rounded-full px-2 py-0.5">{colTareas.length}</span>
               </div>
-              <div className={`bg-gray-50 rounded-b-lg flex-1 p-2 space-y-2 min-h-32 transition-colors ${dragOverColId === col.id ? 'bg-blue-50 ring-2 ring-blue-300' : ''}`}>
+              <div className={`bg-gray-50 rounded-b-lg flex-1 p-2 space-y-2 min-h-32 transition-colors ${dragOverColId === col.id ? 'bg-brand-green-light ring-2 ring-brand-green' : ''}`}>
                 {colTareas.map(t => (
                   <div
                     key={t.id}
@@ -235,11 +235,11 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                     )}
                     <div className="flex flex-wrap gap-1 mb-2">
                       {t.firma1 ? (
-                        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{t.firma1.nombre} {t.firma1.apellido}</span>
+                        <span className="text-xs bg-brand-green-light text-brand-green-dark px-2 py-0.5 rounded-full">{t.firma1.nombre} {t.firma1.apellido}</span>
                       ) : (
                         <button
                           onClick={() => { setFirmaModal({ tareaId: t.id, slot: 1 }); setFirmaAnalistaId('') }}
-                          className="text-xs text-gray-400 hover:text-blue-600 border border-dashed border-gray-300 hover:border-blue-400 px-2 py-0.5 rounded-full"
+                          className="text-xs text-gray-400 hover:text-brand-green-dark border border-dashed border-gray-300 hover:border-brand-green px-2 py-0.5 rounded-full"
                         >
                           + Firma 1
                         </button>
@@ -266,7 +266,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                         </button>
                       )}
-                      <button onClick={() => openEdit(t)} className="text-gray-400 hover:text-blue-600 p-1 rounded ml-auto" title="Editar">
+                      <button onClick={() => openEdit(t)} className="text-gray-400 hover:text-brand-green-dark p-1 rounded ml-auto" title="Editar">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
                       {role === 'supervisor' && (
@@ -303,7 +303,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                   type="text"
                   value={form.titulo}
                   onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
                   autoFocus
                 />
               </div>
@@ -313,7 +313,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                   value={form.descripcion}
                   onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
                   rows={2}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -322,7 +322,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                   <select
                     value={form.prioridad}
                     onChange={e => setForm(f => ({ ...f, prioridad: e.target.value }))}
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
                   >
                     <option value="">— Sin prioridad —</option>
                     <option value="alta">Alta</option>
@@ -336,7 +336,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                     type="date"
                     value={form.fechaVencimiento}
                     onChange={e => setForm(f => ({ ...f, fechaVencimiento: e.target.value }))}
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
                   />
                 </div>
               </div>
@@ -346,7 +346,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                   <select
                     value={form.analistaId1}
                     onChange={e => setForm(f => ({ ...f, analistaId1: e.target.value }))}
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
                   >
                     <option value="">— Ninguno —</option>
                     {analistas.map(a => (
@@ -359,7 +359,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                   <select
                     value={form.analistaId2}
                     onChange={e => setForm(f => ({ ...f, analistaId2: e.target.value }))}
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
                   >
                     <option value="">— Ninguno —</option>
                     {analistas.map(a => (
@@ -374,7 +374,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
               <button
                 onClick={saveTask}
                 disabled={saving || !form.titulo.trim()}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : 'Guardar'}
               </button>
@@ -395,7 +395,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
               <select
                 value={firmaAnalistaId}
                 onChange={e => setFirmaAnalistaId(e.target.value)}
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
                 autoFocus
               >
                 <option value="">— Seleccionar —</option>
@@ -409,7 +409,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
               <button
                 onClick={submitFirma}
                 disabled={saving || !firmaAnalistaId}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark disabled:opacity-50"
               >
                 {saving ? '...' : 'Firmar'}
               </button>

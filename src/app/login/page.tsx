@@ -29,10 +29,10 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-800 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm">
+    <div className="min-h-screen bg-brand-dark flex items-center justify-center">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm border-t-4 border-brand-green">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Laboratorio SFA</h1>
+          <h1 className="text-2xl font-bold text-brand-dark">Laboratorio <span className="text-brand-green">SFA</span></h1>
           <p className="text-gray-500 text-sm mt-1">Gestión de Movimientos</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -42,14 +42,14 @@ function LoginForm() {
               <button
                 type="button"
                 onClick={() => setRole('analista')}
-                className={`flex-1 py-2 text-sm font-medium transition-colors ${role === 'analista' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${role === 'analista' ? 'bg-brand-green text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
                 Analista
               </button>
               <button
                 type="button"
                 onClick={() => setRole('supervisor')}
-                className={`flex-1 py-2 text-sm font-medium transition-colors ${role === 'supervisor' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${role === 'supervisor' ? 'bg-brand-green text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
                 Supervisor
               </button>
@@ -63,15 +63,15 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Ingresá la contraseña"
-              className="mt-1 w-full border rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-brand-green"
               autoFocus
             />
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-brand-red text-sm">{error}</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-brand-green text-white py-2 rounded-lg font-medium hover:bg-brand-green-dark disabled:opacity-50"
           >
             {loading ? 'Verificando...' : 'Ingresar'}
           </button>

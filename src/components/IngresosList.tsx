@@ -156,7 +156,7 @@ export default function IngresosList({
           </button>
           <button
             onClick={openNew}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+            className="bg-brand-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-green-dark"
           >
             + Nuevo Ingreso
           </button>
@@ -260,7 +260,7 @@ export default function IngresosList({
               <button type="button" onClick={() => setShowForm(false)}
                 className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancelar</button>
               <button type="submit" disabled={loading}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark disabled:opacity-50">
                 {loading ? 'Guardando...' : editingId ? 'Guardar cambios' : 'Guardar Ingreso'}
               </button>
             </div>
@@ -296,7 +296,7 @@ export default function IngresosList({
                 <td className="px-3 py-2">{i.operador || '—'}</td>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <button onClick={() => openEdit(i)} className="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+                    <button onClick={() => openEdit(i)} className="text-brand-green-dark hover:text-brand-green font-medium">Editar</button>
                     <button onClick={() => openDuplicate(i)} className="text-gray-500 hover:text-gray-700 font-medium">Duplicar</button>
                     <button
                       onClick={() => {

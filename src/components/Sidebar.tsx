@@ -94,8 +94,8 @@ export default function Sidebar() {
           href={href}
           className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-1 text-sm transition-colors ${
             pathname === href
-              ? 'bg-blue-600 text-white'
-              : 'text-slate-300 hover:bg-slate-700'
+              ? 'bg-brand-green text-white'
+              : 'text-slate-300 hover:bg-brand-dark-hover'
           }`}
         >
           <span>{icon}</span>
@@ -106,16 +106,16 @@ export default function Sidebar() {
   )
 
   const footerContent = (
-    <div className="p-3 border-t border-slate-700 space-y-2">
+    <div className="p-3 border-t border-brand-dark-hover space-y-2">
       {role && (
-        <div className="text-xs text-slate-400 px-3 capitalize">{role}</div>
+        <div className="text-xs text-brand-green px-3 capitalize font-medium">{role}</div>
       )}
       <button
         onClick={async () => {
           await fetch('/api/auth/logout', { method: 'POST' })
           window.location.href = '/login'
         }}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg"
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-brand-dark-hover rounded-lg"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Cerrar sesión
@@ -127,14 +127,14 @@ export default function Sidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="md:hidden flex items-center justify-between bg-slate-800 text-white p-3">
+      <div className="md:hidden flex items-center justify-between bg-brand-dark text-white p-3">
         <div>
           <h1 className="text-base font-bold leading-tight">Laboratorio SFA</h1>
           <p className="text-xs text-slate-400">Gestión de Movimientos</p>
         </div>
         <button
           onClick={() => setOpen(o => !o)}
-          className="p-2 rounded-lg hover:bg-slate-700"
+          className="p-2 rounded-lg hover:bg-brand-dark-hover"
           aria-label="Abrir menú"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -147,15 +147,15 @@ export default function Sidebar() {
         </button>
       </div>
       {open && (
-        <div className="md:hidden bg-slate-800 text-white flex flex-col max-h-[70vh]">
+        <div className="md:hidden bg-brand-dark text-white flex flex-col max-h-[70vh]">
           {navContent}
           {footerContent}
         </div>
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-56 bg-slate-800 text-white flex-col">
-        <div className="p-4 border-b border-slate-700">
+      <aside className="hidden md:flex md:w-56 bg-brand-dark text-white flex-col">
+        <div className="p-4 border-b border-brand-dark-hover">
           <h1 className="text-lg font-bold">Laboratorio SFA</h1>
           <p className="text-xs text-slate-400">Gestión de Movimientos</p>
         </div>

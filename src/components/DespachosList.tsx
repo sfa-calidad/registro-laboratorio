@@ -313,7 +313,7 @@ export default function DespachosList({
                 <td className="px-3 py-2">{d.operador || '—'}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-2 text-sm">
-                    <button onClick={() => openEdit(d)} className="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
+                    <button onClick={() => openEdit(d)} className="text-brand-green-dark hover:text-brand-green font-medium">Editar</button>
                     <button onClick={() => openDuplicate(d)} className="text-gray-500 hover:text-gray-700 font-medium">Duplicar</button>
                     <button onClick={() => handleDelete(d.id)} className="text-red-500 hover:text-red-700 font-medium">Eliminar</button>
                   </div>
