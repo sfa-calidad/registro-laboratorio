@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo } from 'react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 type Analista = { id: number; nombre: string; apellido: string }
 type Tarea = {
@@ -25,6 +26,8 @@ const PERIODOS = [
   { label: 'Últimos 30 días', days: 30 },
   { label: 'Todo el tiempo', days: 0 },
 ]
+
+const PIE_COLORS = ['#34d399', '#60a5fa', '#d1d5db']
 
 function isInPeriod(date: string | Date, days: number): boolean {
   if (!days) return true
@@ -52,12 +55,25 @@ export default function EstadisticasView({ analistas, tareas, ingresos, despacho
       const ingresosCount = ingresos.filter(i => i.operador === nombreCompleto && isInPeriod(i.createdAt, periodo)).length
       const despachosCount = despachos.filter(d => d.operador === nombreCompleto && isInPeriod(d.createdAt, periodo)).length
 
-      return { analista: a, completadas, enProgreso, pendientes, total: tareasFiltered.length, ingresos: ingresosCount, despachos: despachosCount, camiones: ingresosCount + despachosCount }
+      return {
+        nombre: nombreCompleto,
+        analista: a,
+        completadas, enProgreso, pendientes,
+        total: tareasFiltered.length,
+        ingresos: ingresosCount, despachos: despachosCount,
+        camiones: ingresosCount + despachosCount,
+      }
     })
   }, [analistas, tareas, ingresos, despachos, periodo])
 
-  const maxTareas = Math.max(...stats.map(s => s.total), 1)
-  const maxCamiones = Math.max(...stats.map(s => s.camiones), 1)
+  const totalCompletadas = stats.reduce((s, x) => s + x.completadas, 0)
+  const totalEnProgreso = stats.reduce((s, x) => s + x.enProgreso, 0)
+  const totalPendientes = stats.reduce((s, x) => s + x.pendientes, 0)
+  const pieData = [
+    { name: 'Completadas', value: totalCompletadas },
+    { name: 'En progreso', value: totalEnProgreso },
+    { name: 'Pendientes', value: totalPendientes },
+  ].filter(d => d.value > 0)
 
   return (
     <div className="space-y-6">
@@ -73,86 +89,64 @@ export default function EstadisticasView({ analistas, tareas, ingresos, despacho
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Tareas por analista */}
-        <div className="bg-white rounded-xl shadow p-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow p-5 lg:col-span-2">
           <h2 className="font-semibold text-gray-800 mb-4">Tareas por analista</h2>
           {stats.length === 0 ? (
             <p className="text-gray-400 text-sm">Sin datos</p>
           ) : (
-            <div className="space-y-3">
-              {stats.map(s => (
-                <div key={s.analista.id}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-gray-700">{s.analista.nombre} {s.analista.apellido}</span>
-                    <span className="text-gray-400">{s.total} tareas</span>
-                  </div>
-                  <div className="flex gap-1 h-5 rounded overflow-hidden bg-gray-100">
-                    {s.completadas > 0 && (
-                      <div className="bg-green-400 flex items-center justify-center text-xs text-white" style={{ width: `${(s.completadas / maxTareas) * 100}%` }}>
-                        {s.completadas > 0 && s.completadas}
-                      </div>
-                    )}
-                    {s.enProgreso > 0 && (
-                      <div className="bg-blue-400 flex items-center justify-center text-xs text-white" style={{ width: `${(s.enProgreso / maxTareas) * 100}%` }}>
-                        {s.enProgreso}
-                      </div>
-                    )}
-                    {s.pendientes > 0 && (
-                      <div className="bg-gray-300 flex items-center justify-center text-xs text-gray-600" style={{ width: `${(s.pendientes / maxTareas) * 100}%` }}>
-                        {s.pendientes}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-3 text-xs text-gray-400 mt-0.5">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-green-400 inline-block"/>Completadas: {s.completadas}</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-400 inline-block"/>En progreso: {s.enProgreso}</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-gray-300 inline-block"/>Pendientes: {s.pendientes}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ResponsiveContainer width="100%" height={Math.max(220, stats.length * 50)}>
+              <BarChart data={stats} layout="vertical" margin={{ left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} />
+                <YAxis type="category" dataKey="nombre" width={120} tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="completadas" name="Completadas" stackId="t" fill="#34d399" />
+                <Bar dataKey="enProgreso" name="En progreso" stackId="t" fill="#60a5fa" />
+                <Bar dataKey="pendientes" name="Pendientes" stackId="t" fill="#d1d5db" />
+              </BarChart>
+            </ResponsiveContainer>
           )}
         </div>
 
-        {/* Camiones por analista */}
         <div className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-semibold text-gray-800 mb-4">Movimientos de camiones por analista</h2>
-          {stats.length === 0 ? (
+          <h2 className="font-semibold text-gray-800 mb-4">Distribución de tareas</h2>
+          {pieData.length === 0 ? (
             <p className="text-gray-400 text-sm">Sin datos</p>
           ) : (
-            <div className="space-y-3">
-              {stats.map(s => (
-                <div key={s.analista.id}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-gray-700">{s.analista.nombre} {s.analista.apellido}</span>
-                    <span className="text-gray-400">{s.camiones} movimientos</span>
-                  </div>
-                  <div className="flex gap-1 h-5 rounded overflow-hidden bg-gray-100">
-                    {s.ingresos > 0 && (
-                      <div className="bg-emerald-400 flex items-center justify-center text-xs text-white" style={{ width: `${(s.ingresos / maxCamiones) * 100}%` }}>
-                        {s.ingresos}
-                      </div>
-                    )}
-                    {s.despachos > 0 && (
-                      <div className="bg-orange-400 flex items-center justify-center text-xs text-white" style={{ width: `${(s.despachos / maxCamiones) * 100}%` }}>
-                        {s.despachos}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-3 text-xs text-gray-400 mt-0.5">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-400 inline-block"/>Ingresos: {s.ingresos}</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-orange-400 inline-block"/>Despachos: {s.despachos}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                  {pieData.map((_, idx) => <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
           )}
         </div>
       </div>
 
-      {/* Summary table */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow p-5">
+        <h2 className="font-semibold text-gray-800 mb-4">Movimientos de camiones por analista</h2>
+        {stats.length === 0 ? (
+          <p className="text-gray-400 text-sm">Sin datos</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={Math.max(220, stats.length * 50)}>
+            <BarChart data={stats} layout="vertical" margin={{ left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" allowDecimals={false} />
+              <YAxis type="category" dataKey="nombre" width={120} tick={{ fontSize: 12 }} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="ingresos" name="Ingresos" fill="#10b981" />
+              <Bar dataKey="despachos" name="Despachos" fill="#fb923c" />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
@@ -167,7 +161,7 @@ export default function EstadisticasView({ analistas, tareas, ingresos, despacho
           <tbody>
             {stats.map(s => (
               <tr key={s.analista.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{s.analista.nombre} {s.analista.apellido}</td>
+                <td className="px-4 py-3 font-medium">{s.nombre}</td>
                 <td className="px-4 py-3 text-center">{s.total}</td>
                 <td className="px-4 py-3 text-center text-green-600 font-medium">{s.completadas}</td>
                 <td className="px-4 py-3 text-center text-emerald-600">{s.ingresos}</td>

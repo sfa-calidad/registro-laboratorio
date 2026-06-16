@@ -30,6 +30,17 @@ async function main() {
       create: { nombre: columnas[i], orden: i + 1 },
     })
   }
+  const contactos = await prisma.contacto.findMany({ orderBy: { id: 'asc' } })
+  const vistos = new Map<string, number>()
+  for (const c of contactos) {
+    const key = c.nombre.trim().toLowerCase()
+    if (vistos.has(key)) {
+      await prisma.contacto.delete({ where: { id: c.id } })
+    } else {
+      vistos.set(key, c.id)
+    }
+  }
+
   console.log('Seed completado')
 }
 

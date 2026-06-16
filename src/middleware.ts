@@ -17,10 +17,6 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (pathname.startsWith('/estadisticas') && role !== 'supervisor') {
-    return NextResponse.redirect(new URL('/tareas', req.url))
-  }
-
   return NextResponse.next()
 }
 

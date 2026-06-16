@@ -1,11 +1,15 @@
 import { prisma } from '@/lib/prisma'
 import { formatDate } from '@/lib/utils'
+import { getRole } from '@/lib/auth'
+import EstadisticasView from '@/components/EstadisticasView'
 
 export const dynamic = 'force-dynamic'
 
 export default async function Dashboard() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+
+  const role = await getRole()
 
   const [totalIngresos, totalDespachos, ingresosHoy, despachosHoy, ultIngresos, ultDespachos, tareasPendientes, tareasVencidas] =
     await Promise.all([
@@ -18,6 +22,17 @@ export default async function Dashboard() {
       prisma.tarea.count({ where: { completadaAt: null } }),
       prisma.tarea.count({ where: { completadaAt: null, fechaVencimiento: { lt: today } } }),
     ])
+
+  let estadisticas: { analistas: unknown[]; tareas: unknown[]; ingresos: unknown[]; despachos: unknown[] } | null = null
+  if (role === 'supervisor') {
+    const [analistas, tareas, ingresosOp, despachosOp] = await Promise.all([
+      prisma.analista.findMany({ where: { activo: true }, orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }] }),
+      prisma.tarea.findMany({ include: { firma1: true, firma2: true, columna: true } }),
+      prisma.ingreso.findMany({ select: { operador: true, createdAt: true } }),
+      prisma.despacho.findMany({ select: { operador: true, createdAt: true } }),
+    ])
+    estadisticas = { analistas, tareas, ingresos: ingresosOp, despachos: despachosOp }
+  }
 
   return (
     <div>
@@ -85,6 +100,18 @@ export default async function Dashboard() {
           </table>
         </div>
       </div>
+
+      {estadisticas && (
+        <div className="mt-8">
+          <h3 className="font-semibold text-gray-700 mb-4">Estadísticas de analistas</h3>
+          <EstadisticasView
+            analistas={estadisticas.analistas as Parameters<typeof EstadisticasView>[0]['analistas']}
+            tareas={estadisticas.tareas as Parameters<typeof EstadisticasView>[0]['tareas']}
+            ingresos={estadisticas.ingresos as Parameters<typeof EstadisticasView>[0]['ingresos']}
+            despachos={estadisticas.despachos as Parameters<typeof EstadisticasView>[0]['despachos']}
+          />
+        </div>
+      )}
     </div>
   )
 }

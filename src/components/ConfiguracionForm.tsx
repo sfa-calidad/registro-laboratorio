@@ -7,9 +7,8 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
   const [loading, setLoading] = useState(false)
   const [productos, setProductos] = useState<{id:number,nombre:string}[]>([])
   const [newProducto, setNewProducto] = useState('')
-  const [contactos, setContactos] = useState<{id:number,nombre:string,tipo:string}[]>([])
+  const [contactos, setContactos] = useState<{id:number,nombre:string}[]>([])
   const [newContacto, setNewContacto] = useState('')
-  const [newContactoTipo, setNewContactoTipo] = useState<'proveedor'|'cliente'>('proveedor')
   const [logoPreview, setLogoPreview] = useState<string>(values.logo || '')
   const [analistas, setAnalistas] = useState<{id:number,nombre:string,apellido:string}[]>([])
   const [analistasInactivos, setAnalistasInactivos] = useState<{id:number,nombre:string,apellido:string}[]>([])
@@ -77,11 +76,11 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
     const res = await fetch('/api/contactos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre: newContacto.trim(), tipo: newContactoTipo }),
+      body: JSON.stringify({ nombre: newContacto.trim() }),
     })
     if (res.ok) {
       const c = await res.json()
-      setContactos(cs => [...cs, c].sort((a,b) => a.nombre.localeCompare(b.nombre)))
+      setContactos(cs => cs.some(x => x.id === c.id) ? cs : [...cs, c].sort((a,b) => a.nombre.localeCompare(b.nombre)))
       setNewContacto('')
     }
   }
@@ -90,9 +89,6 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
     await fetch(`/api/contactos/${id}`, { method: 'DELETE' })
     setContactos(cs => cs.filter(c => c.id !== id))
   }
-
-  const proveedores = contactos.filter(c => c.tipo === 'proveedor')
-  const clientes = contactos.filter(c => c.tipo === 'cliente')
 
   async function addAnalista() {
     if (!newAnalistaNombre.trim() || !newAnalistaApellido.trim()) return
@@ -257,43 +253,24 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
       </div>
 
       <div className="bg-white rounded-xl shadow p-5 space-y-3">
-        <h3 className="font-semibold text-gray-700 border-b pb-2">Proveedores y Clientes</h3>
+        <h3 className="font-semibold text-gray-700 border-b pb-2">Contactos (Proveedores / Clientes)</h3>
+        <p className="text-xs text-gray-400">Un mismo contacto puede usarse como origen en Ingresos y como destino en Despachos.</p>
         <div className="flex gap-2">
-          <select value={newContactoTipo} onChange={(e) => setNewContactoTipo(e.target.value as 'proveedor'|'cliente')}
-            className="border rounded-lg px-3 py-2 text-base">
-            <option value="proveedor">Proveedor</option>
-            <option value="cliente">Cliente</option>
-          </select>
           <input value={newContacto} onChange={(e) => setNewContacto(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addContacto())}
             placeholder="Nombre" className="flex-1 border rounded-lg px-3 py-2 text-base" />
           <button type="button" onClick={addContacto}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Agregar</button>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm font-medium text-gray-500 mb-1">Proveedores ({proveedores.length})</p>
-            <ul className="space-y-1 max-h-40 overflow-y-auto">
-              {proveedores.map(c => (
-                <li key={c.id} className="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50 text-base">
-                  <span>{c.nombre}</span>
-                  <button onClick={() => deleteContacto(c.id)} className="text-red-400 hover:text-red-600 text-sm">×</button>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500 mb-1">Clientes ({clientes.length})</p>
-            <ul className="space-y-1 max-h-40 overflow-y-auto">
-              {clientes.map(c => (
-                <li key={c.id} className="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50 text-base">
-                  <span>{c.nombre}</span>
-                  <button onClick={() => deleteContacto(c.id)} className="text-red-400 hover:text-red-600 text-sm">×</button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        <ul className="space-y-1 max-h-48 overflow-y-auto">
+          {contactos.map(c => (
+            <li key={c.id} className="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50 text-base">
+              <span>{c.nombre}</span>
+              <button onClick={() => deleteContacto(c.id)} className="text-red-400 hover:text-red-600 text-sm">Eliminar</button>
+            </li>
+          ))}
+          {contactos.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin contactos registrados</li>}
+        </ul>
       </div>
       <div className="bg-white rounded-xl shadow p-5 space-y-3">
         <h3 className="font-semibold text-gray-700 border-b pb-2">Analistas</h3>

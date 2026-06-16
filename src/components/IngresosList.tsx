@@ -51,7 +51,7 @@ export default function IngresosList({
   const [exportHasta, setExportHasta] = useState('')
 
   useEffect(() => {
-    fetch('/api/contactos?tipo=proveedor').then(r => r.json()).then(setProveedores)
+    fetch('/api/contactos').then(r => r.json()).then(setProveedores)
     fetch('/api/analistas').then(r => r.json()).then(setAnalistas)
   }, [])
 
@@ -295,7 +295,7 @@ export default function IngresosList({
                 <td className="px-3 py-2 max-w-xs truncate text-gray-600" title={i.observacion || ''}>{i.observacion || '—'}</td>
                 <td className="px-3 py-2">{i.operador || '—'}</td>
                 <td className="px-3 py-2">
-                  <div className="flex gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-sm">
                     <button onClick={() => openEdit(i)} className="text-blue-600 hover:text-blue-800 font-medium">Editar</button>
                     <button onClick={() => openDuplicate(i)} className="text-gray-500 hover:text-gray-700 font-medium">Duplicar</button>
                     <button
@@ -306,12 +306,12 @@ export default function IngresosList({
                           setTimeout(() => setCopiedId(null), 2000)
                         })
                       }}
-                      className={`font-medium ${copiedId === i.id ? 'text-green-600' : 'text-amber-600 hover:text-amber-800'}`}
+                      className={`font-medium mr-2 ${copiedId === i.id ? 'text-green-600' : 'text-amber-600 hover:text-amber-800'}`}
                       title="Copiar mensaje para carga/descarga"
                     >
-                      {copiedId === i.id ? '✓ Copiado' : 'Copiar'}
+                      {copiedId === i.id ? '✓ Copiado' : 'Mensaje'}
                     </button>
-                    <button onClick={() => handleDelete(i.id)} className="text-red-500 hover:text-red-700 font-medium">Eliminar</button>
+                    <button onClick={() => handleDelete(i.id)} className="text-red-500 hover:text-red-700 font-medium pl-2 border-l border-gray-200">Eliminar</button>
                   </div>
                 </td>
               </tr>

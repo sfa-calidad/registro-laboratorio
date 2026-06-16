@@ -64,9 +64,6 @@ model Producto {
 model Contacto {
   id     Int    @id @default(autoincrement())
   nombre String
-  tipo   String // "proveedor" | "cliente"
-
-  @@unique([nombre, tipo])
 }
 
 model Analista {

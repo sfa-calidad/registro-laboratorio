@@ -54,7 +54,7 @@ export default function DespachosList({
   const [exportHasta, setExportHasta] = useState('')
 
   useEffect(() => {
-    fetch('/api/contactos?tipo=cliente').then(r => r.json()).then(setClientes)
+    fetch('/api/contactos').then(r => r.json()).then(setClientes)
     fetch('/api/analistas').then(r => r.json()).then(setAnalistas)
   }, [])
 
