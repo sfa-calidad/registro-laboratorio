@@ -1,10 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [role, setRole] = useState<'supervisor' | 'analista'>('analista')
   const [password, setPassword] = useState('')
@@ -22,7 +21,7 @@ function LoginForm() {
     })
     if (res.ok) {
       const from = searchParams.get('from') || '/'
-      router.push(from)
+      window.location.href = from
     } else {
       setError('Contraseña incorrecta')
     }

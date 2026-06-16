@@ -7,11 +7,11 @@ export const dynamic = 'force-dynamic'
 
 const schema = z.object({
   titulo: z.string().min(1),
-  descripcion: z.string().optional(),
+  descripcion: z.string().nullable().optional(),
   columnaId: z.number().int(),
   analistaId1: z.number().int().nullable().optional(),
   analistaId2: z.number().int().nullable().optional(),
-  prioridad: z.enum(['alta', 'media', 'baja']).optional(),
+  prioridad: z.enum(['alta', 'media', 'baja']).nullable().optional(),
   fechaVencimiento: z.string().optional().nullable(),
 })
 
