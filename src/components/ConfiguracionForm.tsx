@@ -12,6 +12,7 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
   const [newContactoTipo, setNewContactoTipo] = useState<'proveedor'|'cliente'>('proveedor')
   const [logoPreview, setLogoPreview] = useState<string>(values.logo || '')
   const [analistas, setAnalistas] = useState<{id:number,nombre:string,apellido:string}[]>([])
+  const [analistasInactivos, setAnalistasInactivos] = useState<{id:number,nombre:string,apellido:string}[]>([])
   const [newAnalistaNombre, setNewAnalistaNombre] = useState('')
   const [newAnalistaApellido, setNewAnalistaApellido] = useState('')
   const [columnas, setColumnas] = useState<{id:number,nombre:string,orden:number}[]>([])
@@ -21,6 +22,9 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
     fetch('/api/productos').then(r => r.json()).then(setProductos)
     fetch('/api/contactos').then(r => r.json()).then(setContactos)
     fetch('/api/analistas').then(r => r.json()).then(setAnalistas)
+    fetch('/api/analistas?all=true').then(r => r.json()).then((all: {id:number,nombre:string,apellido:string,activo:boolean}[]) =>
+      setAnalistasInactivos(all.filter(a => !a.activo))
+    )
     fetch('/api/columnas').then(r => r.json()).then(setColumnas)
   }, [])
 
@@ -107,7 +111,22 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
 
   async function deleteAnalista(id: number) {
     await fetch(`/api/analistas/${id}`, { method: 'DELETE' })
-    setAnalistas(as => as.filter(a => a.id !== id))
+    const a = analistas.find(x => x.id === id)
+    setAnalistas(as => as.filter(x => x.id !== id))
+    if (a) setAnalistasInactivos(ai => [...ai, a])
+  }
+
+  async function reactivarAnalista(id: number) {
+    const res = await fetch(`/api/analistas/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activo: true }),
+    })
+    if (res.ok) {
+      const a = analistasInactivos.find(x => x.id === id)
+      setAnalistasInactivos(ai => ai.filter(x => x.id !== id))
+      if (a) setAnalistas(as => [...as, a].sort((x, y) => x.apellido.localeCompare(y.apellido)))
+    }
   }
 
   async function addColumna() {
@@ -296,6 +315,19 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
           ))}
           {analistas.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin analistas registrados</li>}
         </ul>
+        {analistasInactivos.length > 0 && (
+          <div className="pt-2 border-t">
+            <p className="text-xs text-gray-400 mb-1">Desactivados</p>
+            <ul className="space-y-1 max-h-32 overflow-y-auto">
+              {analistasInactivos.map(a => (
+                <li key={a.id} className="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50 text-base text-gray-400">
+                  <span>{a.nombre} {a.apellido}</span>
+                  <button onClick={() => reactivarAnalista(a.id)} className="text-blue-400 hover:text-blue-600 text-sm">Reactivar</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow p-5 space-y-3">

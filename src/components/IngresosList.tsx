@@ -268,7 +268,7 @@ export default function IngresosList({
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-base">
           <thead className="bg-gray-50 border-b">
             <tr>

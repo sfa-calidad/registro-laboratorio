@@ -88,51 +88,94 @@ const supervisorLinks = [
 export default function Sidebar() {
   const pathname = usePathname()
   const [role, setRole] = useState<Role>(null)
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     fetch('/api/me').then(r => r.json()).then(d => setRole(d.role)).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
   const links = role === 'supervisor' ? [...baseLinks, ...supervisorLinks] : baseLinks
 
-  return (
-    <aside className="w-56 bg-slate-800 text-white flex flex-col">
-      <div className="p-4 border-b border-slate-700">
-        <h1 className="text-lg font-bold">Laboratorio SFA</h1>
-        <p className="text-xs text-slate-400">Gestión de Movimientos</p>
-      </div>
-      <nav className="flex-1 p-3">
-        {links.map(({ href, label, icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-1 text-sm transition-colors ${
-              pathname === href
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            <span>{icon}</span>
-            <span>{label}</span>
-          </Link>
-        ))}
-      </nav>
-      <div className="p-3 border-t border-slate-700 space-y-2">
-        {role && (
-          <div className="text-xs text-slate-400 px-3 capitalize">{role}</div>
-        )}
-        <button
-          onClick={async () => {
-            await fetch('/api/auth/logout', { method: 'POST' })
-            window.location.href = '/login'
-          }}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg"
+  const navContent = (
+    <nav className="flex-1 p-3 overflow-y-auto">
+      {links.map(({ href, label, icon }) => (
+        <Link
+          key={href}
+          href={href}
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-1 text-sm transition-colors ${
+            pathname === href
+              ? 'bg-blue-600 text-white'
+              : 'text-slate-300 hover:bg-slate-700'
+          }`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          Cerrar sesión
+          <span>{icon}</span>
+          <span>{label}</span>
+        </Link>
+      ))}
+    </nav>
+  )
+
+  const footerContent = (
+    <div className="p-3 border-t border-slate-700 space-y-2">
+      {role && (
+        <div className="text-xs text-slate-400 px-3 capitalize">{role}</div>
+      )}
+      <button
+        onClick={async () => {
+          await fetch('/api/auth/logout', { method: 'POST' })
+          window.location.href = '/login'
+        }}
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Cerrar sesión
+      </button>
+      <div className="text-xs text-slate-500 px-3">v1.4.0</div>
+    </div>
+  )
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="md:hidden flex items-center justify-between bg-slate-800 text-white p-3">
+        <div>
+          <h1 className="text-base font-bold leading-tight">Laboratorio SFA</h1>
+          <p className="text-xs text-slate-400">Gestión de Movimientos</p>
+        </div>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="p-2 rounded-lg hover:bg-slate-700"
+          aria-label="Abrir menú"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {open ? (
+              <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+            ) : (
+              <><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></>
+            )}
+          </svg>
         </button>
-        <div className="text-xs text-slate-500 px-3">v1.3.0</div>
       </div>
-    </aside>
+      {open && (
+        <div className="md:hidden bg-slate-800 text-white flex flex-col max-h-[70vh]">
+          {navContent}
+          {footerContent}
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex md:w-56 bg-slate-800 text-white flex-col">
+        <div className="p-4 border-b border-slate-700">
+          <h1 className="text-lg font-bold">Laboratorio SFA</h1>
+          <p className="text-xs text-slate-400">Gestión de Movimientos</p>
+        </div>
+        {navContent}
+        {footerContent}
+      </aside>
+    </>
   )
 }

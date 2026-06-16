@@ -36,6 +36,17 @@ function emptyForm() {
   return { titulo: '', descripcion: '', prioridad: '' as string, fechaVencimiento: '', analistaId1: '' as string, analistaId2: '' as string }
 }
 
+function vencimientoBadge(fecha: string | Date) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const venc = new Date(fecha)
+  venc.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((venc.getTime() - today.getTime()) / 86400000)
+  if (diffDays < 0) return 'bg-red-100 text-red-700'
+  if (diffDays <= 2) return 'bg-orange-100 text-orange-700'
+  return 'bg-gray-100 text-gray-500'
+}
+
 export default function KanbanBoard({ initialColumnas, initialTareas, analistas, role }: Props) {
   const [columnas, setColumnas] = useState(initialColumnas)
   const [tareas, setTareas] = useState(initialTareas)
@@ -44,6 +55,8 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
   const [firmaModal, setFirmaModal] = useState<null | { tareaId: number; slot: 1 | 2 }>(null)
   const [firmaAnalistaId, setFirmaAnalistaId] = useState('')
   const [saving, setSaving] = useState(false)
+  const [filterAnalistaId, setFilterAnalistaId] = useState('')
+  const [dragOverColId, setDragOverColId] = useState<number | null>(null)
 
   function openCreate(columnaId: number) {
     setForm(emptyForm())
@@ -98,10 +111,9 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
     setModal(null)
   }
 
-  async function moveTask(tarea: Tarea, direction: 'left' | 'right') {
-    const sorted = [...columnas].sort((a, b) => a.orden - b.orden)
-    const idx = sorted.findIndex(c => c.id === tarea.columnaId)
-    const target = direction === 'left' ? sorted[idx - 1] : sorted[idx + 1]
+  async function moveTaskToColumn(tarea: Tarea, targetColumnId: number) {
+    if (targetColumnId === tarea.columnaId) return
+    const target = columnas.find(c => c.id === targetColumnId)
     if (!target) return
 
     const isCompleting = target.nombre.toLowerCase().includes('complet')
@@ -117,6 +129,27 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       const t = await res.json()
       setTareas(prev => prev.map(x => x.id === t.id ? t : x))
     }
+  }
+
+  async function moveTask(tarea: Tarea, direction: 'left' | 'right') {
+    const sorted = [...columnas].sort((a, b) => a.orden - b.orden)
+    const idx = sorted.findIndex(c => c.id === tarea.columnaId)
+    const target = direction === 'left' ? sorted[idx - 1] : sorted[idx + 1]
+    if (!target) return
+    await moveTaskToColumn(tarea, target.id)
+  }
+
+  function handleDragStart(e: React.DragEvent, tareaId: number) {
+    e.dataTransfer.setData('text/plain', String(tareaId))
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function handleDrop(e: React.DragEvent, columnaId: number) {
+    e.preventDefault()
+    setDragOverColId(null)
+    const tareaId = Number(e.dataTransfer.getData('text/plain'))
+    const tarea = tareas.find(t => t.id === tareaId)
+    if (tarea) moveTaskToColumn(tarea, columnaId)
   }
 
   async function deleteTask(id: number) {
@@ -144,21 +177,48 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
   }
 
   const sortedColumnas = [...columnas].sort((a, b) => a.orden - b.orden)
+  const visibleTareas = filterAnalistaId
+    ? tareas.filter(t => t.analistaId1 === Number(filterAnalistaId) || t.analistaId2 === Number(filterAnalistaId))
+    : tareas
 
   return (
     <>
+      <div className="flex items-center gap-2 mb-3">
+        <label className="text-xs text-gray-500">Filtrar por analista:</label>
+        <select
+          value={filterAnalistaId}
+          onChange={e => setFilterAnalistaId(e.target.value)}
+          className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Todos</option>
+          {analistas.map(a => (
+            <option key={a.id} value={a.id}>{a.nombre} {a.apellido}</option>
+          ))}
+        </select>
+      </div>
       <div className="flex gap-4 overflow-x-auto pb-4 flex-1">
         {sortedColumnas.map((col, colIdx) => {
-          const colTareas = tareas.filter(t => t.columnaId === col.id)
+          const colTareas = visibleTareas.filter(t => t.columnaId === col.id)
           return (
-            <div key={col.id} className="flex-shrink-0 w-72 flex flex-col">
+            <div
+              key={col.id}
+              className="flex-shrink-0 w-72 flex flex-col"
+              onDragOver={e => { e.preventDefault(); setDragOverColId(col.id) }}
+              onDragLeave={() => setDragOverColId(prev => (prev === col.id ? null : prev))}
+              onDrop={e => handleDrop(e, col.id)}
+            >
               <div className="bg-gray-100 rounded-t-lg px-3 py-2 flex items-center justify-between">
                 <span className="font-semibold text-gray-700 text-sm">{col.nombre}</span>
                 <span className="text-xs text-gray-400 bg-white rounded-full px-2 py-0.5">{colTareas.length}</span>
               </div>
-              <div className="bg-gray-50 rounded-b-lg flex-1 p-2 space-y-2 min-h-32">
+              <div className={`bg-gray-50 rounded-b-lg flex-1 p-2 space-y-2 min-h-32 transition-colors ${dragOverColId === col.id ? 'bg-blue-50 ring-2 ring-blue-300' : ''}`}>
                 {colTareas.map(t => (
-                  <div key={t.id} className="bg-white rounded-lg shadow-sm p-3 border border-gray-100">
+                  <div
+                    key={t.id}
+                    draggable
+                    onDragStart={e => handleDragStart(e, t.id)}
+                    className="bg-white rounded-lg shadow-sm p-3 border border-gray-100 cursor-grab active:cursor-grabbing"
+                  >
                     <div className="flex items-start justify-between gap-1 mb-1">
                       <span className="font-medium text-gray-800 text-sm leading-snug">{t.titulo}</span>
                       {t.prioridad && (
@@ -169,7 +229,9 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                     </div>
                     {t.descripcion && <p className="text-xs text-gray-500 mb-2 line-clamp-2">{t.descripcion}</p>}
                     {t.fechaVencimiento && (
-                      <div className="text-xs text-gray-400 mb-2">Vence: {formatDate(t.fechaVencimiento)}</div>
+                      <div className={`text-xs mb-2 inline-block px-1.5 py-0.5 rounded-full ${vencimientoBadge(t.fechaVencimiento)}`}>
+                        Vence: {formatDate(t.fechaVencimiento)}
+                      </div>
                     )}
                     <div className="flex flex-wrap gap-1 mb-2">
                       {t.firma1 ? (

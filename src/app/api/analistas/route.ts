@@ -9,9 +9,10 @@ const schema = z.object({
   apellido: z.string().min(1),
 })
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const all = req.nextUrl.searchParams.get('all') === 'true'
   const analistas = await prisma.analista.findMany({
-    where: { activo: true },
+    where: all ? undefined : { activo: true },
     orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
   })
   return NextResponse.json(analistas)

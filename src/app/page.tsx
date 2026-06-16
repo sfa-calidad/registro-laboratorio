@@ -7,7 +7,7 @@ export default async function Dashboard() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const [totalIngresos, totalDespachos, ingresosHoy, despachosHoy, ultIngresos, ultDespachos] =
+  const [totalIngresos, totalDespachos, ingresosHoy, despachosHoy, ultIngresos, ultDespachos, tareasPendientes, tareasVencidas] =
     await Promise.all([
       prisma.ingreso.count(),
       prisma.despacho.count(),
@@ -15,6 +15,8 @@ export default async function Dashboard() {
       prisma.despacho.count({ where: { fecha: { gte: today } } }),
       prisma.ingreso.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
       prisma.despacho.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
+      prisma.tarea.count({ where: { completadaAt: null } }),
+      prisma.tarea.count({ where: { completadaAt: null, fechaVencimiento: { lt: today } } }),
     ])
 
   return (
@@ -24,8 +26,8 @@ export default async function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Ingresos hoy" value={ingresosHoy} color="blue" />
         <StatCard label="Despachos hoy" value={despachosHoy} color="green" />
-        <StatCard label="Total ingresos" value={totalIngresos} color="slate" />
-        <StatCard label="Total despachos" value={totalDespachos} color="slate" />
+        <StatCard label="Tareas pendientes" value={tareasPendientes} color="slate" />
+        <StatCard label="Tareas vencidas" value={tareasVencidas} color="red" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -92,6 +94,7 @@ function StatCard({ label, value, color }: { label: string; value: number; color
     blue: 'bg-blue-50 border-blue-200 text-blue-700',
     green: 'bg-green-50 border-green-200 text-green-700',
     slate: 'bg-slate-50 border-slate-200 text-slate-700',
+    red: 'bg-red-50 border-red-200 text-red-700',
   }
   return (
     <div className={`rounded-xl border p-4 ${colors[color]}`}>

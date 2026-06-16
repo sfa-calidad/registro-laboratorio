@@ -10,13 +10,18 @@ export const metadata: Metadata = {
   description: 'Sistema de gestión de movimientos de laboratorio',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
       <body className={inter.className}>
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex flex-col md:flex-row h-screen bg-gray-100">
           <Sidebar />
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-3 md:p-6">
             {children}
           </main>
         </div>

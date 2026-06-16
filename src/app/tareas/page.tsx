@@ -16,12 +16,18 @@ export default async function TareasPage() {
   ])
 
   return (
-    <div className="p-6 h-full flex flex-col">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="h-full flex flex-col">
+      <div className="mb-4 flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Tablero de Tareas</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-800">Tablero de Tareas</h1>
           <p className="text-sm text-gray-500">Gestión de tareas diarias del laboratorio</p>
         </div>
+        <a
+          href="/api/tareas/export"
+          className="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 flex-shrink-0"
+        >
+          Exportar CSV
+        </a>
       </div>
       <KanbanBoard
         initialColumnas={columnas}
