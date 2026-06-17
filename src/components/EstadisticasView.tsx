@@ -161,12 +161,12 @@ export default function EstadisticasView({ analistas, tareas, ingresos, despacho
           <tbody>
             {stats.map(s => (
               <tr key={s.analista.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">{s.nombre}</td>
-                <td className="px-4 py-3 text-center">{s.total}</td>
+                <td className="px-4 py-3 font-medium text-gray-800">{s.nombre}</td>
+                <td className="px-4 py-3 text-center text-gray-800">{s.total}</td>
                 <td className="px-4 py-3 text-center text-green-600 font-medium">{s.completadas}</td>
                 <td className="px-4 py-3 text-center text-emerald-600">{s.ingresos}</td>
                 <td className="px-4 py-3 text-center text-orange-600">{s.despachos}</td>
-                <td className="px-4 py-3 text-center font-medium">{s.camiones}</td>
+                <td className="px-4 py-3 text-center font-medium text-gray-800">{s.camiones}</td>
               </tr>
             ))}
             {stats.length === 0 && (
