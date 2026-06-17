@@ -34,6 +34,7 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
     empresa: 'Laboratorio SFA',
     logo: '',
   })
+  const [previewRotulo, setPreviewRotulo] = useState<Rotulo | null>(null)
 
   useEffect(() => {
     fetch('/api/configuracion')
@@ -85,6 +86,13 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
                 <td className="px-3 py-2">{formatDate(r.createdAt)}</td>
                 <td className="px-3 py-2">
                   <button
+                    onClick={() => setPreviewRotulo(r)}
+                    className="text-gray-500 hover:text-gray-700 text-sm font-medium mr-2"
+                    title="Ver observaciones"
+                  >
+                    Ver
+                  </button>
+                  <button
                     onClick={() => handlePrint(r)}
                     className="text-brand-green-dark hover:text-brand-green text-sm font-medium"
                   >
@@ -113,6 +121,27 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
           </tbody>
         </table>
       </div>
+
+      {previewRotulo && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setPreviewRotulo(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b">
+              <h3 className="font-semibold text-gray-800">
+                {TIPO_LABELS[previewRotulo.tipo] || previewRotulo.tipo}
+                {' '}— Observaciones
+              </h3>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                {(previewRotulo.data as Record<string, string>)?.observacion || 'Sin observaciones.'}
+              </p>
+            </div>
+            <div className="p-5 border-t flex justify-end">
+              <button onClick={() => setPreviewRotulo(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -180,9 +209,9 @@ function buildLabelHTML(tipo: string, data: Record<string, string>, config: { et
     td:first-child { font-weight: bold; width: 38%; color: #444; }
     tr { border-bottom: 1px solid #eee; }
     tr:last-child { border-bottom: none; }
-    .obs { width: 30%; border-left: 1px solid #000; padding-left: 4px; display: flex; flex-direction: column; }
-    .obs-title { font-weight: bold; color: #444; font-size: ${fs - 1}pt; margin-bottom: 2px; }
-    .obs-text { font-size: ${fs - 1}pt; line-height: 1.3; white-space: pre-wrap; word-break: break-word; }
+    .obs { width: 40%; border-left: 1px solid #000; padding-left: 5px; display: flex; flex-direction: column; }
+    .obs-title { font-weight: bold; color: #444; font-size: ${fs}pt; margin-bottom: 3px; }
+    .obs-text { font-size: ${fs}pt; line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
     @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } @page { size: ${w}mm ${h}mm; margin: 2mm; } }
   </style>
 </head>

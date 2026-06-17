@@ -25,6 +25,12 @@ const PRIORIDAD_COLORS: Record<string, string> = {
   baja: 'bg-green-100 text-green-700',
 }
 
+const PRIORIDAD_LABELS: Record<string, string> = {
+  alta: 'Alta',
+  media: 'Media',
+  baja: 'Baja',
+}
+
 type Props = {
   initialColumnas: Columna[]
   initialTareas: Tarea[]
@@ -43,7 +49,6 @@ function vencimientoBadge(fecha: string | Date) {
   venc.setHours(0, 0, 0, 0)
   const diffDays = Math.round((venc.getTime() - today.getTime()) / 86400000)
   if (diffDays < 0) return 'bg-red-100 text-red-700'
-  if (diffDays <= 2) return 'bg-orange-100 text-orange-700'
   return 'bg-gray-100 text-gray-500'
 }
 
@@ -57,6 +62,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
   const [saving, setSaving] = useState(false)
   const [filterAnalistaId, setFilterAnalistaId] = useState('')
   const [dragOverColId, setDragOverColId] = useState<number | null>(null)
+  const [previewTarea, setPreviewTarea] = useState<Tarea | null>(null)
 
   function openCreate(columnaId: number) {
     setForm(emptyForm())
@@ -217,13 +223,14 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                     key={t.id}
                     draggable
                     onDragStart={e => handleDragStart(e, t.id)}
+                    onClick={() => setPreviewTarea(t)}
                     className="bg-white rounded-lg shadow-sm p-3 border border-gray-100 cursor-grab active:cursor-grabbing"
                   >
                     <div className="flex items-start justify-between gap-1 mb-1">
                       <span className="font-medium text-gray-800 text-sm leading-snug">{t.titulo}</span>
                       {t.prioridad && (
                         <span className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${PRIORIDAD_COLORS[t.prioridad] || ''}`}>
-                          {t.prioridad}
+                          {PRIORIDAD_LABELS[t.prioridad] || t.prioridad}
                         </span>
                       )}
                     </div>
@@ -235,21 +242,21 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                     )}
                     <div className="flex flex-wrap gap-1 mb-2">
                       {t.firma1 ? (
-                        <span className="text-xs bg-brand-green-light text-brand-green-dark px-2 py-0.5 rounded-full">{t.firma1.nombre} {t.firma1.apellido}</span>
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{t.firma1.nombre} {t.firma1.apellido}</span>
                       ) : (
                         <button
-                          onClick={() => { setFirmaModal({ tareaId: t.id, slot: 1 }); setFirmaAnalistaId('') }}
+                          onClick={e => { e.stopPropagation(); setFirmaModal({ tareaId: t.id, slot: 1 }); setFirmaAnalistaId('') }}
                           className="text-xs text-gray-400 hover:text-brand-green-dark border border-dashed border-gray-300 hover:border-brand-green px-2 py-0.5 rounded-full"
                         >
                           + Firma 1
                         </button>
                       )}
                       {t.firma2 ? (
-                        <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">{t.firma2.nombre} {t.firma2.apellido}</span>
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{t.firma2.nombre} {t.firma2.apellido}</span>
                       ) : t.firma1 ? (
                         <button
-                          onClick={() => { setFirmaModal({ tareaId: t.id, slot: 2 }); setFirmaAnalistaId('') }}
-                          className="text-xs text-gray-400 hover:text-purple-600 border border-dashed border-gray-300 hover:border-purple-400 px-2 py-0.5 rounded-full"
+                          onClick={e => { e.stopPropagation(); setFirmaModal({ tareaId: t.id, slot: 2 }); setFirmaAnalistaId('') }}
+                          className="text-xs text-gray-400 hover:text-brand-green-dark border border-dashed border-gray-300 hover:border-brand-green px-2 py-0.5 rounded-full"
                         >
                           + Firma 2
                         </button>
@@ -257,20 +264,20 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                     </div>
                     <div className="flex items-center gap-1 mt-1">
                       {colIdx > 0 && (
-                        <button onClick={() => moveTask(t, 'left')} className="text-gray-400 hover:text-gray-600 p-1 rounded" title="Mover izquierda">
+                        <button onClick={e => { e.stopPropagation(); moveTask(t, 'left') }} className="text-gray-400 hover:text-gray-600 p-1 rounded" title="Mover izquierda">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
                         </button>
                       )}
                       {colIdx < sortedColumnas.length - 1 && (
-                        <button onClick={() => moveTask(t, 'right')} className="text-gray-400 hover:text-gray-600 p-1 rounded" title="Mover derecha">
+                        <button onClick={e => { e.stopPropagation(); moveTask(t, 'right') }} className="text-gray-400 hover:text-gray-600 p-1 rounded" title="Mover derecha">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                         </button>
                       )}
-                      <button onClick={() => openEdit(t)} className="text-gray-400 hover:text-brand-green-dark p-1 rounded ml-auto" title="Editar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      <button onClick={e => { e.stopPropagation(); openEdit(t) }} className="text-gray-500 hover:text-brand-green-dark bg-gray-50 hover:bg-brand-green-light p-1.5 rounded ml-auto" title="Editar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
                       {role === 'supervisor' && (
-                        <button onClick={() => deleteTask(t.id)} className="text-gray-400 hover:text-red-500 p-1 rounded" title="Eliminar">
+                        <button onClick={e => { e.stopPropagation(); deleteTask(t.id) }} className="text-gray-400 hover:text-red-500 p-1 rounded" title="Eliminar">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                         </button>
                       )}
@@ -377,6 +384,39 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                 className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview modal */}
+      {previewTarea && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setPreviewTarea(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b flex items-start justify-between gap-2">
+              <h3 className="font-semibold text-gray-800 leading-snug">{previewTarea.titulo}</h3>
+              {previewTarea.prioridad && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${PRIORIDAD_COLORS[previewTarea.prioridad] || ''}`}>
+                  {PRIORIDAD_LABELS[previewTarea.prioridad] || previewTarea.prioridad}
+                </span>
+              )}
+            </div>
+            <div className="p-5 space-y-3">
+              <p className="text-sm text-gray-600 whitespace-pre-wrap">{previewTarea.descripcion || 'Sin descripción.'}</p>
+              {previewTarea.fechaVencimiento && (
+                <div className={`text-xs inline-block px-1.5 py-0.5 rounded-full ${vencimientoBadge(previewTarea.fechaVencimiento)}`}>
+                  Vence: {formatDate(previewTarea.fechaVencimiento)}
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t flex justify-end gap-2">
+              <button onClick={() => setPreviewTarea(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cerrar</button>
+              <button
+                onClick={() => { const t = previewTarea; setPreviewTarea(null); openEdit(t) }}
+                className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark"
+              >
+                Editar
               </button>
             </div>
           </div>
