@@ -100,4 +100,6 @@ model Tarea {
   creadoPor        String
   completadaAt     DateTime?
   createdAt        DateTime      @default(now())
+  etiquetas        String?
+  notas            String?
 }

@@ -13,6 +13,8 @@ const schema = z.object({
   analistaId2: z.number().int().nullable().optional(),
   prioridad: z.enum(['alta', 'media', 'baja']).nullable().optional(),
   fechaVencimiento: z.string().optional().nullable(),
+  etiquetas: z.string().nullable().optional(),
+  notas: z.string().nullable().optional(),
 })
 
 const include = {

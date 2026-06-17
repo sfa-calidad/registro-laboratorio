@@ -4,6 +4,8 @@ import { formatDate } from '@/lib/utils'
 
 type Analista = { id: number; nombre: string; apellido: string }
 type Columna = { id: number; nombre: string; orden: number }
+type Etiqueta = { texto: string; color: string }
+type Nota = { texto: string; mostrarEnTarjeta: boolean }
 type Tarea = {
   id: number
   titulo: string
@@ -17,6 +19,20 @@ type Tarea = {
   fechaVencimiento: string | Date | null
   completadaAt: string | Date | null
   createdAt: string | Date
+  etiquetas: string | null
+  notas: string | null
+}
+
+const COLORES_ETIQUETA = ['#8bc53f', '#e0a32a', '#b6394a', '#2b332a', '#3b82f6', '#a855f7']
+
+function parseEtiquetas(json: string | null): Etiqueta[] {
+  if (!json) return []
+  try { return JSON.parse(json) } catch { return [] }
+}
+
+function parseNotas(json: string | null): Nota[] {
+  if (!json) return []
+  try { return JSON.parse(json) } catch { return [] }
 }
 
 const PRIORIDAD_COLORS: Record<string, string> = {
@@ -39,7 +55,11 @@ type Props = {
 }
 
 function emptyForm() {
-  return { titulo: '', descripcion: '', prioridad: '' as string, fechaVencimiento: '', analistaId1: '' as string, analistaId2: '' as string }
+  return {
+    titulo: '', descripcion: '', prioridad: '' as string, fechaVencimiento: '',
+    analistaId1: '' as string, analistaId2: '' as string,
+    etiquetas: [] as Etiqueta[], notas: [] as Nota[],
+  }
 }
 
 function vencimientoBadge(fecha: string | Date) {
@@ -63,9 +83,16 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
   const [filterAnalistaId, setFilterAnalistaId] = useState('')
   const [dragOverColId, setDragOverColId] = useState<number | null>(null)
   const [previewTarea, setPreviewTarea] = useState<Tarea | null>(null)
+  const [newEtiquetaTexto, setNewEtiquetaTexto] = useState('')
+  const [newEtiquetaColor, setNewEtiquetaColor] = useState(COLORES_ETIQUETA[0])
+  const [newNotaTexto, setNewNotaTexto] = useState('')
+  const [newNotaMostrar, setNewNotaMostrar] = useState(false)
 
   function openCreate(columnaId: number) {
     setForm(emptyForm())
+    setNewEtiquetaTexto('')
+    setNewNotaTexto('')
+    setNewNotaMostrar(false)
     setModal({ mode: 'create', columnaId })
   }
 
@@ -77,8 +104,31 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       fechaVencimiento: tarea.fechaVencimiento ? new Date(tarea.fechaVencimiento).toISOString().split('T')[0] : '',
       analistaId1: tarea.analistaId1 ? String(tarea.analistaId1) : '',
       analistaId2: tarea.analistaId2 ? String(tarea.analistaId2) : '',
+      etiquetas: parseEtiquetas(tarea.etiquetas),
+      notas: parseNotas(tarea.notas),
     })
     setModal({ mode: 'edit', tarea })
+  }
+
+  function addEtiqueta() {
+    if (!newEtiquetaTexto.trim()) return
+    setForm(f => ({ ...f, etiquetas: [...f.etiquetas, { texto: newEtiquetaTexto.trim(), color: newEtiquetaColor }] }))
+    setNewEtiquetaTexto('')
+  }
+
+  function removeEtiqueta(idx: number) {
+    setForm(f => ({ ...f, etiquetas: f.etiquetas.filter((_, i) => i !== idx) }))
+  }
+
+  function addNota() {
+    if (!newNotaTexto.trim()) return
+    setForm(f => ({ ...f, notas: [...f.notas, { texto: newNotaTexto.trim(), mostrarEnTarjeta: newNotaMostrar }] }))
+    setNewNotaTexto('')
+    setNewNotaMostrar(false)
+  }
+
+  function removeNota(idx: number) {
+    setForm(f => ({ ...f, notas: f.notas.filter((_, i) => i !== idx) }))
   }
 
   async function saveTask() {
@@ -90,6 +140,8 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       fechaVencimiento: form.fechaVencimiento || null,
       analistaId1: form.analistaId1 ? Number(form.analistaId1) : null,
       analistaId2: form.analistaId2 ? Number(form.analistaId2) : null,
+      etiquetas: form.etiquetas.length ? JSON.stringify(form.etiquetas) : null,
+      notas: form.notas.length ? JSON.stringify(form.notas) : null,
     }
 
     if (modal?.mode === 'create') {
@@ -218,7 +270,10 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                 <span className="text-xs text-gray-400 bg-white rounded-full px-2 py-0.5">{colTareas.length}</span>
               </div>
               <div className={`bg-gray-50 rounded-b-lg flex-1 p-2 space-y-2 min-h-32 transition-colors ${dragOverColId === col.id ? 'bg-brand-green-light ring-2 ring-brand-green' : ''}`}>
-                {colTareas.map(t => (
+                {colTareas.map(t => {
+                  const tEtiquetas = parseEtiquetas(t.etiquetas)
+                  const tNotasVisibles = parseNotas(t.notas).filter(n => n.mostrarEnTarjeta)
+                  return (
                   <div
                     key={t.id}
                     draggable
@@ -234,7 +289,23 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                         </span>
                       )}
                     </div>
+                    {tEtiquetas.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        {tEtiquetas.map((et, idx) => (
+                          <span key={idx} className="text-xs px-1.5 py-0.5 rounded-full border" style={{ borderColor: et.color, color: et.color }}>
+                            {et.texto}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {t.descripcion && <p className="text-xs text-gray-500 mb-2 line-clamp-2">{t.descripcion}</p>}
+                    {tNotasVisibles.length > 0 && (
+                      <div className="mb-2 space-y-0.5">
+                        {tNotasVisibles.map((n, idx) => (
+                          <p key={idx} className="text-xs text-gray-500 italic line-clamp-2">📌 {n.texto}</p>
+                        ))}
+                      </div>
+                    )}
                     {t.fechaVencimiento && (
                       <div className={`text-xs mb-2 inline-block px-1.5 py-0.5 rounded-full ${vencimientoBadge(t.fechaVencimiento)}`}>
                         Vence: {formatDate(t.fechaVencimiento)}
@@ -283,7 +354,8 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                       )}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
                 <button
                   onClick={() => openCreate(col.id)}
                   className="w-full text-left text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100 px-2 py-1.5 rounded-lg transition-colors"
@@ -299,11 +371,11 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       {/* Task modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
             <div className="p-5 border-b">
               <h3 className="font-semibold text-gray-800">{modal.mode === 'create' ? 'Nueva tarea' : 'Editar tarea'}</h3>
             </div>
-            <div className="p-5 space-y-3">
+            <div className="p-5 space-y-3 overflow-y-auto flex-1">
               <div>
                 <label className="text-sm font-medium text-gray-700">Título</label>
                 <input
@@ -375,6 +447,74 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                   </select>
                 </div>
               </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Etiquetas</label>
+                {form.etiquetas.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1 mb-2">
+                    {form.etiquetas.map((et, idx) => (
+                      <span key={idx} className="text-xs px-2 py-0.5 rounded-full border flex items-center gap-1" style={{ borderColor: et.color, color: et.color }}>
+                        {et.texto}
+                        <button onClick={() => removeEtiqueta(idx)} className="hover:opacity-60">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    type="text"
+                    value={newEtiquetaTexto}
+                    onChange={e => setNewEtiquetaTexto(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addEtiqueta())}
+                    placeholder="Texto de la etiqueta"
+                    className="flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+                  />
+                  <div className="flex gap-1">
+                    {COLORES_ETIQUETA.map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setNewEtiquetaColor(c)}
+                        className={`w-5 h-5 rounded-full ${newEtiquetaColor === c ? 'ring-2 ring-offset-1 ring-gray-400' : ''}`}
+                        style={{ backgroundColor: c }}
+                        title={c}
+                      />
+                    ))}
+                  </div>
+                  <button type="button" onClick={addEtiqueta} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg">Agregar</button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Notas</label>
+                {form.notas.length > 0 && (
+                  <ul className="space-y-1 mt-1 mb-2">
+                    {form.notas.map((n, idx) => (
+                      <li key={idx} className="flex items-start justify-between gap-2 text-sm bg-gray-50 rounded-lg px-2 py-1">
+                        <span className="flex-1">
+                          {n.texto}
+                          {n.mostrarEnTarjeta && <span className="text-xs text-gray-400 ml-1">(en tarjeta)</span>}
+                        </span>
+                        <button onClick={() => removeNota(idx)} className="text-gray-400 hover:text-red-500">×</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <textarea
+                  value={newNotaTexto}
+                  onChange={e => setNewNotaTexto(e.target.value)}
+                  rows={2}
+                  placeholder="Nueva nota"
+                  className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+                />
+                <div className="flex items-center justify-between mt-1.5">
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <input type="checkbox" checked={newNotaMostrar} onChange={e => setNewNotaMostrar(e.target.checked)} />
+                    Mostrar en tarjeta
+                  </label>
+                  <button type="button" onClick={addNota} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg">Agregar nota</button>
+                </div>
+              </div>
             </div>
             <div className="p-5 border-t flex justify-end gap-2">
               <button onClick={() => setModal(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
@@ -403,7 +543,23 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
               )}
             </div>
             <div className="p-5 space-y-3">
+              {parseEtiquetas(previewTarea.etiquetas).length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {parseEtiquetas(previewTarea.etiquetas).map((et, idx) => (
+                    <span key={idx} className="text-xs px-1.5 py-0.5 rounded-full border" style={{ borderColor: et.color, color: et.color }}>
+                      {et.texto}
+                    </span>
+                  ))}
+                </div>
+              )}
               <p className="text-sm text-gray-600 whitespace-pre-wrap">{previewTarea.descripcion || 'Sin descripción.'}</p>
+              {parseNotas(previewTarea.notas).length > 0 && (
+                <div className="space-y-1 border-t pt-2">
+                  {parseNotas(previewTarea.notas).map((n, idx) => (
+                    <p key={idx} className="text-xs text-gray-500 italic">📌 {n.texto}</p>
+                  ))}
+                </div>
+              )}
               {previewTarea.fechaVencimiento && (
                 <div className={`text-xs inline-block px-1.5 py-0.5 rounded-full ${vencimientoBadge(previewTarea.fechaVencimiento)}`}>
                   Vence: {formatDate(previewTarea.fechaVencimiento)}

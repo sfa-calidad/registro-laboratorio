@@ -11,6 +11,8 @@ const schema = z.object({
   prioridad: z.enum(['alta', 'media', 'baja']).nullable().optional(),
   fechaVencimiento: z.string().nullable().optional(),
   completadaAt: z.string().nullable().optional(),
+  etiquetas: z.string().nullable().optional(),
+  notas: z.string().nullable().optional(),
 })
 
 const include = { columna: true, firma1: true, firma2: true }
