@@ -21,6 +21,7 @@ type Tarea = {
   createdAt: string | Date
   etiquetas: string | null
   notas: string | null
+  archivadaAt: string | Date | null
 }
 
 const COLORES_ETIQUETA = ['#8bc53f', '#e0a32a', '#b6394a', '#2b332a', '#3b82f6', '#a855f7']
@@ -216,6 +217,27 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
     setTareas(prev => prev.filter(x => x.id !== id))
   }
 
+  async function archiveTask(id: number) {
+    const res = await fetch(`/api/tareas/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archivadaAt: new Date().toISOString() }),
+    })
+    if (res.ok) setTareas(prev => prev.filter(x => x.id !== id))
+  }
+
+  async function archiveAllCompletadas() {
+    const completadasCount = tareas.filter(t => t.completadaAt).length
+    if (completadasCount === 0) return
+    if (!confirm(`¿Archivar las ${completadasCount} tareas completadas? Desaparecerán del tablero.`)) return
+    const res = await fetch('/api/tareas/archivar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ todasCompletadas: true }),
+    })
+    if (res.ok) setTareas(prev => prev.filter(t => !t.completadaAt))
+  }
+
   async function submitFirma() {
     if (!firmaModal || !firmaAnalistaId) return
     setSaving(true)
@@ -239,20 +261,32 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
     ? tareas.filter(t => t.analistaId1 === Number(filterAnalistaId) || t.analistaId2 === Number(filterAnalistaId))
     : tareas
 
+  const completadasCount = tareas.filter(t => t.completadaAt).length
+
   return (
     <>
-      <div className="flex items-center gap-2 mb-3">
-        <label className="text-xs text-gray-500">Filtrar por analista:</label>
-        <select
-          value={filterAnalistaId}
-          onChange={e => setFilterAnalistaId(e.target.value)}
-          className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-        >
-          <option value="">Todos</option>
-          {analistas.map(a => (
-            <option key={a.id} value={a.id}>{a.nombre} {a.apellido}</option>
-          ))}
-        </select>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500">Filtrar por analista:</label>
+          <select
+            value={filterAnalistaId}
+            onChange={e => setFilterAnalistaId(e.target.value)}
+            className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+          >
+            <option value="">Todos</option>
+            {analistas.map(a => (
+              <option key={a.id} value={a.id}>{a.nombre} {a.apellido}</option>
+            ))}
+          </select>
+        </div>
+        {role === 'supervisor' && completadasCount > 0 && (
+          <button
+            onClick={archiveAllCompletadas}
+            className="text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 flex-shrink-0"
+          >
+            Archivar todas las completadas ({completadasCount})
+          </button>
+        )}
       </div>
       <div className="flex gap-4 overflow-x-auto pb-4 flex-1">
         {sortedColumnas.map((col, colIdx) => {
@@ -347,6 +381,11 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                       <button onClick={e => { e.stopPropagation(); openEdit(t) }} className="text-gray-500 hover:text-brand-green-dark bg-gray-50 hover:bg-brand-green-light p-1.5 rounded ml-auto" title="Editar">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
+                      {role === 'supervisor' && t.completadaAt && (
+                        <button onClick={e => { e.stopPropagation(); archiveTask(t.id) }} className="text-gray-400 hover:text-brand-green-dark p-1 rounded" title="Archivar">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                        </button>
+                      )}
                       {role === 'supervisor' && (
                         <button onClick={e => { e.stopPropagation(); deleteTask(t.id) }} className="text-gray-400 hover:text-red-500 p-1 rounded" title="Eliminar">
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>

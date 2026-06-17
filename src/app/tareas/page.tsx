@@ -8,6 +8,7 @@ export default async function TareasPage() {
   const [columnas, tareas, analistas, role] = await Promise.all([
     prisma.columnaKanban.findMany({ orderBy: { orden: 'asc' } }),
     prisma.tarea.findMany({
+      where: { archivadaAt: null },
       include: { columna: true, firma1: true, firma2: true },
       orderBy: { createdAt: 'asc' },
     }),

@@ -102,4 +102,5 @@ model Tarea {
   createdAt        DateTime      @default(now())
   etiquetas        String?
   notas            String?
+  archivadaAt      DateTime?
 }

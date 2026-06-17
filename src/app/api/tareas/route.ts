@@ -23,8 +23,10 @@ const include = {
   firma2: true,
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const archivadas = req.nextUrl.searchParams.get('archivadas') === '1'
   const tareas = await prisma.tarea.findMany({
+    where: { archivadaAt: archivadas ? { not: null } : null },
     include,
     orderBy: { createdAt: 'asc' },
   })
