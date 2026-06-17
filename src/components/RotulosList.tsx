@@ -157,6 +157,8 @@ function buildLabelHTML(tipo: string, data: Record<string, string>, config: { et
     ME_INGLES: 'SAMPLE LABEL',
   }
 
+  const observaciones = data.observacion || data.observaciones || ''
+
   return `<!DOCTYPE html>
 <html style="color-scheme: light;">
 <head>
@@ -167,32 +169,38 @@ function buildLabelHTML(tipo: string, data: Record<string, string>, config: { et
     @page { size: ${w}mm ${h}mm; margin: 2mm; }
     * { box-sizing: border-box; }
     body { font-family: Arial, sans-serif; font-size: ${fs}pt; margin: 0; padding: 0; background: #fff !important; color: #000 !important; color-scheme: light; }
-    .label { border: 1px solid #000; padding: 3px; width: calc(${w}mm - 5mm); min-height: calc(${h}mm - 5mm); }
-    .header { display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 3px; gap: 6px; }
-    .logo { max-height: ${fs * 2.5}pt; max-width: 40%; object-fit: contain; }
-    .header-text { text-align: center; }
+    .label { border: 1px solid #000; padding: 3px; width: calc(${w}mm - 5mm); min-height: calc(${h}mm - 5mm); display: flex; flex-direction: column; }
+    .header { display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 3px; gap: 2px; text-align: center; }
+    .logo { max-height: ${fs * 2.5}pt; max-width: 60%; object-fit: contain; }
     .company { font-size: ${fs + 3}pt; font-weight: bold; }
     .tipo { font-size: ${fs}pt; font-weight: bold; color: #333; }
-    table { width: 100%; border-collapse: collapse; }
+    .body { display: flex; flex: 1; gap: 4px; }
+    table { width: 100%; border-collapse: collapse; flex: 1; }
     td { padding: 1px 3px; vertical-align: top; line-height: 1.4; }
     td:first-child { font-weight: bold; width: 38%; color: #444; }
     tr { border-bottom: 1px solid #eee; }
     tr:last-child { border-bottom: none; }
+    .obs { width: 30%; border-left: 1px solid #000; padding-left: 4px; display: flex; flex-direction: column; }
+    .obs-title { font-weight: bold; color: #444; font-size: ${fs - 1}pt; margin-bottom: 2px; }
+    .obs-text { font-size: ${fs - 1}pt; line-height: 1.3; white-space: pre-wrap; word-break: break-word; }
     @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } @page { size: ${w}mm ${h}mm; margin: 2mm; } }
   </style>
 </head>
 <body>
   <div class="label">
     <div class="header">
-      ${logo ? `<img src="${logo}" class="logo" alt="logo" />` : ''}
-      <div class="header-text">
-        ${!logo ? `<div class="company">${empresa}</div>` : ''}
-        <div class="tipo">${tipoLabel[tipo] || tipo}</div>
+      ${logo ? `<img src="${logo}" class="logo" alt="logo" />` : `<div class="company">${empresa}</div>`}
+      <div class="tipo">${tipoLabel[tipo] || tipo}</div>
+    </div>
+    <div class="body">
+      <table>
+        ${rows.filter(([, v]) => v).map(([k, v]) => `<tr><td>${k}:</td><td>${v}</td></tr>`).join('\n        ')}
+      </table>
+      <div class="obs">
+        <div class="obs-title">Observaciones</div>
+        <div class="obs-text">${observaciones}</div>
       </div>
     </div>
-    <table>
-      ${rows.filter(([, v]) => v).map(([k, v]) => `<tr><td>${k}:</td><td>${v}</td></tr>`).join('\n      ')}
-    </table>
   </div>
 </body>
 </html>`

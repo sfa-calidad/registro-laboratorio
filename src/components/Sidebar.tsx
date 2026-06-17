@@ -75,9 +75,11 @@ export default function Sidebar() {
   const pathname = usePathname()
   const [role, setRole] = useState<Role>(null)
   const [open, setOpen] = useState(false)
+  const [logo, setLogo] = useState('')
 
   useEffect(() => {
     fetch('/api/me').then(r => r.json()).then(d => setRole(d.role)).catch(() => {})
+    fetch('/api/configuracion').then(r => r.json()).then(d => setLogo(d.logo || '')).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -128,9 +130,12 @@ export default function Sidebar() {
     <>
       {/* Mobile top bar */}
       <div className="md:hidden flex items-center justify-between bg-brand-dark text-white p-3">
-        <div>
-          <h1 className="text-base font-bold leading-tight">Laboratorio SFA</h1>
-          <p className="text-xs text-slate-400">Gestión de Movimientos</p>
+        <div className="flex items-center gap-2">
+          {logo && <img src={logo} alt="Logo" className="h-8 w-8 object-contain rounded bg-white p-0.5" />}
+          <div>
+            <h1 className="text-base font-bold leading-tight">Laboratorio SFA</h1>
+            <p className="text-xs text-slate-400">Gestión de Movimientos</p>
+          </div>
         </div>
         <button
           onClick={() => setOpen(o => !o)}
@@ -155,9 +160,12 @@ export default function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:w-56 bg-brand-dark text-white flex-col">
-        <div className="p-4 border-b border-brand-dark-hover">
-          <h1 className="text-lg font-bold">Laboratorio SFA</h1>
-          <p className="text-xs text-slate-400">Gestión de Movimientos</p>
+        <div className="p-4 border-b border-brand-dark-hover flex items-center gap-2">
+          {logo && <img src={logo} alt="Logo" className="h-10 w-10 object-contain rounded bg-white p-0.5" />}
+          <div>
+            <h1 className="text-lg font-bold leading-tight">Laboratorio SFA</h1>
+            <p className="text-xs text-slate-400">Gestión de Movimientos</p>
+          </div>
         </div>
         {navContent}
         {footerContent}
