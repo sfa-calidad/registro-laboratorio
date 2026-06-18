@@ -106,3 +106,10 @@ model Tarea {
   checklist        String?
   mostrarChecklist Boolean       @default(false)
 }
+
+model NotaTablero {
+  id        Int      @id @default(autoincrement())
+  texto     String
+  autor     String
+  createdAt DateTime @default(now())
+}

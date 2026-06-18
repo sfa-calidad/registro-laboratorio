@@ -220,6 +220,13 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
     if (!target) return
 
     const isCompleting = target.nombre.toLowerCase().includes('complet')
+    if (isCompleting && !tarea.firma1) {
+      alert('Esta tarea necesita al menos una firma antes de pasar a Completado.')
+      setFirmaModal({ tareaId: tarea.id, slot: 1 })
+      setFirmaAnalistaId('')
+      return
+    }
+
     const res = await fetch(`/api/tareas/${tarea.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -231,6 +238,9 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
     if (res.ok) {
       const t = await res.json()
       setTareas(prev => prev.map(x => x.id === t.id ? t : x))
+    } else {
+      const err = await res.json().catch(() => null)
+      if (err?.error) alert(err.error)
     }
   }
 

@@ -26,8 +26,10 @@ const include = {
 }
 
 export async function GET(req: NextRequest) {
-  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const role = getRoleFromRequest(req)
+  if (!role) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const archivadas = req.nextUrl.searchParams.get('archivadas') === '1'
+  if (archivadas && role !== 'supervisor') return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   const tareas = await prisma.tarea.findMany({
     where: { archivadaAt: archivadas ? { not: null } : null },
     include,

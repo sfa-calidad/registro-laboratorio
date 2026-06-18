@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { formatDate } from '@/lib/utils'
 import { getRole } from '@/lib/auth'
 import EstadisticasView from '@/components/EstadisticasView'
+import NotasTablero from '@/components/NotasTablero'
 
 export const dynamic = 'force-dynamic'
 
@@ -99,6 +100,10 @@ export default async function Dashboard() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <NotasTablero />
       </div>
 
       {estadisticas && (

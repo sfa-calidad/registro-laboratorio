@@ -23,12 +23,22 @@ export default async function TareasPage() {
           <h1 className="text-xl md:text-2xl font-bold text-gray-800">Tablero de Tareas</h1>
           <p className="text-sm text-gray-500">Gestión de tareas diarias del laboratorio</p>
         </div>
-        <a
-          href="/api/tareas/export"
-          className="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 flex-shrink-0"
-        >
-          Exportar CSV
-        </a>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {role === 'supervisor' && (
+            <a
+              href="/tareas/historial"
+              className="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            >
+              Historial de completadas
+            </a>
+          )}
+          <a
+            href="/api/tareas/export"
+            className="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+          >
+            Exportar CSV
+          </a>
+        </div>
       </div>
       <KanbanBoard
         initialColumnas={columnas}

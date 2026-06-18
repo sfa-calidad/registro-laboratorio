@@ -34,6 +34,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
+  if (parsed.data.completadaAt) {
+    const actual = await prisma.tarea.findUnique({ where: { id: Number(id) }, select: { analistaId1: true } })
+    const firmaFinal = parsed.data.analistaId1 !== undefined ? parsed.data.analistaId1 : actual?.analistaId1
+    if (!firmaFinal) {
+      return NextResponse.json({ error: 'La tarea debe tener al menos una firma antes de marcarse como completada' }, { status: 400 })
+    }
+  }
+
   const { fechaVencimiento, completadaAt, archivadaAt, ...rest } = parsed.data
   const tarea = await prisma.tarea.update({
     where: { id: Number(id) },
