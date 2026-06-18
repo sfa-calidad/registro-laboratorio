@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { getRoleFromRequest } from '@/lib/auth'
 
 const schema = z.object({
   tipo: z.string(),
@@ -9,7 +10,8 @@ const schema = z.object({
   despachoId: z.number().optional(),
 })
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const rotulos = await prisma.rotulo.findMany({
     orderBy: { createdAt: 'desc' },
     include: { ingreso: true, despacho: true },
@@ -19,6 +21,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })

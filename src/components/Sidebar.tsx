@@ -76,11 +76,20 @@ export default function Sidebar() {
   const [role, setRole] = useState<Role>(null)
   const [open, setOpen] = useState(false)
   const [logo, setLogo] = useState('')
+  const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
     fetch('/api/me').then(r => r.json()).then(d => setRole(d.role)).catch(() => {})
     fetch('/api/configuracion').then(r => r.json()).then(d => setLogo(d.logo || '')).catch(() => {})
+    setCollapsed(localStorage.getItem('sidebar_collapsed') === '1')
   }, [])
+
+  function toggleCollapsed() {
+    setCollapsed(c => {
+      localStorage.setItem('sidebar_collapsed', c ? '0' : '1')
+      return !c
+    })
+  }
 
   useEffect(() => {
     setOpen(false)
@@ -88,43 +97,52 @@ export default function Sidebar() {
 
   const links = baseLinks
 
-  const navContent = (
-    <nav className="flex-1 p-3 overflow-y-auto">
-      {links.map(({ href, label, icon }) => (
-        <Link
-          key={href}
-          href={href}
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-1 text-sm transition-colors ${
-            pathname === href
-              ? 'bg-brand-green text-white'
-              : 'text-slate-300 hover:bg-brand-dark-hover'
-          }`}
-        >
-          <span>{icon}</span>
-          <span>{label}</span>
-        </Link>
-      ))}
-    </nav>
-  )
+  function renderNav(iconOnly: boolean) {
+    return (
+      <nav className="flex-1 p-3 overflow-y-auto">
+        {links.map(({ href, label, icon }) => (
+          <Link
+            key={href}
+            href={href}
+            title={iconOnly ? label : undefined}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-1 text-sm transition-colors ${iconOnly ? 'justify-center' : ''} ${
+              pathname === href
+                ? 'bg-brand-green text-white'
+                : 'text-slate-300 hover:bg-brand-dark-hover'
+            }`}
+          >
+            <span>{icon}</span>
+            {!iconOnly && <span>{label}</span>}
+          </Link>
+        ))}
+      </nav>
+    )
+  }
 
-  const footerContent = (
-    <div className="p-3 border-t border-brand-dark-hover space-y-2">
-      {role && (
-        <div className="text-xs text-brand-green px-3 capitalize font-medium">{role}</div>
-      )}
-      <button
-        onClick={async () => {
-          await fetch('/api/auth/logout', { method: 'POST' })
-          window.location.href = '/login'
-        }}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-brand-dark-hover rounded-lg"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Cerrar sesión
-      </button>
-      <div className="text-xs text-slate-500 px-3">v1.4.0</div>
-    </div>
-  )
+  function renderFooter(iconOnly: boolean) {
+    return (
+      <div className="p-3 border-t border-brand-dark-hover space-y-2">
+        {role && !iconOnly && (
+          <div className="text-xs text-brand-green px-3 capitalize font-medium">{role}</div>
+        )}
+        <button
+          onClick={async () => {
+            await fetch('/api/auth/logout', { method: 'POST' })
+            window.location.href = '/login'
+          }}
+          title={iconOnly ? 'Cerrar sesión' : undefined}
+          className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-brand-dark-hover rounded-lg ${iconOnly ? 'justify-center' : ''}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          {!iconOnly && 'Cerrar sesión'}
+        </button>
+        {!iconOnly && <div className="text-xs text-slate-500 px-3">v1.4.0</div>}
+      </div>
+    )
+  }
+
+  const navContent = renderNav(false)
+  const footerContent = renderFooter(false)
 
   return (
     <>
@@ -159,16 +177,28 @@ export default function Sidebar() {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:w-56 bg-brand-dark text-white flex-col">
-        <div className="p-4 border-b border-brand-dark-hover flex items-center gap-2">
-          {logo && <img src={logo} alt="Logo" className="h-10 w-10 object-contain rounded bg-white p-0.5" />}
-          <div>
-            <h1 className="text-lg font-bold leading-tight">Laboratorio SFA</h1>
-            <p className="text-xs text-slate-400">Gestión de Movimientos</p>
-          </div>
+      <aside className={`hidden md:flex bg-brand-dark text-white flex-col transition-all ${collapsed ? 'md:w-16' : 'md:w-56'}`}>
+        <div className={`p-4 border-b border-brand-dark-hover flex items-center gap-2 ${collapsed ? 'justify-center' : ''}`}>
+          {logo && <img src={logo} alt="Logo" className="h-10 w-10 object-contain rounded bg-white p-0.5 flex-shrink-0" />}
+          {!collapsed && (
+            <div>
+              <h1 className="text-lg font-bold leading-tight">Laboratorio SFA</h1>
+              <p className="text-xs text-slate-400">Gestión de Movimientos</p>
+            </div>
+          )}
         </div>
-        {navContent}
-        {footerContent}
+        {collapsed ? renderNav(true) : navContent}
+        {collapsed ? renderFooter(true) : footerContent}
+        <button
+          onClick={toggleCollapsed}
+          className={`flex items-center justify-center gap-2 p-3 border-t border-brand-dark-hover text-slate-300 hover:text-white hover:bg-brand-dark-hover text-xs`}
+          title={collapsed ? 'Expandir menú' : 'Contraer menú'}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${collapsed ? 'rotate-180' : ''}`}>
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          {!collapsed && 'Contraer'}
+        </button>
       </aside>
     </>
   )

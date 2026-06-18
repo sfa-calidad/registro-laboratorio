@@ -103,4 +103,6 @@ model Tarea {
   etiquetas        String?
   notas            String?
   archivadaAt      DateTime?
+  checklist        String?
+  mostrarChecklist Boolean       @default(false)
 }

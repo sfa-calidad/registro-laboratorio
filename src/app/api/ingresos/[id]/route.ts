@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { getRoleFromRequest } from '@/lib/auth'
 
 const schema = z.object({
   hrRemito: z.string().min(1),
@@ -14,6 +15,7 @@ const schema = z.object({
 })
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
   const body = await req.json()
   const parsed = schema.safeParse(body)
@@ -33,7 +35,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json(ingreso)
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
   await prisma.rotulo.deleteMany({ where: { ingresoId: Number(id) } })
   await prisma.ingreso.delete({ where: { id: Number(id) } })

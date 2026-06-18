@@ -15,6 +15,8 @@ const schema = z.object({
   fechaVencimiento: z.string().optional().nullable(),
   etiquetas: z.string().nullable().optional(),
   notas: z.string().nullable().optional(),
+  checklist: z.string().nullable().optional(),
+  mostrarChecklist: z.boolean().optional(),
 })
 
 const include = {
@@ -24,6 +26,7 @@ const include = {
 }
 
 export async function GET(req: NextRequest) {
+  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const archivadas = req.nextUrl.searchParams.get('archivadas') === '1'
   const tareas = await prisma.tarea.findMany({
     where: { archivadaAt: archivadas ? { not: null } : null },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { getRoleFromRequest } from '@/lib/auth'
 
 const schema = z.object({
   nombre: z.string().min(1).optional(),
@@ -8,6 +9,7 @@ const schema = z.object({
 })
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
   const body = await req.json()
   const parsed = schema.safeParse(body)
@@ -16,7 +18,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json(col)
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
   const count = await prisma.tarea.count({ where: { columnaId: Number(id) } })
   if (count > 0) return NextResponse.json({ error: 'La columna tiene tareas' }, { status: 400 })

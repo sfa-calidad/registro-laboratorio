@@ -7,9 +7,9 @@ export function getRoleFromCookie(value: string | undefined): Role | null {
   if (!value) return null
   if (value === 'authenticated_supervisor') return 'supervisor'
   if (value === 'authenticated_analista') return 'analista'
-  // legacy cookie format support
-  const legacy = process.env.APP_PASSWORD || 'laboratorio2024'
-  if (value === `authenticated_${legacy}`) return 'supervisor'
+  // legacy cookie format support (only valid if APP_PASSWORD is explicitly configured)
+  const legacy = process.env.APP_PASSWORD
+  if (legacy && value === `authenticated_${legacy}`) return 'supervisor'
   return null
 }
 

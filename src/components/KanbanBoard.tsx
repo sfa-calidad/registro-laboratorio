@@ -6,6 +6,7 @@ type Analista = { id: number; nombre: string; apellido: string }
 type Columna = { id: number; nombre: string; orden: number }
 type Etiqueta = { texto: string; color: string }
 type Nota = { texto: string; mostrarEnTarjeta: boolean }
+type ChecklistItem = { texto: string; hecho: boolean }
 type Tarea = {
   id: number
   titulo: string
@@ -22,6 +23,8 @@ type Tarea = {
   etiquetas: string | null
   notas: string | null
   archivadaAt: string | Date | null
+  checklist: string | null
+  mostrarChecklist: boolean
 }
 
 const COLORES_ETIQUETA = ['#8bc53f', '#e0a32a', '#b6394a', '#2b332a', '#3b82f6', '#a855f7']
@@ -32,6 +35,11 @@ function parseEtiquetas(json: string | null): Etiqueta[] {
 }
 
 function parseNotas(json: string | null): Nota[] {
+  if (!json) return []
+  try { return JSON.parse(json) } catch { return [] }
+}
+
+function parseChecklist(json: string | null): ChecklistItem[] {
   if (!json) return []
   try { return JSON.parse(json) } catch { return [] }
 }
@@ -60,6 +68,7 @@ function emptyForm() {
     titulo: '', descripcion: '', prioridad: '' as string, fechaVencimiento: '',
     analistaId1: '' as string, analistaId2: '' as string,
     etiquetas: [] as Etiqueta[], notas: [] as Nota[],
+    checklist: [] as ChecklistItem[], mostrarChecklist: false,
   }
 }
 
@@ -88,12 +97,14 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
   const [newEtiquetaColor, setNewEtiquetaColor] = useState(COLORES_ETIQUETA[0])
   const [newNotaTexto, setNewNotaTexto] = useState('')
   const [newNotaMostrar, setNewNotaMostrar] = useState(false)
+  const [newChecklistTexto, setNewChecklistTexto] = useState('')
 
   function openCreate(columnaId: number) {
     setForm(emptyForm())
     setNewEtiquetaTexto('')
     setNewNotaTexto('')
     setNewNotaMostrar(false)
+    setNewChecklistTexto('')
     setModal({ mode: 'create', columnaId })
   }
 
@@ -107,7 +118,10 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       analistaId2: tarea.analistaId2 ? String(tarea.analistaId2) : '',
       etiquetas: parseEtiquetas(tarea.etiquetas),
       notas: parseNotas(tarea.notas),
+      checklist: parseChecklist(tarea.checklist),
+      mostrarChecklist: tarea.mostrarChecklist,
     })
+    setNewChecklistTexto('')
     setModal({ mode: 'edit', tarea })
   }
 
@@ -132,6 +146,34 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
     setForm(f => ({ ...f, notas: f.notas.filter((_, i) => i !== idx) }))
   }
 
+  function addChecklistItem() {
+    if (!newChecklistTexto.trim()) return
+    setForm(f => ({ ...f, checklist: [...f.checklist, { texto: newChecklistTexto.trim(), hecho: false }] }))
+    setNewChecklistTexto('')
+  }
+
+  function removeChecklistItem(idx: number) {
+    setForm(f => ({ ...f, checklist: f.checklist.filter((_, i) => i !== idx) }))
+  }
+
+  function toggleChecklistItem(idx: number) {
+    setForm(f => ({ ...f, checklist: f.checklist.map((c, i) => i === idx ? { ...c, hecho: !c.hecho } : c) }))
+  }
+
+  async function toggleCardChecklistItem(tarea: Tarea, idx: number) {
+    const items = parseChecklist(tarea.checklist).map((c, i) => i === idx ? { ...c, hecho: !c.hecho } : c)
+    const res = await fetch(`/api/tareas/${tarea.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ checklist: JSON.stringify(items) }),
+    })
+    if (res.ok) {
+      const t = await res.json()
+      setTareas(prev => prev.map(x => x.id === t.id ? t : x))
+      if (previewTarea?.id === t.id) setPreviewTarea(t)
+    }
+  }
+
   async function saveTask() {
     setSaving(true)
     const payload = {
@@ -143,6 +185,8 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       analistaId2: form.analistaId2 ? Number(form.analistaId2) : null,
       etiquetas: form.etiquetas.length ? JSON.stringify(form.etiquetas) : null,
       notas: form.notas.length ? JSON.stringify(form.notas) : null,
+      checklist: form.checklist.length ? JSON.stringify(form.checklist) : null,
+      mostrarChecklist: form.mostrarChecklist,
     }
 
     if (modal?.mode === 'create') {
@@ -307,6 +351,8 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                 {colTareas.map(t => {
                   const tEtiquetas = parseEtiquetas(t.etiquetas)
                   const tNotasVisibles = parseNotas(t.notas).filter(n => n.mostrarEnTarjeta)
+                  const tChecklist = parseChecklist(t.checklist)
+                  const tChecklistDone = tChecklist.filter(c => c.hecho).length
                   return (
                   <div
                     key={t.id}
@@ -337,6 +383,22 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                       <div className="mb-2 space-y-0.5">
                         {tNotasVisibles.map((n, idx) => (
                           <p key={idx} className="text-xs text-gray-500 italic line-clamp-2">📌 {n.texto}</p>
+                        ))}
+                      </div>
+                    )}
+                    {t.mostrarChecklist && tChecklist.length > 0 && (
+                      <div className="mb-2 space-y-0.5" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-brand-green" style={{ width: `${tChecklist.length ? (tChecklistDone / tChecklist.length) * 100 : 0}%` }} />
+                          </div>
+                          <span>{tChecklistDone}/{tChecklist.length}</span>
+                        </div>
+                        {tChecklist.map((c, idx) => (
+                          <label key={idx} className="flex items-center gap-1.5 text-xs text-gray-600">
+                            <input type="checkbox" checked={c.hecho} onChange={() => toggleCardChecklistItem(t, idx)} />
+                            <span className={c.hecho ? 'line-through text-gray-400' : ''}>{c.texto}</span>
+                          </label>
                         ))}
                       </div>
                     )}
@@ -554,6 +616,38 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                   <button type="button" onClick={addNota} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg">Agregar nota</button>
                 </div>
               </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Lista de comprobación</label>
+                {form.checklist.length > 0 && (
+                  <ul className="space-y-1 mt-1 mb-2">
+                    {form.checklist.map((c, idx) => (
+                      <li key={idx} className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg px-2 py-1">
+                        <label className="flex items-center gap-1.5 flex-1">
+                          <input type="checkbox" checked={c.hecho} onChange={() => toggleChecklistItem(idx)} />
+                          <span className={c.hecho ? 'line-through text-gray-400' : ''}>{c.texto}</span>
+                        </label>
+                        <button onClick={() => removeChecklistItem(idx)} className="text-gray-400 hover:text-red-500">×</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={newChecklistTexto}
+                    onChange={e => setNewChecklistTexto(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addChecklistItem())}
+                    placeholder="Nuevo ítem"
+                    className="flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+                  />
+                  <button type="button" onClick={addChecklistItem} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg">Agregar</button>
+                </div>
+                <label className="flex items-center gap-1.5 text-xs text-gray-600 mt-1.5">
+                  <input type="checkbox" checked={form.mostrarChecklist} onChange={e => setForm(f => ({ ...f, mostrarChecklist: e.target.checked }))} />
+                  Mostrar lista en la tarjeta
+                </label>
+              </div>
             </div>
             <div className="p-5 border-t flex justify-end gap-2">
               <button onClick={() => setModal(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
@@ -596,6 +690,16 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                 <div className="space-y-1 border-t pt-2">
                   {parseNotas(previewTarea.notas).map((n, idx) => (
                     <p key={idx} className="text-xs text-gray-500 italic">📌 {n.texto}</p>
+                  ))}
+                </div>
+              )}
+              {parseChecklist(previewTarea.checklist).length > 0 && (
+                <div className="space-y-1 border-t pt-2">
+                  {parseChecklist(previewTarea.checklist).map((c, idx) => (
+                    <label key={idx} className="flex items-center gap-1.5 text-sm">
+                      <input type="checkbox" checked={c.hecho} onChange={() => toggleCardChecklistItem(previewTarea, idx)} />
+                      <span className={c.hecho ? 'line-through text-gray-400' : 'text-gray-700'}>{c.texto}</span>
+                    </label>
                   ))}
                 </div>
               )}
