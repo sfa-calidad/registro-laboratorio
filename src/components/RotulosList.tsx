@@ -173,19 +173,6 @@ function buildLabelHTML(tipo: string, data: Record<string, string>, config: { et
         ['Operador', data.operador || ''],
       ]
 
-  const tipoLabel: Record<string, string> = {
-    INGRESOS: 'MUESTRA DE INGRESO',
-    SALIDAS: 'MUESTRA DE SALIDA',
-    SFA_INGRESO: 'SFA – INGRESO',
-    SFA_SALIDA: 'SFA – SALIDA',
-    MUESTRA_ESP: 'MUESTRA ESPECIAL',
-    DHSH: 'DHSH – MOVIMIENTO INTERNO',
-    OLEOCHEM: 'OLEOCHEM',
-    CONJUNTO_EXP: 'CONJUNTO EXPORTACIÓN',
-    SFF: 'SFF',
-    ME_INGLES: 'SAMPLE LABEL',
-  }
-
   const observaciones = data.observacion || data.observaciones || ''
 
   return `<!DOCTYPE html>
@@ -200,9 +187,8 @@ function buildLabelHTML(tipo: string, data: Record<string, string>, config: { et
     body { font-family: Arial, sans-serif; font-size: ${fs}pt; margin: 0; padding: 0; background: #fff !important; color: #000 !important; color-scheme: light; }
     .label { border: 1px solid #000; padding: 3px; width: calc(${w}mm - 5mm); min-height: calc(${h}mm - 5mm); display: flex; flex-direction: column; }
     .header { display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 3px; gap: 2px; text-align: center; }
-    .logo { max-height: ${fs * 2.5}pt; max-width: 60%; object-fit: contain; }
+    .logo { max-height: ${fs * 4}pt; max-width: 80%; object-fit: contain; }
     .company { font-size: ${fs + 3}pt; font-weight: bold; }
-    .tipo { font-size: ${fs}pt; font-weight: bold; color: #333; }
     .body { display: flex; flex: 1; gap: 4px; }
     table { width: 100%; border-collapse: collapse; flex: 1; }
     td { padding: 1px 3px; vertical-align: top; line-height: 1.4; }
@@ -219,7 +205,6 @@ function buildLabelHTML(tipo: string, data: Record<string, string>, config: { et
   <div class="label">
     <div class="header">
       ${logo ? `<img src="${logo}" class="logo" alt="logo" />` : `<div class="company">${empresa}</div>`}
-      <div class="tipo">${tipoLabel[tipo] || tipo}</div>
     </div>
     <div class="body">
       <table>
