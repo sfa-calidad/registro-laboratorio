@@ -109,7 +109,8 @@ model Tarea {
 
 model NotaTablero {
   id        Int      @id @default(autoincrement())
-  texto     String
+  titulo    String?
+  texto     String?
   autor     String
   createdAt DateTime @default(now())
 }

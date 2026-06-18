@@ -4,7 +4,10 @@ import { z } from 'zod'
 import { getRoleFromRequest } from '@/lib/auth'
 
 const schema = z.object({
-  texto: z.string().min(1).max(500),
+  titulo: z.string().max(120).nullable().optional(),
+  texto: z.string().max(1000).nullable().optional(),
+}).refine(d => (d.titulo && d.titulo.trim()) || (d.texto && d.texto.trim()), {
+  message: 'Debe completar al menos el título o el texto',
 })
 
 export async function GET(req: NextRequest) {
@@ -22,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
 
   const nota = await prisma.notaTablero.create({
-    data: { texto: parsed.data.texto, autor: role },
+    data: { titulo: parsed.data.titulo || null, texto: parsed.data.texto || null, autor: role },
   })
   return NextResponse.json(nota, { status: 201 })
 }

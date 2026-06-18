@@ -39,71 +39,75 @@ export default async function Dashboard() {
     <div>
       <h2 className="text-2xl font-bold text-brand-dark mb-6">Dashboard</h2>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Ingresos hoy" value={ingresosHoy} color="green" />
-        <StatCard label="Despachos hoy" value={despachosHoy} color="mustard" />
-        <StatCard label="Tareas pendientes" value={tareasPendientes} color="dark" />
-        <StatCard label="Tareas vencidas" value={tareasVencidas} color="red" />
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatCard label="Ingresos hoy" value={ingresosHoy} color="green" />
+            <StatCard label="Despachos hoy" value={despachosHoy} color="mustard" />
+            <StatCard label="Tareas pendientes" value={tareasPendientes} color="dark" />
+            <StatCard label="Tareas vencidas" value={tareasVencidas} color="red" />
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-semibold text-gray-700 mb-3">Últimos ingresos</h3>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-500 border-b">
-                <th className="text-left pb-2">HR/Remito</th>
-                <th className="text-left pb-2">Origen</th>
-                <th className="text-left pb-2">Producto</th>
-                <th className="text-left pb-2">Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ultIngresos.map((i) => (
-                <tr key={i.id} className="border-b last:border-0">
-                  <td className="py-2 font-mono text-xs">{i.hrRemito}</td>
-                  <td className="py-2">{i.origen}</td>
-                  <td className="py-2">{i.producto1}</td>
-                  <td className="py-2">{formatDate(i.fecha)}</td>
-                </tr>
-              ))}
-              {ultIngresos.length === 0 && (
-                <tr><td colSpan={4} className="py-4 text-center text-gray-400">Sin registros</td></tr>
-              )}
-            </tbody>
-          </table>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl shadow p-4">
+              <h3 className="font-semibold text-gray-700 mb-3">Últimos ingresos</h3>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 border-b">
+                    <th className="text-left pb-2">HR/Remito</th>
+                    <th className="text-left pb-2">Origen</th>
+                    <th className="text-left pb-2">Producto</th>
+                    <th className="text-left pb-2">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ultIngresos.map((i) => (
+                    <tr key={i.id} className="border-b last:border-0">
+                      <td className="py-2 font-mono text-xs">{i.hrRemito}</td>
+                      <td className="py-2">{i.origen}</td>
+                      <td className="py-2">{i.producto1}</td>
+                      <td className="py-2">{formatDate(i.fecha)}</td>
+                    </tr>
+                  ))}
+                  {ultIngresos.length === 0 && (
+                    <tr><td colSpan={4} className="py-4 text-center text-gray-400">Sin registros</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-white rounded-xl shadow p-4">
+              <h3 className="font-semibold text-gray-700 mb-3">Últimos despachos</h3>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-500 border-b">
+                    <th className="text-left pb-2">HR/Contrato</th>
+                    <th className="text-left pb-2">Destino</th>
+                    <th className="text-left pb-2">Producto</th>
+                    <th className="text-left pb-2">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ultDespachos.map((d) => (
+                    <tr key={d.id} className="border-b last:border-0">
+                      <td className="py-2 font-mono text-xs">{d.hrContrato}</td>
+                      <td className="py-2">{d.destino}</td>
+                      <td className="py-2">{d.producto}</td>
+                      <td className="py-2">{formatDate(d.fecha)}</td>
+                    </tr>
+                  ))}
+                  {ultDespachos.length === 0 && (
+                    <tr><td colSpan={4} className="py-4 text-center text-gray-400">Sin registros</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-semibold text-gray-700 mb-3">Últimos despachos</h3>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-500 border-b">
-                <th className="text-left pb-2">HR/Contrato</th>
-                <th className="text-left pb-2">Destino</th>
-                <th className="text-left pb-2">Producto</th>
-                <th className="text-left pb-2">Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ultDespachos.map((d) => (
-                <tr key={d.id} className="border-b last:border-0">
-                  <td className="py-2 font-mono text-xs">{d.hrContrato}</td>
-                  <td className="py-2">{d.destino}</td>
-                  <td className="py-2">{d.producto}</td>
-                  <td className="py-2">{formatDate(d.fecha)}</td>
-                </tr>
-              ))}
-              {ultDespachos.length === 0 && (
-                <tr><td colSpan={4} className="py-4 text-center text-gray-400">Sin registros</td></tr>
-              )}
-            </tbody>
-          </table>
+        <div className="lg:col-span-1">
+          <NotasTablero />
         </div>
-      </div>
-
-      <div className="mt-6">
-        <NotasTablero />
       </div>
 
       {estadisticas && (
