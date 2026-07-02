@@ -1,0 +1,43 @@
+{
+  "name": "registro-laboratorio-desktop",
+  "version": "1.0.0",
+  "description": "Aplicación de escritorio de Registro Laboratorio SFA",
+  "main": "main.js",
+  "author": "Laboratorio SFA",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never",
+    "dist:portable": "electron-builder --win portable --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "ar.com.laboratoriosfa.registro",
+    "productName": "Registro Laboratorio SFA",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "config.json"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Registro Laboratorio SFA"
+    }
+  }
+}
