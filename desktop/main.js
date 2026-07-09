@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, Menu, dialog } = require('electron')
+const { app, BrowserWindow, shell, Menu, dialog, session } = require('electron')
 const path = require('path')
 const fs = require('fs')
 
@@ -111,4 +111,17 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// Al cerrar la app se borran las cookies (la sesión iniciada), así al volver
+// a abrirla siempre pide la contraseña de nuevo.
+let cookiesCleared = false
+app.on('before-quit', (e) => {
+  if (cookiesCleared) return
+  e.preventDefault()
+  cookiesCleared = true
+  session.defaultSession
+    .clearStorageData({ storages: ['cookies'] })
+    .catch(() => {})
+    .finally(() => app.quit())
 })

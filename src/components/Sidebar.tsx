@@ -73,16 +73,18 @@ const baseLinks = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const onLogin = pathname.startsWith('/login')
   const [role, setRole] = useState<Role>(null)
   const [open, setOpen] = useState(false)
   const [logo, setLogo] = useState('')
   const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
+    if (onLogin) return
     fetch('/api/me').then(r => r.json()).then(d => setRole(d.role)).catch(() => {})
     fetch('/api/configuracion').then(r => r.json()).then(d => setLogo(d.logo || '')).catch(() => {})
     setCollapsed(localStorage.getItem('sidebar_collapsed') === '1')
-  }, [])
+  }, [onLogin])
 
   function toggleCollapsed() {
     setCollapsed(c => {
@@ -143,6 +145,9 @@ export default function Sidebar() {
 
   const navContent = renderNav(false)
   const footerContent = renderFooter(false)
+
+  // En el login todavía no hay sesión: no se muestra la navegación de la app.
+  if (onLogin) return null
 
   return (
     <>
