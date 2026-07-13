@@ -82,9 +82,13 @@ function createWindow() {
 
   mainWindow.loadURL(APP_URL)
 
-  // Los links externos (que salen del dominio de la app) se abren en el navegador.
+  // Las ventanas internas se permiten (la impresión clásica usa about:blank);
+  // los links externos (fuera del dominio de la app) se abren en el navegador.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
+    if (url === 'about:blank' || (APP_URL && url.startsWith(APP_URL))) {
+      return { action: 'allow' }
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) shell.openExternal(url)
     return { action: 'deny' }
   })
 
@@ -119,35 +123,60 @@ ipcMain.handle('rotulos:print-label', async (_e, opts) => {
   const w = Number(widthMm) > 0 ? Number(widthMm) : 100
   const h = Number(heightMm) > 0 ? Number(heightMm) : 45
 
-  return await new Promise((resolve) => {
-    const printWin = new BrowserWindow({
-      show: false,
-      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
-    })
-    let settled = false
-    const done = (success, failureReason) => {
-      if (settled) return
-      settled = true
-      if (!printWin.isDestroyed()) printWin.destroy()
-      resolve({ success, failureReason: failureReason || '' })
+  // Resuelve la impresora: la elegida, o la predeterminada real del sistema.
+  // "silent" con deviceName vacío falla en Windows ("Invalid printer settings"),
+  // así que siempre se pasa un nombre concreto y validado.
+  let printer = typeof deviceName === 'string' ? deviceName : ''
+  const anyWin = mainWindow || BrowserWindow.getAllWindows()[0]
+  if (anyWin) {
+    const printers = await anyWin.webContents.getPrintersAsync()
+    if (printers.length === 0) {
+      return { success: false, failureReason: 'No hay impresoras instaladas en esta PC' }
     }
-    printWin.webContents.once('did-finish-load', () => {
-      printWin.webContents.print(
-        {
-          silent: true,
-          deviceName: typeof deviceName === 'string' && deviceName ? deviceName : undefined,
-          printBackground: true,
-          margins: { marginType: 'none' },
-          // pageSize va en micrones: mm * 1000 (tamaño real de la etiqueta).
-          pageSize: { width: Math.round(w * 1000), height: Math.round(h * 1000) },
-        },
-        (success, failureReason) => done(success, failureReason)
-      )
+    if (!printer) {
+      printer = (printers.find((p) => p.isDefault) || printers[0]).name
+    } else if (!printers.some((p) => p.name === printer)) {
+      return { success: false, failureReason: `La impresora "${printer}" no está instalada en esta PC` }
+    }
+  }
+
+  const attempt = (pageSize) =>
+    new Promise((resolve) => {
+      const printWin = new BrowserWindow({
+        show: false,
+        webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+      })
+      let settled = false
+      const done = (success, failureReason) => {
+        if (settled) return
+        settled = true
+        if (!printWin.isDestroyed()) printWin.destroy()
+        resolve({ success, failureReason: failureReason || '' })
+      }
+      printWin.webContents.once('did-finish-load', () => {
+        printWin.webContents.print(
+          {
+            silent: true,
+            deviceName: printer || undefined,
+            printBackground: true,
+            margins: { marginType: 'none' },
+            ...(pageSize ? { pageSize } : {}),
+          },
+          (success, failureReason) => done(success, failureReason)
+        )
+      })
+      printWin.webContents.once('did-fail-load', () => done(false, 'No se pudo cargar el rótulo'))
+      setTimeout(() => done(false, 'Tiempo de espera agotado'), 30000)
+      printWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
     })
-    printWin.webContents.once('did-fail-load', () => done(false, 'No se pudo cargar el rótulo'))
-    setTimeout(() => done(false, 'Tiempo de espera agotado'), 30000)
-    printWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
-  })
+
+  // Primero con el tamaño real de la etiqueta (micrones = mm * 1000); si el
+  // driver lo rechaza, reintenta con el tamaño de papel configurado en el driver.
+  let result = await attempt({ width: Math.round(w * 1000), height: Math.round(h * 1000) })
+  if (!result.success) {
+    result = await attempt(null)
+  }
+  return result
 })
 
 app.whenReady().then(() => {
