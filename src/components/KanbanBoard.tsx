@@ -227,20 +227,29 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       return
     }
 
-    const res = await fetch(`/api/tareas/${tarea.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        columnaId: target.id,
-        completadaAt: isCompleting ? new Date().toISOString() : null,
-      }),
-    })
-    if (res.ok) {
-      const t = await res.json()
-      setTareas(prev => prev.map(x => x.id === t.id ? t : x))
-    } else {
-      const err = await res.json().catch(() => null)
-      if (err?.error) alert(err.error)
+    // Actualización optimista: la tarjeta se mueve al instante y solo se
+    // revierte si el servidor rechaza el cambio.
+    const previa = tarea
+    const completadaAt = isCompleting ? new Date().toISOString() : null
+    setTareas(prev => prev.map(x => x.id === tarea.id ? { ...x, columnaId: target.id, completadaAt } : x))
+
+    try {
+      const res = await fetch(`/api/tareas/${tarea.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ columnaId: target.id, completadaAt }),
+      })
+      if (res.ok) {
+        const t = await res.json()
+        setTareas(prev => prev.map(x => x.id === t.id ? t : x))
+      } else {
+        setTareas(prev => prev.map(x => x.id === previa.id ? previa : x))
+        const err = await res.json().catch(() => null)
+        if (err?.error) alert(err.error)
+      }
+    } catch {
+      setTareas(prev => prev.map(x => x.id === previa.id ? previa : x))
+      alert('No se pudo mover la tarea: sin conexión con el servidor.')
     }
   }
 

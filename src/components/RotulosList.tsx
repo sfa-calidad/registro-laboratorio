@@ -25,6 +25,20 @@ type Rotulo = {
   despacho: { hrContrato: string; destino: string } | null
 }
 
+// API que expone la app de escritorio (Electron) para imprimir sin diálogo.
+type DesktopPrinter = {
+  getPrinters: () => Promise<{ name: string; isDefault: boolean }[]>
+  printLabel: (opts: { html: string; deviceName?: string; widthMm: number; heightMm: number }) => Promise<{ success: boolean; failureReason: string }>
+}
+
+declare global {
+  interface Window {
+    desktopPrinter?: DesktopPrinter
+  }
+}
+
+const PRINTER_STORAGE_KEY = 'rotulos_impresora'
+
 export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   const router = useRouter()
   const [config, setConfig] = useState({
@@ -35,13 +49,55 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
     logo: '',
   })
   const [previewRotulo, setPreviewRotulo] = useState<Rotulo | null>(null)
+  const [printers, setPrinters] = useState<{ name: string; isDefault: boolean }[]>([])
+  const [selectedPrinter, setSelectedPrinter] = useState('')
+  const [quickPrintAvailable, setQuickPrintAvailable] = useState(false)
+  const [quickMsg, setQuickMsg] = useState<{ text: string; error: boolean } | null>(null)
 
   useEffect(() => {
     fetch('/api/configuracion')
       .then((r) => r.json())
       .then((data) => setConfig(data))
       .catch(() => {})
+
+    // Dentro de la app de escritorio se habilita la impresión rápida (sin diálogo).
+    if (window.desktopPrinter) {
+      setQuickPrintAvailable(true)
+      setSelectedPrinter(localStorage.getItem(PRINTER_STORAGE_KEY) || '')
+      window.desktopPrinter.getPrinters().then(setPrinters).catch(() => {})
+    }
   }, [])
+
+  function choosePrinter(name: string) {
+    setSelectedPrinter(name)
+    localStorage.setItem(PRINTER_STORAGE_KEY, name)
+  }
+
+  function showQuickMsg(text: string, error = false) {
+    setQuickMsg({ text, error })
+    setTimeout(() => setQuickMsg(null), 4000)
+  }
+
+  async function handleQuickPrint(rotulo: Rotulo) {
+    if (!window.desktopPrinter) return
+    const data = rotulo.data as Record<string, string>
+    const html = buildLabelHTML(rotulo.tipo, data, config)
+    try {
+      const res = await window.desktopPrinter.printLabel({
+        html,
+        deviceName: selectedPrinter || undefined,
+        widthMm: Number(config.etiquetaAncho) || 100,
+        heightMm: Number(config.etiquetaAlto) || 45,
+      })
+      if (res.success) {
+        showQuickMsg(`Rótulo #${rotulo.id} enviado a ${selectedPrinter || 'la impresora predeterminada'}`)
+      } else {
+        showQuickMsg(`No se pudo imprimir: ${res.failureReason || 'error desconocido'}`, true)
+      }
+    } catch {
+      showQuickMsg('No se pudo imprimir el rótulo', true)
+    }
+  }
 
   function handlePrint(rotulo: Rotulo) {
     const data = rotulo.data as Record<string, string>
@@ -56,6 +112,21 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
 
   return (
     <div>
+      {quickPrintAvailable && (
+        <div className="flex items-center gap-2 mb-3 text-sm">
+          <span className="text-gray-500">⚡ Impresión rápida en:</span>
+          <select
+            value={selectedPrinter}
+            onChange={(e) => choosePrinter(e.target.value)}
+            className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+          >
+            <option value="">Impresora predeterminada</option>
+            {printers.map((p) => (
+              <option key={p.name} value={p.name}>{p.name}{p.isDefault ? ' (predeterminada)' : ''}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-base">
           <thead className="bg-gray-50 border-b">
@@ -92,6 +163,15 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
                   >
                     Ver
                   </button>
+                  {quickPrintAvailable && (
+                    <button
+                      onClick={() => handleQuickPrint(r)}
+                      className="bg-brand-green text-white hover:bg-brand-green-dark text-sm font-medium px-2.5 py-1 rounded-lg mr-2"
+                      title="Imprimir directo en la Zebra, sin diálogo"
+                    >
+                      ⚡ Rápida
+                    </button>
+                  )}
                   <button
                     onClick={() => handlePrint(r)}
                     className="text-brand-green-dark hover:text-brand-green text-sm font-medium"
@@ -121,6 +201,12 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
           </tbody>
         </table>
       </div>
+
+      {quickMsg && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-lg text-sm text-white animate-fade-in ${quickMsg.error ? 'bg-brand-red' : 'bg-brand-dark'}`}>
+          {quickMsg.error ? '⚠️ ' : '🖨️ '}{quickMsg.text}
+        </div>
+      )}
 
       {previewRotulo && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setPreviewRotulo(null)}>

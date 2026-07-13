@@ -58,5 +58,10 @@ npm start
   viven en la base central en la nube, igual que en el navegador.
 - Al cerrar la aplicación se cierra la sesión automáticamente (se borran las
   cookies), así que al abrirla de nuevo siempre pide la contraseña.
+- **Impresión rápida de rótulos**: dentro de la app de escritorio, la página
+  de Rótulos muestra el botón "⚡ Rápida", que manda la etiqueta directo a la
+  impresora elegida (por ejemplo la Zebra) sin abrir el diálogo de impresión.
+  La impresora se elige una vez en el selector de esa misma página y queda
+  recordada en esa PC. Requiere regenerar el instalador para activarla.
 - Para cambiar a qué servidor apunta, basta con editar `config.json` y volver a
   generar el instalador (o definir la variable de entorno `APP_URL`).

@@ -1,2 +1,8 @@
-// Preload vacío por ahora. Existe para mantener contextIsolation activo (seguridad).
-// Acá se podría exponer, en el futuro, alguna API nativa controlada al front-end.
+const { contextBridge, ipcRenderer } = require('electron')
+
+// API mínima expuesta a la app web para "impresión rápida": imprimir un
+// rótulo directo a la impresora (sin diálogo) y listar impresoras instaladas.
+contextBridge.exposeInMainWorld('desktopPrinter', {
+  getPrinters: () => ipcRenderer.invoke('rotulos:get-printers'),
+  printLabel: (opts) => ipcRenderer.invoke('rotulos:print-label', opts),
+})
