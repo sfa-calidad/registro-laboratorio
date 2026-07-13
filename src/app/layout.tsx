@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Sidebar from '@/components/Sidebar'
+import SessionWatcher from '@/components/SessionWatcher'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body className={inter.className}>
+        <SessionWatcher />
         <div className="flex flex-col md:flex-row h-screen bg-brand-bg">
           <Sidebar />
           <main className="flex-1 overflow-auto p-3 md:p-6">

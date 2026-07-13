@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { buildSessionCookieValue, SESSION_MAX_AGE_SECONDS, type Role } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
   const { password, role } = await req.json()
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Login no configurado' }, { status: 503 })
   }
 
-  let matchedRole: string | null = null
+  let matchedRole: Role | null = null
   if (role === 'supervisor' && password === supervisorPwd) {
     matchedRole = 'supervisor'
   } else if (role === 'analista' && password === analistaPwd) {
@@ -23,11 +24,11 @@ export async function POST(req: NextRequest) {
   }
 
   const res = NextResponse.json({ ok: true, role: matchedRole })
-  res.cookies.set('lab_session', `authenticated_${matchedRole}`, {
+  res.cookies.set('lab_session', buildSessionCookieValue(matchedRole), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: SESSION_MAX_AGE_SECONDS,
     path: '/',
   })
   return res

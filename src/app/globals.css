@@ -24,6 +24,17 @@
   --color-brand-dark: #2b332a;
   --color-brand-dark-hover: #3a4538;
   --color-brand-bg: #eaeae6;
+
+  --animate-fade-in: fade-in 0.25s ease-out both;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 }
 
 body {

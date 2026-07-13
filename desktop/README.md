@@ -56,5 +56,7 @@ npm start
 
 - Es un envoltorio de la app web: no incluye base de datos local. Los datos
   viven en la base central en la nube, igual que en el navegador.
+- Al cerrar la aplicación se cierra la sesión automáticamente (se borran las
+  cookies), así que al abrirla de nuevo siempre pide la contraseña.
 - Para cambiar a qué servidor apunta, basta con editar `config.json` y volver a
   generar el instalador (o definir la variable de entorno `APP_URL`).
