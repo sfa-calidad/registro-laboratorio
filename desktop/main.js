@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, Menu, dialog, session } = require('electron')
+const { app, BrowserWindow, shell, Menu, dialog, session, ipcMain } = require('electron')
 const path = require('path')
 const fs = require('fs')
 
@@ -101,6 +101,54 @@ function createWindow() {
     ))
   })
 }
+
+// --- Impresión rápida de rótulos (sin diálogo) -----------------------------
+
+ipcMain.handle('rotulos:get-printers', async () => {
+  const win = mainWindow || BrowserWindow.getAllWindows()[0]
+  if (!win) return []
+  const printers = await win.webContents.getPrintersAsync()
+  return printers.map((p) => ({ name: p.name, isDefault: !!p.isDefault }))
+})
+
+ipcMain.handle('rotulos:print-label', async (_e, opts) => {
+  const { html, deviceName, widthMm, heightMm } = opts || {}
+  if (typeof html !== 'string' || !html) {
+    return { success: false, failureReason: 'Rótulo vacío' }
+  }
+  const w = Number(widthMm) > 0 ? Number(widthMm) : 100
+  const h = Number(heightMm) > 0 ? Number(heightMm) : 45
+
+  return await new Promise((resolve) => {
+    const printWin = new BrowserWindow({
+      show: false,
+      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+    })
+    let settled = false
+    const done = (success, failureReason) => {
+      if (settled) return
+      settled = true
+      if (!printWin.isDestroyed()) printWin.destroy()
+      resolve({ success, failureReason: failureReason || '' })
+    }
+    printWin.webContents.once('did-finish-load', () => {
+      printWin.webContents.print(
+        {
+          silent: true,
+          deviceName: typeof deviceName === 'string' && deviceName ? deviceName : undefined,
+          printBackground: true,
+          margins: { marginType: 'none' },
+          // pageSize va en micrones: mm * 1000 (tamaño real de la etiqueta).
+          pageSize: { width: Math.round(w * 1000), height: Math.round(h * 1000) },
+        },
+        (success, failureReason) => done(success, failureReason)
+      )
+    })
+    printWin.webContents.once('did-fail-load', () => done(false, 'No se pudo cargar el rótulo'))
+    setTimeout(() => done(false, 'Tiempo de espera agotado'), 30000)
+    printWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+  })
+})
 
 app.whenReady().then(() => {
   createWindow()
