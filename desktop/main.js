@@ -140,7 +140,7 @@ ipcMain.handle('rotulos:print-label', async (_e, opts) => {
     }
   }
 
-  const attempt = (pageSize) =>
+  const attempt = (extra) =>
     new Promise((resolve) => {
       const printWin = new BrowserWindow({
         show: false,
@@ -160,7 +160,7 @@ ipcMain.handle('rotulos:print-label', async (_e, opts) => {
             deviceName: printer || undefined,
             printBackground: true,
             margins: { marginType: 'none' },
-            ...(pageSize ? { pageSize } : {}),
+            ...extra,
           },
           (success, failureReason) => done(success, failureReason)
         )
@@ -170,13 +170,21 @@ ipcMain.handle('rotulos:print-label', async (_e, opts) => {
       printWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
     })
 
-  // Primero con el tamaño real de la etiqueta (micrones = mm * 1000); si el
-  // driver lo rechaza, reintenta con el tamaño de papel configurado en el driver.
-  let result = await attempt({ width: Math.round(w * 1000), height: Math.round(h * 1000) })
-  if (!result.success) {
-    result = await attempt(null)
+  // Electron en Windows a veces rechaza la impresión silenciosa según qué
+  // opciones reciba ("Invalid printer settings", electron#39092). Se intenta
+  // de más específico a más simple: tamaño real de etiqueta + dpi (203 es la
+  // resolución típica de las Zebra), solo tamaño, solo dpi, y básico.
+  const pageSize = { width: Math.round(w * 1000), height: Math.round(h * 1000) } // micrones
+  const dpi = { horizontal: 203, vertical: 203 }
+  let result = { success: false, failureReason: '' }
+  for (const extra of [{ pageSize, dpi }, { pageSize }, { dpi }, {}]) {
+    result = await attempt(extra)
+    if (result.success) return result
   }
-  return result
+  return {
+    success: false,
+    failureReason: `${result.failureReason || 'error desconocido'} (impresora: ${printer || 'predeterminada'})`,
+  }
 })
 
 app.whenReady().then(() => {

@@ -39,6 +39,16 @@ declare global {
 
 const PRINTER_STORAGE_KEY = 'rotulos_impresora'
 
+function PrinterIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 6 2 18 2 18 9" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
+    </svg>
+  )
+}
+
 export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   const router = useRouter()
   const [config, setConfig] = useState({
@@ -114,7 +124,7 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
     <div>
       {quickPrintAvailable && (
         <div className="flex items-center gap-2 mb-3 text-sm">
-          <span className="text-gray-500">⚡ Impresión rápida en:</span>
+          <span className="text-gray-500 flex items-center gap-1.5"><PrinterIcon /> Impresión rápida en:</span>
           <select
             value={selectedPrinter}
             onChange={(e) => choosePrinter(e.target.value)}
@@ -166,10 +176,10 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
                   {quickPrintAvailable && (
                     <button
                       onClick={() => handleQuickPrint(r)}
-                      className="bg-brand-green text-white hover:bg-brand-green-dark text-sm font-medium px-2.5 py-1 rounded-lg mr-2"
+                      className="bg-brand-green text-white hover:bg-brand-green-dark text-sm font-medium px-2.5 py-1 rounded-lg mr-2 inline-flex items-center gap-1.5 align-middle"
                       title="Imprimir directo en la Zebra, sin diálogo"
                     >
-                      ⚡ Rápida
+                      <PrinterIcon /> Rápida
                     </button>
                   )}
                   <button
