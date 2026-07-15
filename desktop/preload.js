@@ -5,4 +5,5 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('desktopPrinter', {
   getPrinters: () => ipcRenderer.invoke('rotulos:get-printers'),
   printLabel: (opts) => ipcRenderer.invoke('rotulos:print-label', opts),
+  getVersion: () => ipcRenderer.invoke('rotulos:app-version'),
 })

@@ -28,7 +28,9 @@ type Rotulo = {
 // API que expone la app de escritorio (Electron) para imprimir sin diálogo.
 type DesktopPrinter = {
   getPrinters: () => Promise<{ name: string; isDefault: boolean }[]>
-  printLabel: (opts: { html: string; deviceName?: string; widthMm: number; heightMm: number }) => Promise<{ success: boolean; failureReason: string }>
+  printLabel: (opts: { html: string; deviceName?: string; widthMm: number; heightMm: number }) => Promise<{ success: boolean; failureReason: string; usedDialog?: boolean }>
+  // Existe desde la versión 1.1.0 de la app de escritorio.
+  getVersion?: () => Promise<string>
 }
 
 declare global {
@@ -63,6 +65,7 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   const [selectedPrinter, setSelectedPrinter] = useState('')
   const [quickPrintAvailable, setQuickPrintAvailable] = useState(false)
   const [quickMsg, setQuickMsg] = useState<{ text: string; error: boolean } | null>(null)
+  const [desktopVersion, setDesktopVersion] = useState('')
 
   useEffect(() => {
     fetch('/api/configuracion')
@@ -75,6 +78,12 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
       setQuickPrintAvailable(true)
       setSelectedPrinter(localStorage.getItem(PRINTER_STORAGE_KEY) || '')
       window.desktopPrinter.getPrinters().then(setPrinters).catch(() => {})
+      if (window.desktopPrinter.getVersion) {
+        window.desktopPrinter.getVersion().then(setDesktopVersion).catch(() => setDesktopVersion('vieja'))
+      } else {
+        // Instalador anterior a 1.1.0: no tiene los arreglos de impresión.
+        setDesktopVersion('vieja')
+      }
     }
   }, [])
 
@@ -99,7 +108,9 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
         widthMm: Number(config.etiquetaAncho) || 100,
         heightMm: Number(config.etiquetaAlto) || 45,
       })
-      if (res.success) {
+      if (res.success && res.usedDialog) {
+        showQuickMsg('La impresión directa falló en esta PC; se usó el diálogo de impresión')
+      } else if (res.success) {
         showQuickMsg(`Rótulo #${rotulo.id} enviado a ${selectedPrinter || 'la impresora predeterminada'}`)
       } else {
         showQuickMsg(`No se pudo imprimir: ${res.failureReason || 'error desconocido'}`, true)
@@ -123,18 +134,29 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   return (
     <div>
       {quickPrintAvailable && (
-        <div className="flex items-center gap-2 mb-3 text-sm">
-          <span className="text-gray-500 flex items-center gap-1.5"><PrinterIcon /> Impresión rápida en:</span>
-          <select
-            value={selectedPrinter}
-            onChange={(e) => choosePrinter(e.target.value)}
-            className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-          >
-            <option value="">Impresora predeterminada</option>
-            {printers.map((p) => (
-              <option key={p.name} value={p.name}>{p.name}{p.isDefault ? ' (predeterminada)' : ''}</option>
-            ))}
-          </select>
+        <div className="mb-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-gray-500 flex items-center gap-1.5"><PrinterIcon /> Impresión rápida en:</span>
+            <select
+              value={selectedPrinter}
+              onChange={(e) => choosePrinter(e.target.value)}
+              className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+            >
+              <option value="">Impresora predeterminada</option>
+              {printers.map((p) => (
+                <option key={p.name} value={p.name}>{p.name}{p.isDefault ? ' (predeterminada)' : ''}</option>
+              ))}
+            </select>
+            {desktopVersion && desktopVersion !== 'vieja' && (
+              <span className="text-xs text-gray-400">app de escritorio v{desktopVersion}</span>
+            )}
+          </div>
+          {desktopVersion === 'vieja' && (
+            <div className="mt-2 rounded-lg bg-brand-mustard/10 border border-brand-mustard/40 px-3 py-2 text-sm text-brand-mustard-dark inline-block">
+              La app de escritorio instalada es una versión vieja sin los últimos arreglos de impresión.
+              Regenerá el instalador (Actions → &quot;Build desktop (.exe)&quot;) y reinstalalo.
+            </div>
+          )}
         </div>
       )}
       <div className="bg-white rounded-xl shadow overflow-x-auto">

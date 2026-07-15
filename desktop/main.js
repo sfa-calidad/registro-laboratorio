@@ -108,6 +108,8 @@ function createWindow() {
 
 // --- Impresión rápida de rótulos (sin diálogo) -----------------------------
 
+ipcMain.handle('rotulos:app-version', () => app.getVersion())
+
 ipcMain.handle('rotulos:get-printers', async () => {
   const win = mainWindow || BrowserWindow.getAllWindows()[0]
   if (!win) return []
@@ -181,6 +183,33 @@ ipcMain.handle('rotulos:print-label', async (_e, opts) => {
     result = await attempt(extra)
     if (result.success) return result
   }
+
+  // Último recurso: si la impresión silenciosa falló con todas las variantes,
+  // se abre el diálogo de impresión para que la etiqueta pueda salir igual.
+  const dialogResult = await new Promise((resolve) => {
+    const printWin = new BrowserWindow({
+      show: false,
+      webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false },
+    })
+    let settled = false
+    const done = (success, failureReason) => {
+      if (settled) return
+      settled = true
+      if (!printWin.isDestroyed()) printWin.destroy()
+      resolve({ success, failureReason: failureReason || '' })
+    }
+    printWin.webContents.once('did-finish-load', () => {
+      printWin.webContents.print(
+        { silent: false, deviceName: printer || undefined, printBackground: true },
+        (success, failureReason) => done(success, failureReason)
+      )
+    })
+    printWin.webContents.once('did-fail-load', () => done(false, 'No se pudo cargar el rótulo'))
+    setTimeout(() => done(false, 'Tiempo de espera agotado'), 10 * 60 * 1000)
+    printWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+  })
+  if (dialogResult.success) return { success: true, failureReason: '', usedDialog: true }
+
   return {
     success: false,
     failureReason: `${result.failureReason || 'error desconocido'} (impresora: ${printer || 'predeterminada'})`,
