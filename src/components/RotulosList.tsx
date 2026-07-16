@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { formatDate } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { buildLabelZPL, labelRows } from '@/lib/zpl'
 
 const TIPO_LABELS: Record<string, string> = {
   INGRESOS: 'Ingreso',
@@ -28,7 +29,9 @@ type Rotulo = {
 // API que expone la app de escritorio (Electron) para imprimir sin diálogo.
 type DesktopPrinter = {
   getPrinters: () => Promise<{ name: string; isDefault: boolean }[]>
-  printLabel: (opts: { html: string; deviceName?: string; widthMm: number; heightMm: number }) => Promise<{ success: boolean; failureReason: string }>
+  printLabel: (opts: { html: string; zpl?: string; deviceName?: string; widthMm: number; heightMm: number }) => Promise<{ success: boolean; failureReason: string; usedDialog?: boolean; usedZpl?: boolean }>
+  // Existe desde la versión 1.1.0 de la app de escritorio.
+  getVersion?: () => Promise<string>
 }
 
 declare global {
@@ -38,6 +41,16 @@ declare global {
 }
 
 const PRINTER_STORAGE_KEY = 'rotulos_impresora'
+
+function PrinterIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 6 2 18 2 18 9" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
+    </svg>
+  )
+}
 
 export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   const router = useRouter()
@@ -53,6 +66,7 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   const [selectedPrinter, setSelectedPrinter] = useState('')
   const [quickPrintAvailable, setQuickPrintAvailable] = useState(false)
   const [quickMsg, setQuickMsg] = useState<{ text: string; error: boolean } | null>(null)
+  const [desktopVersion, setDesktopVersion] = useState('')
 
   useEffect(() => {
     fetch('/api/configuracion')
@@ -65,6 +79,12 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
       setQuickPrintAvailable(true)
       setSelectedPrinter(localStorage.getItem(PRINTER_STORAGE_KEY) || '')
       window.desktopPrinter.getPrinters().then(setPrinters).catch(() => {})
+      if (window.desktopPrinter.getVersion) {
+        window.desktopPrinter.getVersion().then(setDesktopVersion).catch(() => setDesktopVersion('vieja'))
+      } else {
+        // Instalador anterior a 1.1.0: no tiene los arreglos de impresión.
+        setDesktopVersion('vieja')
+      }
     }
   }, [])
 
@@ -85,11 +105,14 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
     try {
       const res = await window.desktopPrinter.printLabel({
         html,
+        zpl: buildLabelZPL(rotulo.tipo, data, config),
         deviceName: selectedPrinter || undefined,
         widthMm: Number(config.etiquetaAncho) || 100,
         heightMm: Number(config.etiquetaAlto) || 45,
       })
-      if (res.success) {
+      if (res.success && res.usedDialog) {
+        showQuickMsg('La impresión directa falló en esta PC; se usó el diálogo de impresión')
+      } else if (res.success) {
         showQuickMsg(`Rótulo #${rotulo.id} enviado a ${selectedPrinter || 'la impresora predeterminada'}`)
       } else {
         showQuickMsg(`No se pudo imprimir: ${res.failureReason || 'error desconocido'}`, true)
@@ -113,18 +136,29 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   return (
     <div>
       {quickPrintAvailable && (
-        <div className="flex items-center gap-2 mb-3 text-sm">
-          <span className="text-gray-500">⚡ Impresión rápida en:</span>
-          <select
-            value={selectedPrinter}
-            onChange={(e) => choosePrinter(e.target.value)}
-            className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
-          >
-            <option value="">Impresora predeterminada</option>
-            {printers.map((p) => (
-              <option key={p.name} value={p.name}>{p.name}{p.isDefault ? ' (predeterminada)' : ''}</option>
-            ))}
-          </select>
+        <div className="mb-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-gray-500 flex items-center gap-1.5"><PrinterIcon /> Impresión rápida en:</span>
+            <select
+              value={selectedPrinter}
+              onChange={(e) => choosePrinter(e.target.value)}
+              className="border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green"
+            >
+              <option value="">Impresora predeterminada</option>
+              {printers.map((p) => (
+                <option key={p.name} value={p.name}>{p.name}{p.isDefault ? ' (predeterminada)' : ''}</option>
+              ))}
+            </select>
+            {desktopVersion && desktopVersion !== 'vieja' && (
+              <span className="text-xs text-gray-400">app de escritorio v{desktopVersion}</span>
+            )}
+          </div>
+          {desktopVersion === 'vieja' && (
+            <div className="mt-2 rounded-lg bg-brand-mustard/10 border border-brand-mustard/40 px-3 py-2 text-sm text-brand-mustard-dark inline-block">
+              La app de escritorio instalada es una versión vieja sin los últimos arreglos de impresión.
+              Regenerá el instalador (Actions → &quot;Build desktop (.exe)&quot;) y reinstalalo.
+            </div>
+          )}
         </div>
       )}
       <div className="bg-white rounded-xl shadow overflow-x-auto">
@@ -166,10 +200,10 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
                   {quickPrintAvailable && (
                     <button
                       onClick={() => handleQuickPrint(r)}
-                      className="bg-brand-green text-white hover:bg-brand-green-dark text-sm font-medium px-2.5 py-1 rounded-lg mr-2"
+                      className="bg-brand-green text-white hover:bg-brand-green-dark text-sm font-medium px-2.5 py-1 rounded-lg mr-2 inline-flex items-center gap-1.5 align-middle"
                       title="Imprimir directo en la Zebra, sin diálogo"
                     >
-                      ⚡ Rápida
+                      <PrinterIcon /> Rápida
                     </button>
                   )}
                   <button
@@ -239,25 +273,7 @@ function buildLabelHTML(tipo: string, data: Record<string, string>, config: { et
   const empresa = config.empresa || 'Laboratorio SFA'
   const logo = config.logo
 
-  const esSalida = tipo === 'SALIDAS' || tipo === 'SFA_SALIDA'
-
-  const rows = esSalida
-    ? [
-        ['Destino', data.destino || ''],
-        ['Contrato', data.hrContrato || ''],
-        ['Transporte', data.idTransporte || ''],
-        ['Fecha', data.fecha || ''],
-        ['Operador', data.operador || ''],
-      ]
-    : [
-        ['Proveedor', data.origen || data.proveedor || ''],
-        ['Producto', data.producto1 || data.producto || ''],
-        ...(data.producto2 ? [['Producto 2', data.producto2]] : []),
-        ['HR / Remito', data.hrRemito || ''],
-        ['Fecha', data.fecha || ''],
-        ['Precinto', data.precinto || ''],
-        ['Operador', data.operador || ''],
-      ]
+  const rows = labelRows(tipo, data)
 
   const observaciones = data.observacion || data.observaciones || ''
 
