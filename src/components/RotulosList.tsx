@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { formatDate } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { buildLabelZPL, labelRows } from '@/lib/zpl'
 
 const TIPO_LABELS: Record<string, string> = {
   INGRESOS: 'Ingreso',
@@ -28,7 +29,7 @@ type Rotulo = {
 // API que expone la app de escritorio (Electron) para imprimir sin diálogo.
 type DesktopPrinter = {
   getPrinters: () => Promise<{ name: string; isDefault: boolean }[]>
-  printLabel: (opts: { html: string; deviceName?: string; widthMm: number; heightMm: number }) => Promise<{ success: boolean; failureReason: string; usedDialog?: boolean }>
+  printLabel: (opts: { html: string; zpl?: string; deviceName?: string; widthMm: number; heightMm: number }) => Promise<{ success: boolean; failureReason: string; usedDialog?: boolean; usedZpl?: boolean }>
   // Existe desde la versión 1.1.0 de la app de escritorio.
   getVersion?: () => Promise<string>
 }
@@ -104,6 +105,7 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
     try {
       const res = await window.desktopPrinter.printLabel({
         html,
+        zpl: buildLabelZPL(rotulo.tipo, data, config),
         deviceName: selectedPrinter || undefined,
         widthMm: Number(config.etiquetaAncho) || 100,
         heightMm: Number(config.etiquetaAlto) || 45,
@@ -271,25 +273,7 @@ function buildLabelHTML(tipo: string, data: Record<string, string>, config: { et
   const empresa = config.empresa || 'Laboratorio SFA'
   const logo = config.logo
 
-  const esSalida = tipo === 'SALIDAS' || tipo === 'SFA_SALIDA'
-
-  const rows = esSalida
-    ? [
-        ['Destino', data.destino || ''],
-        ['Contrato', data.hrContrato || ''],
-        ['Transporte', data.idTransporte || ''],
-        ['Fecha', data.fecha || ''],
-        ['Operador', data.operador || ''],
-      ]
-    : [
-        ['Proveedor', data.origen || data.proveedor || ''],
-        ['Producto', data.producto1 || data.producto || ''],
-        ...(data.producto2 ? [['Producto 2', data.producto2]] : []),
-        ['HR / Remito', data.hrRemito || ''],
-        ['Fecha', data.fecha || ''],
-        ['Precinto', data.precinto || ''],
-        ['Operador', data.operador || ''],
-      ]
+  const rows = labelRows(tipo, data)
 
   const observaciones = data.observacion || data.observaciones || ''
 
