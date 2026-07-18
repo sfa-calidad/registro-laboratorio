@@ -87,7 +87,8 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
   const [tareas, setTareas] = useState(initialTareas)
   const [modal, setModal] = useState<null | { mode: 'create'; columnaId: number } | { mode: 'edit'; tarea: Tarea }>(null)
   const [form, setForm] = useState(emptyForm())
-  const [firmaModal, setFirmaModal] = useState<null | { tareaId: number; slot: 1 | 2 }>(null)
+  const [firmaModal, setFirmaModal] = useState<null | { tareaId: number; slot: 1 | 2; aviso?: string; moveTo?: number }>(null)
+  const [boardMsg, setBoardMsg] = useState('')
   const [firmaAnalistaId, setFirmaAnalistaId] = useState('')
   const [saving, setSaving] = useState(false)
   const [filterAnalistaId, setFilterAnalistaId] = useState('')
@@ -221,8 +222,16 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
 
     const isCompleting = target.nombre.toLowerCase().includes('complet')
     if (isCompleting && !tarea.firma1) {
-      alert('Esta tarea necesita al menos una firma antes de pasar a Completado.')
-      setFirmaModal({ tareaId: tarea.id, slot: 1 })
+      // Sin alert() nativo: en la app de escritorio (Electron) el alert rompe
+      // el foco de la ventana y el modal siguiente queda inutilizable.
+      // El aviso se muestra dentro del propio modal de firma, y al firmar la
+      // tarjeta se mueve sola a la columna de destino.
+      setFirmaModal({
+        tareaId: tarea.id,
+        slot: 1,
+        aviso: 'La tarea necesita al menos una firma antes de pasar a Completado. Al firmar, se moverá automáticamente.',
+        moveTo: target.id,
+      })
       setFirmaAnalistaId('')
       return
     }
@@ -245,12 +254,18 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       } else {
         setTareas(prev => prev.map(x => x.id === previa.id ? previa : x))
         const err = await res.json().catch(() => null)
-        if (err?.error) alert(err.error)
+        showBoardMsg(err?.error || 'No se pudo mover la tarea.')
       }
     } catch {
       setTareas(prev => prev.map(x => x.id === previa.id ? previa : x))
-      alert('No se pudo mover la tarea: sin conexión con el servidor.')
+      showBoardMsg('No se pudo mover la tarea: sin conexión con el servidor.')
     }
+  }
+
+  // Aviso no bloqueante: los alert() nativos rompen el foco en la app de escritorio.
+  function showBoardMsg(text: string) {
+    setBoardMsg(text)
+    setTimeout(() => setBoardMsg(''), 4000)
   }
 
   async function moveTask(tarea: Tarea, direction: 'left' | 'right') {
@@ -310,13 +325,17 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [field]: Number(firmaAnalistaId) }),
     })
+    let firmada: Tarea | null = null
     if (res.ok) {
-      const t = await res.json()
-      setTareas(prev => prev.map(x => x.id === t.id ? t : x))
+      firmada = await res.json()
+      setTareas(prev => prev.map(x => x.id === firmada!.id ? firmada! : x))
     }
+    const moveTo = firmaModal.moveTo
     setSaving(false)
     setFirmaModal(null)
     setFirmaAnalistaId('')
+    // Si la firma vino del intento de pasar a Completado, ahora sí se mueve.
+    if (firmada && moveTo) moveTaskToColumn(firmada, moveTo)
   }
 
   const sortedColumnas = [...columnas].sort((a, b) => a.orden - b.orden)
@@ -741,6 +760,12 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
         </div>
       )}
 
+      {boardMsg && (
+        <div className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-lg text-sm text-white bg-brand-red animate-fade-in">
+          ⚠️ {boardMsg}
+        </div>
+      )}
+
       {/* Firma modal */}
       {firmaModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -749,6 +774,11 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
               <h3 className="font-semibold text-gray-800">Firma {firmaModal.slot}</h3>
             </div>
             <div className="p-5">
+              {firmaModal.aviso && (
+                <div className="mb-3 rounded-lg bg-brand-mustard/10 border border-brand-mustard/40 px-3 py-2 text-sm text-brand-mustard-dark">
+                  {firmaModal.aviso}
+                </div>
+              )}
               <label className="text-sm font-medium text-gray-700">Seleccionar analista</label>
               <select
                 value={firmaAnalistaId}
