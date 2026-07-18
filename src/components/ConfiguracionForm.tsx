@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 
-export default function ConfiguracionForm({ values }: { values: Record<string, string> }) {
+export default function ConfiguracionForm({ values, esSupervisor }: { values: Record<string, string>; esSupervisor: boolean }) {
   const [form, setForm] = useState(values)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -19,13 +19,15 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
 
   useEffect(() => {
     fetch('/api/productos').then(r => r.json()).then(setProductos)
-    fetch('/api/contactos').then(r => r.json()).then(setContactos)
-    fetch('/api/analistas').then(r => r.json()).then(setAnalistas)
-    fetch('/api/analistas?all=true').then(r => r.json()).then((all: {id:number,nombre:string,apellido:string,activo:boolean}[]) =>
-      setAnalistasInactivos(all.filter(a => !a.activo))
-    )
     fetch('/api/columnas').then(r => r.json()).then(setColumnas)
-  }, [])
+    if (esSupervisor) {
+      fetch('/api/contactos').then(r => r.json()).then(setContactos)
+      fetch('/api/analistas').then(r => r.json()).then(setAnalistas)
+      fetch('/api/analistas?all=true').then(r => r.json()).then((all: {id:number,nombre:string,apellido:string,activo:boolean}[]) =>
+        setAnalistasInactivos(all.filter(a => !a.activo))
+      )
+    }
+  }, [esSupervisor])
 
   function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -252,6 +254,7 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
         </ul>
       </div>
 
+      {esSupervisor && (
       <div className="bg-white rounded-xl shadow p-5 space-y-3">
         <h3 className="font-semibold text-gray-700 border-b pb-2">Contactos (Proveedores / Clientes)</h3>
         <p className="text-xs text-gray-400">Un mismo contacto puede usarse como origen en Ingresos y como destino en Despachos.</p>
@@ -272,6 +275,8 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
           {contactos.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin contactos registrados</li>}
         </ul>
       </div>
+      )}
+      {esSupervisor && (
       <div className="bg-white rounded-xl shadow p-5 space-y-3">
         <h3 className="font-semibold text-gray-700 border-b pb-2">Analistas</h3>
         <div className="flex gap-2">
@@ -306,6 +311,7 @@ export default function ConfiguracionForm({ values }: { values: Record<string, s
           </div>
         )}
       </div>
+      )}
 
       <div className="bg-white rounded-xl shadow p-5 space-y-3">
         <h3 className="font-semibold text-gray-700 border-b pb-2">Columnas del Tablero</h3>

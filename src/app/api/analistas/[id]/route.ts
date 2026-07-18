@@ -10,7 +10,7 @@ const schema = z.object({
 })
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (getRoleFromRequest(req) !== 'supervisor') return NextResponse.json({ error: 'Solo el supervisor puede gestionar analistas' }, { status: 403 })
   const { id } = await params
   const body = await req.json()
   const parsed = schema.safeParse(body)
@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (getRoleFromRequest(req) !== 'supervisor') return NextResponse.json({ error: 'Solo el supervisor puede gestionar analistas' }, { status: 403 })
   const { id } = await params
   await prisma.analista.update({ where: { id: Number(id) }, data: { activo: false } })
   return NextResponse.json({ ok: true })
