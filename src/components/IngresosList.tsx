@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { formatDate, todayISO } from '@/lib/utils'
+import { formatDateOnly, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
 type Ingreso = {
@@ -287,7 +287,7 @@ export default function IngresosList({
             {filtered.map((i) => (
               <tr key={i.id} className="border-b last:border-0 hover:bg-gray-50">
                 <td className="px-3 py-2 font-mono text-sm">{i.hrRemito}</td>
-                <td className="px-3 py-2">{formatDate(i.fecha)}</td>
+                <td className="px-3 py-2">{formatDateOnly(i.fecha)}</td>
                 <td className="px-3 py-2">{i.origen}</td>
                 <td className="px-3 py-2">{i.producto1}</td>
                 <td className="px-3 py-2 text-gray-500">{i.producto2 || '—'}</td>

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { getRoleFromRequest } from '@/lib/auth'
+import { formatDateOnly } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
   const rows = ingresos.map((i) => [
     i.id,
     i.hrRemito,
-    format(new Date(i.fecha), 'dd/MM/yyyy', { locale: es }),
+    formatDateOnly(i.fecha),
     i.origen,
     i.producto1,
     i.producto2 || '',
