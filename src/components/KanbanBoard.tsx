@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { formatDate } from '@/lib/utils'
+import { formatDateOnly } from '@/lib/utils'
 
 type Analista = { id: number; nombre: string; apellido: string }
 type Columna = { id: number; nombre: string; orden: number }
@@ -75,8 +75,10 @@ function emptyForm() {
 function vencimientoBadge(fecha: string | Date) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const venc = new Date(fecha)
-  venc.setHours(0, 0, 0, 0)
+  // fechaVencimiento se guarda como medianoche UTC: se toma su día por
+  // componentes UTC para no correrlo al comparar en zonas horarias negativas.
+  const v = new Date(fecha)
+  const venc = new Date(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate())
   const diffDays = Math.round((venc.getTime() - today.getTime()) / 86400000)
   if (diffDays < 0) return 'bg-red-100 text-red-700'
   return 'bg-gray-100 text-gray-500'
@@ -442,7 +444,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                     )}
                     {t.fechaVencimiento && (
                       <div className={`text-xs mb-2 inline-block px-1.5 py-0.5 rounded-full ${vencimientoBadge(t.fechaVencimiento)}`}>
-                        Vence: {formatDate(t.fechaVencimiento)}
+                        Vence: {formatDateOnly(t.fechaVencimiento)}
                       </div>
                     )}
                     <div className="flex flex-wrap gap-1 mb-2">
@@ -743,7 +745,7 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
               )}
               {previewTarea.fechaVencimiento && (
                 <div className={`text-xs inline-block px-1.5 py-0.5 rounded-full ${vencimientoBadge(previewTarea.fechaVencimiento)}`}>
-                  Vence: {formatDate(previewTarea.fechaVencimiento)}
+                  Vence: {formatDateOnly(previewTarea.fechaVencimiento)}
                 </div>
               )}
             </div>

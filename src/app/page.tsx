@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { formatDate } from '@/lib/utils'
+import { formatDateOnly } from '@/lib/utils'
 import { getRole } from '@/lib/auth'
 import EstadisticasView from '@/components/EstadisticasView'
 import NotasTablero from '@/components/NotasTablero'
@@ -66,7 +66,7 @@ export default async function Dashboard() {
                       <td className="py-2 font-mono text-xs">{i.hrRemito}</td>
                       <td className="py-2">{i.origen}</td>
                       <td className="py-2">{i.producto1}</td>
-                      <td className="py-2">{formatDate(i.fecha)}</td>
+                      <td className="py-2">{formatDateOnly(i.fecha)}</td>
                     </tr>
                   ))}
                   {ultIngresos.length === 0 && (
@@ -93,7 +93,7 @@ export default async function Dashboard() {
                       <td className="py-2 font-mono text-xs">{d.hrContrato}</td>
                       <td className="py-2">{d.destino}</td>
                       <td className="py-2">{d.producto}</td>
-                      <td className="py-2">{formatDate(d.fecha)}</td>
+                      <td className="py-2">{formatDateOnly(d.fecha)}</td>
                     </tr>
                   ))}
                   {ultDespachos.length === 0 && (

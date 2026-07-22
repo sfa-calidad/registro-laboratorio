@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { formatDate, todayISO } from '@/lib/utils'
+import { formatDateOnly, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 
 type Despacho = {
@@ -303,7 +303,7 @@ export default function DespachosList({
             {filtered.map((d) => (
               <tr key={d.id} className="border-b last:border-0 hover:bg-gray-50">
                 <td className="px-3 py-2 font-mono text-sm">{d.hrContrato}</td>
-                <td className="px-3 py-2">{formatDate(d.fecha)}</td>
+                <td className="px-3 py-2">{formatDateOnly(d.fecha)}</td>
                 <td className="px-3 py-2">{d.destino}</td>
                 <td className="px-3 py-2">{d.producto}</td>
                 <td className="px-3 py-2 font-mono text-sm">{d.idTransporte}</td>
