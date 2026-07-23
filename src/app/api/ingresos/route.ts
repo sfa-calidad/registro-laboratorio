@@ -18,7 +18,9 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  const ingresos = await prisma.ingreso.findMany({ orderBy: { fecha: 'desc' } })
+  // fecha desc con id desc como desempate estable: los más nuevos arriba y,
+  // ante misma fecha, un orden fijo para que editar un registro no lo reordene.
+  const ingresos = await prisma.ingreso.findMany({ orderBy: [{ fecha: 'desc' }, { id: 'desc' }] })
   return NextResponse.json(ingresos)
 }
 
