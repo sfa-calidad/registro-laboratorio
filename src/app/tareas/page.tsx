@@ -10,7 +10,7 @@ export default async function TareasPage() {
     prisma.tarea.findMany({
       where: { archivadaAt: null },
       include: { columna: true, firma1: true, firma2: true },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ orden: 'asc' }, { createdAt: 'asc' }],
     }),
     prisma.analista.findMany({ where: { activo: true }, orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }] }),
     getRole(),

@@ -49,6 +49,8 @@ export default function IngresosList({
   const [showExport, setShowExport] = useState(false)
   const [exportDesde, setExportDesde] = useState('')
   const [exportHasta, setExportHasta] = useState('')
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 15
 
   useEffect(() => {
     fetch('/api/contactos').then(r => r.json()).then(setProveedores)
@@ -70,6 +72,10 @@ export default function IngresosList({
       i.origen.toLowerCase().includes(search.toLowerCase()) ||
       i.producto1.toLowerCase().includes(search.toLowerCase())
   )
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   function openNew() {
     setEditingId(null)
@@ -144,7 +150,7 @@ export default function IngresosList({
           type="text"
           placeholder="Buscar por HR, origen o producto..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           className="border rounded-lg px-3 py-2 text-base w-80"
         />
         <div className="flex gap-2">
@@ -284,7 +290,7 @@ export default function IngresosList({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((i) => (
+            {paged.map((i) => (
               <tr key={i.id} className="border-b last:border-0 hover:bg-gray-50">
                 <td className="px-3 py-2 font-mono text-sm">{i.hrRemito}</td>
                 <td className="px-3 py-2">{formatDateOnly(i.fecha)}</td>
@@ -326,6 +332,31 @@ export default function IngresosList({
           </tbody>
         </table>
       </div>
+
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-between mt-3 text-sm text-gray-600">
+          <span>
+            {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} de {filtered.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Anterior
+            </button>
+            <span className="text-gray-500">Página {currentPage} de {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
