@@ -444,15 +444,24 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                   const tChecklistDone = tChecklist.filter(c => c.hecho).length
                   const showLineBefore = dragOverColId === col.id && dragOverIndex === tIdx && draggedId !== t.id
                   return (
-                  <div key={t.id}>
-                  {showLineBefore && <div className="h-1 bg-brand-green rounded-full mb-2" />}
+                  <div
+                    key={t.id}
+                    onDragOver={e => handleCardDragOver(e, col.id, tIdx)}
+                  >
+                  {/* Hueco animado: al arrastrar por encima, abre espacio y desplaza
+                      las tarjetas de abajo para mostrar dónde va a caer. */}
+                  <div
+                    className="overflow-hidden transition-all duration-200 ease-out"
+                    style={{ height: showLineBefore ? '3.25rem' : 0, opacity: showLineBefore ? 1 : 0 }}
+                  >
+                    <div className="h-12 rounded-lg border-2 border-dashed border-brand-green bg-brand-green-light/50 mb-2" />
+                  </div>
                   <div
                     draggable
                     onDragStart={e => handleDragStart(e, t.id)}
                     onDragEnd={handleDragEnd}
-                    onDragOver={e => handleCardDragOver(e, col.id, tIdx)}
                     onClick={() => setPreviewTarea(t)}
-                    className={`bg-white rounded-lg shadow-sm p-3 border border-gray-100 cursor-grab active:cursor-grabbing ${draggedId === t.id ? 'opacity-40' : ''}`}
+                    className={`bg-white rounded-lg shadow-sm p-3 border border-gray-100 cursor-grab active:cursor-grabbing transition-all duration-200 ${draggedId === t.id ? 'opacity-40 scale-[0.98] ring-2 ring-brand-green' : 'hover:shadow-md'}`}
                   >
                     <div className="flex items-start justify-between gap-1 mb-1">
                       <span className="font-medium text-gray-800 text-sm leading-snug">{t.titulo}</span>
@@ -551,7 +560,13 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                   </div>
                   )
                 })}
-                {showEndLine && colTareas.length > 0 && <div className="h-1 bg-brand-green rounded-full" />}
+                {/* Hueco animado al soltar al final de la columna. */}
+                <div
+                  className="overflow-hidden transition-all duration-200 ease-out"
+                  style={{ height: showEndLine && colTareas.length > 0 ? '3.25rem' : 0, opacity: showEndLine && colTareas.length > 0 ? 1 : 0 }}
+                >
+                  <div className="h-12 rounded-lg border-2 border-dashed border-brand-green bg-brand-green-light/50 mb-2" />
+                </div>
                 <button
                   onClick={() => openCreate(col.id)}
                   className="w-full text-left text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100 px-2 py-1.5 rounded-lg transition-colors"
