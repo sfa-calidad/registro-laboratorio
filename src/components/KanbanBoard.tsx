@@ -19,6 +19,7 @@ type Tarea = {
   prioridad: string | null
   fechaVencimiento: string | Date | null
   completadaAt: string | Date | null
+  orden: number
   createdAt: string | Date
   etiquetas: string | null
   notas: string | null
@@ -89,8 +90,10 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
   const [tareas, setTareas] = useState(initialTareas)
   const [modal, setModal] = useState<null | { mode: 'create'; columnaId: number } | { mode: 'edit'; tarea: Tarea }>(null)
   const [form, setForm] = useState(emptyForm())
-  const [firmaModal, setFirmaModal] = useState<null | { tareaId: number; slot: 1 | 2; aviso?: string; moveTo?: number }>(null)
+  const [firmaModal, setFirmaModal] = useState<null | { tareaId: number; slot: 1 | 2; aviso?: string; moveTo?: number; moveToIndex?: number }>(null)
   const [boardMsg, setBoardMsg] = useState('')
+  const [draggedId, setDraggedId] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [firmaAnalistaId, setFirmaAnalistaId] = useState('')
   const [saving, setSaving] = useState(false)
   const [filterAnalistaId, setFilterAnalistaId] = useState('')
@@ -217,49 +220,71 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
     setModal(null)
   }
 
-  async function moveTaskToColumn(tarea: Tarea, targetColumnId: number) {
-    if (targetColumnId === tarea.columnaId) return
+  // Tareas de una columna, ordenadas por su campo `orden`.
+  function columnTasks(columnaId: number, source: Tarea[] = tareas) {
+    return source
+      .filter(t => t.columnaId === columnaId)
+      .sort((a, b) => (a.orden - b.orden) || (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()))
+  }
+
+  // Mueve/reordena una tarea a una columna e índice concretos (donde se suelta).
+  async function dropTask(tarea: Tarea, targetColumnId: number, targetIndex: number) {
     const target = columnas.find(c => c.id === targetColumnId)
     if (!target) return
-
+    const sameCol = tarea.columnaId === targetColumnId
     const isCompleting = target.nombre.toLowerCase().includes('complet')
-    if (isCompleting && !tarea.firma1) {
-      // Sin alert() nativo: en la app de escritorio (Electron) el alert rompe
-      // el foco de la ventana y el modal siguiente queda inutilizable.
-      // El aviso se muestra dentro del propio modal de firma, y al firmar la
-      // tarjeta se mueve sola a la columna de destino.
+
+    // Al entrar a "Completado" desde otra columna sin firma, se pide la firma
+    // primero (sin alert() nativo, que rompe el foco en la app de escritorio).
+    if (!sameCol && isCompleting && !tarea.firma1) {
       setFirmaModal({
         tareaId: tarea.id,
         slot: 1,
         aviso: 'La tarea necesita al menos una firma antes de pasar a Completado. Al firmar, se moverá automáticamente.',
-        moveTo: target.id,
+        moveTo: targetColumnId,
+        moveToIndex: targetIndex,
       })
       setFirmaAnalistaId('')
       return
     }
 
-    // Actualización optimista: la tarjeta se mueve al instante y solo se
-    // revierte si el servidor rechaza el cambio.
-    const previa = tarea
-    const completadaAt = isCompleting ? new Date().toISOString() : null
-    setTareas(prev => prev.map(x => x.id === tarea.id ? { ...x, columnaId: target.id, completadaAt } : x))
+    // Nuevo orden de la columna destino con la tarjeta insertada en su lugar.
+    const destino = columnTasks(targetColumnId).filter(t => t.id !== tarea.id)
+    const idx = Math.max(0, Math.min(targetIndex, destino.length))
+    destino.splice(idx, 0, tarea)
+    const ids = destino.map(t => t.id)
+
+    // completadaAt solo cambia si cambió de columna (entra o sale de Completado).
+    const completadaAt = sameCol ? undefined : (isCompleting ? new Date().toISOString() : null)
+
+    // Actualización optimista.
+    const previas = tareas
+    setTareas(prev => prev.map(x => {
+      const pos = ids.indexOf(x.id)
+      if (x.id === tarea.id) {
+        return { ...x, columnaId: targetColumnId, orden: pos, ...(completadaAt !== undefined ? { completadaAt } : {}) }
+      }
+      if (pos !== -1) return { ...x, orden: pos }
+      return x
+    }))
 
     try {
-      const res = await fetch(`/api/tareas/${tarea.id}`, {
-        method: 'PATCH',
+      const res = await fetch('/api/tareas/reordenar', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ columnaId: target.id, completadaAt }),
+        body: JSON.stringify({
+          columnaId: targetColumnId,
+          ids,
+          ...(completadaAt !== undefined ? { movedId: tarea.id, completadaAt } : {}),
+        }),
       })
-      if (res.ok) {
-        const t = await res.json()
-        setTareas(prev => prev.map(x => x.id === t.id ? t : x))
-      } else {
-        setTareas(prev => prev.map(x => x.id === previa.id ? previa : x))
+      if (!res.ok) {
+        setTareas(previas)
         const err = await res.json().catch(() => null)
         showBoardMsg(err?.error || 'No se pudo mover la tarea.')
       }
     } catch {
-      setTareas(prev => prev.map(x => x.id === previa.id ? previa : x))
+      setTareas(previas)
       showBoardMsg('No se pudo mover la tarea: sin conexión con el servidor.')
     }
   }
@@ -275,20 +300,42 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
     const idx = sorted.findIndex(c => c.id === tarea.columnaId)
     const target = direction === 'left' ? sorted[idx - 1] : sorted[idx + 1]
     if (!target) return
-    await moveTaskToColumn(tarea, target.id)
+    // Se agrega al final de la columna destino.
+    await dropTask(tarea, target.id, columnTasks(target.id).length)
   }
 
   function handleDragStart(e: React.DragEvent, tareaId: number) {
     e.dataTransfer.setData('text/plain', String(tareaId))
     e.dataTransfer.effectAllowed = 'move'
+    setDraggedId(tareaId)
+  }
+
+  function handleDragEnd() {
+    setDraggedId(null)
+    setDragOverColId(null)
+    setDragOverIndex(null)
+  }
+
+  // Al pasar por encima de una tarjeta se calcula si se soltaría antes o después
+  // de ella según la mitad vertical, para insertar en esa posición exacta.
+  function handleCardDragOver(e: React.DragEvent, columnaId: number, index: number) {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const after = e.clientY - rect.top > rect.height / 2
+    setDragOverColId(columnaId)
+    setDragOverIndex(index + (after ? 1 : 0))
   }
 
   function handleDrop(e: React.DragEvent, columnaId: number) {
     e.preventDefault()
-    setDragOverColId(null)
     const tareaId = Number(e.dataTransfer.getData('text/plain'))
     const tarea = tareas.find(t => t.id === tareaId)
-    if (tarea) moveTaskToColumn(tarea, columnaId)
+    const index = dragOverIndex ?? columnTasks(columnaId).length
+    setDraggedId(null)
+    setDragOverColId(null)
+    setDragOverIndex(null)
+    if (tarea) dropTask(tarea, columnaId, index)
   }
 
   async function deleteTask(id: number) {
@@ -333,11 +380,12 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       setTareas(prev => prev.map(x => x.id === firmada!.id ? firmada! : x))
     }
     const moveTo = firmaModal.moveTo
+    const moveToIndex = firmaModal.moveToIndex
     setSaving(false)
     setFirmaModal(null)
     setFirmaAnalistaId('')
     // Si la firma vino del intento de pasar a Completado, ahora sí se mueve.
-    if (firmada && moveTo) moveTaskToColumn(firmada, moveTo)
+    if (firmada && moveTo !== undefined) dropTask(firmada, moveTo, moveToIndex ?? columnTasks(moveTo).length)
   }
 
   const sortedColumnas = [...columnas].sort((a, b) => a.orden - b.orden)
@@ -374,12 +422,13 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
       </div>
       <div className="flex gap-4 overflow-x-auto pb-4 flex-1">
         {sortedColumnas.map((col, colIdx) => {
-          const colTareas = visibleTareas.filter(t => t.columnaId === col.id)
+          const colTareas = columnTasks(col.id, visibleTareas)
+          const showEndLine = dragOverColId === col.id && dragOverIndex === colTareas.length
           return (
             <div
               key={col.id}
               className="flex-shrink-0 w-72 flex flex-col"
-              onDragOver={e => { e.preventDefault(); setDragOverColId(col.id) }}
+              onDragOver={e => { e.preventDefault(); setDragOverColId(col.id); setDragOverIndex(colTareas.length) }}
               onDragLeave={() => setDragOverColId(prev => (prev === col.id ? null : prev))}
               onDrop={e => handleDrop(e, col.id)}
             >
@@ -387,19 +436,23 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                 <span className="font-semibold text-gray-700 text-sm">{col.nombre}</span>
                 <span className="text-xs text-gray-400 bg-white rounded-full px-2 py-0.5">{colTareas.length}</span>
               </div>
-              <div className={`bg-gray-50 rounded-b-lg flex-1 p-2 space-y-2 min-h-32 transition-colors ${dragOverColId === col.id ? 'bg-brand-green-light ring-2 ring-brand-green' : ''}`}>
-                {colTareas.map(t => {
+              <div className={`bg-gray-50 rounded-b-lg flex-1 p-2 space-y-2 min-h-32 transition-colors ${dragOverColId === col.id ? 'bg-brand-green-light/40' : ''}`}>
+                {colTareas.map((t, tIdx) => {
                   const tEtiquetas = parseEtiquetas(t.etiquetas)
                   const tNotasVisibles = parseNotas(t.notas).filter(n => n.mostrarEnTarjeta)
                   const tChecklist = parseChecklist(t.checklist)
                   const tChecklistDone = tChecklist.filter(c => c.hecho).length
+                  const showLineBefore = dragOverColId === col.id && dragOverIndex === tIdx && draggedId !== t.id
                   return (
+                  <div key={t.id}>
+                  {showLineBefore && <div className="h-1 bg-brand-green rounded-full mb-2" />}
                   <div
-                    key={t.id}
                     draggable
                     onDragStart={e => handleDragStart(e, t.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={e => handleCardDragOver(e, col.id, tIdx)}
                     onClick={() => setPreviewTarea(t)}
-                    className="bg-white rounded-lg shadow-sm p-3 border border-gray-100 cursor-grab active:cursor-grabbing"
+                    className={`bg-white rounded-lg shadow-sm p-3 border border-gray-100 cursor-grab active:cursor-grabbing ${draggedId === t.id ? 'opacity-40' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-1 mb-1">
                       <span className="font-medium text-gray-800 text-sm leading-snug">{t.titulo}</span>
@@ -495,8 +548,10 @@ export default function KanbanBoard({ initialColumnas, initialTareas, analistas,
                       )}
                     </div>
                   </div>
+                  </div>
                   )
                 })}
+                {showEndLine && colTareas.length > 0 && <div className="h-1 bg-brand-green rounded-full" />}
                 <button
                   onClick={() => openCreate(col.id)}
                   className="w-full text-left text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100 px-2 py-1.5 rounded-lg transition-colors"

@@ -99,6 +99,7 @@ model Tarea {
   fechaVencimiento DateTime?
   creadoPor        String
   completadaAt     DateTime?
+  orden            Int           @default(0)
   createdAt        DateTime      @default(now())
   etiquetas        String?
   notas            String?
