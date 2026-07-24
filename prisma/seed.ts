@@ -3,15 +3,33 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
+  // Renombres a la forma normalizada (la que usan los perfiles de tanques).
+  // Idempotente: solo si existe el nombre viejo; si el nuevo ya está, se
+  // elimina el duplicado viejo.
+  const renombres: [string, string][] = [
+    ['Oleina', 'Oleína'],
+    ['Ácidos grasos', 'Ácido graso'],
+  ]
+  for (const [viejo, nuevo] of renombres) {
+    const existente = await prisma.producto.findUnique({ where: { nombre: viejo } })
+    if (!existente) continue
+    const destino = await prisma.producto.findUnique({ where: { nombre: nuevo } })
+    if (destino) {
+      await prisma.producto.delete({ where: { id: existente.id } })
+    } else {
+      await prisma.producto.update({ where: { id: existente.id }, data: { nombre: nuevo } })
+    }
+  }
+
   const productos = [
     'Borra',
     'Borra Neutra',
     'Aceite',
-    'Ácidos grasos',
+    'Ácido graso',
     'Residuo Orgánico',
     'UCO',
     'BN GMP+',
-    'Oleina',
+    'Oleína',
     'RO',
     'Aceite Animal',
   ]
