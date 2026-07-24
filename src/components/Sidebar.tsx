@@ -83,6 +83,8 @@ export default function Sidebar() {
     if (onLogin) return
     fetch('/api/me').then(r => r.json()).then(d => setRole(d.role)).catch(() => {})
     fetch('/api/configuracion').then(r => r.json()).then(d => setLogo(d.logo || '')).catch(() => {})
+    // Preferencia guardada en el navegador: solo se puede leer en el cliente.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCollapsed(localStorage.getItem('sidebar_collapsed') === '1')
   }, [onLogin])
 
@@ -93,9 +95,13 @@ export default function Sidebar() {
     })
   }
 
-  useEffect(() => {
+  // Al navegar se cierra el menú móvil. Patrón de "ajustar estado durante el
+  // render" recomendado por React en lugar de un effect con setState.
+  const [prevPathname, setPrevPathname] = useState(pathname)
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname)
     setOpen(false)
-  }, [pathname])
+  }
 
   const links = baseLinks
 

@@ -194,6 +194,146 @@ async function main() {
     }
   }
 
+  // --- Análisis de tanques y muestras: catálogos base -----------------------
+
+  // Parámetros de tanques. El método integra la identidad del ensayo:
+  // Humedad TB (termobalanza: agua + volátiles) y Humedad KF (Karl Fischer:
+  // agua sola) son ensayos distintos y no se fusionan nunca.
+  // El unique [nombre, metodo] tiene metodo nullable, así que no sirve el
+  // upsert de Prisma: se resuelve con findFirst + create (idempotente igual).
+  const parametrosTanque: [string, string | null, string | null, string | null][] = [
+    ['Humedad y volátiles', 'Termobalanza', 'Hum. TB', '%'],
+    ['Humedad', 'Karl Fischer', 'Hum. KF', '%'],
+    ['Insolubles en hexano', null, 'Ins. HEX.', '%'],
+    ['Insolubles en acetona', null, 'Ins. ACET.', '%'],
+    ['Acidez (como ác. oleico)', null, null, '%'],
+    ['Fósforo', null, null, 'ppm'],
+    ['Sedimento por centrífuga', null, null, '%'],
+    ['Densidad', null, null, 'g/cm³'],
+    ['Azufre', null, null, 'ppm'],
+    ['Índice de yodo', null, null, null],
+    ['Insaponificables', null, null, '%'],
+    ['MIU', null, null, '%'],
+    ['Índice de peróxido', null, null, null],
+    ['pH', null, null, null],
+    ['Temperatura', null, null, '°C'],
+  ]
+  let ordenParametro = 1
+  for (const [nombre, metodo, abreviatura, unidad] of parametrosTanque) {
+    const existe = await prisma.parametro.findFirst({ where: { nombre, metodo } })
+    if (!existe) {
+      await prisma.parametro.create({ data: { nombre, metodo, abreviatura, unidad, orden: ordenParametro } })
+    }
+    ordenParametro++
+  }
+
+  // Ensayos de la hoja "Codificación análisis" que no están ya arriba.
+  // Equivalencias con los de tanques (un solo registro por ensayo):
+  //   Humedad Karl Fischer → Humedad · Karl Fischer
+  //   Índice de fósforo → Fósforo · Índice de iodo → Índice de yodo
+  //   Insolubles en hexano/acetona, Acidez (como ác. oleico), Índice de
+  //   peróxido, Insaponificables y pH → los mismos registros de arriba.
+  const ensayosCodificacion = [
+    'Acidez (mineral)', 'Aflatoxinas', 'Antimonio', 'Aromáticos', 'Color Gardner',
+    'Componentes nutricionales', 'DBO', 'Dioxinas tipificadas', 'Dioxinas tipo no PCB',
+    'Dioxinas totales', 'DQO', 'Fisicoquímico', 'Flúor', 'HC', 'Hidrocarburos',
+    'Materia grasa', 'Melting point', 'Metalaxil', 'Metales pesados', 'Metanol',
+    'Microbiológico', 'Omega 3 y 6', 'Otros contaminantes', 'Oxígeno disuelto',
+    'Perfil de ácidos grasos', 'Pesticidas', 'Plaguicidas organoclorados',
+    'Plaguicidas organofosforados', 'Plomo', 'Sólido', 'SSEE', 'Viscosidad',
+    'Volátiles', 'Cinc total', 'Contenido de agua',
+  ]
+  for (const nombre of ensayosCodificacion) {
+    const existe = await prisma.parametro.findFirst({ where: { nombre, metodo: null } })
+    if (!existe) {
+      await prisma.parametro.create({ data: { nombre, orden: ordenParametro } })
+    }
+    ordenParametro++
+  }
+
+  // Perfiles por producto: qué parámetros se muestran por defecto al cargar
+  // un análisis de tanque de ese producto.
+  const perfiles: Record<string, [string, string | null][]> = {
+    'Oleína': [
+      ['Humedad y volátiles', 'Termobalanza'],
+      ['Humedad', 'Karl Fischer'],
+      ['Insolubles en hexano', null],
+      ['Insolubles en acetona', null],
+      ['Acidez (como ác. oleico)', null],
+    ],
+    'UCO': [
+      ['Humedad y volátiles', 'Termobalanza'],
+      ['Acidez (como ác. oleico)', null],
+      ['Insolubles en hexano', null],
+      ['Azufre', null],
+    ],
+    'Aceite': [
+      ['Humedad y volátiles', 'Termobalanza'],
+      ['Acidez (como ác. oleico)', null],
+      ['Fósforo', null],
+      ['Insolubles en hexano', null],
+    ],
+    'Ácido graso': [
+      ['Acidez (como ác. oleico)', null],
+      ['Humedad y volátiles', 'Termobalanza'],
+      ['Insaponificables', null],
+    ],
+  }
+  for (const [producto, params] of Object.entries(perfiles)) {
+    for (let i = 0; i < params.length; i++) {
+      const [nombre, metodo] = params[i]
+      const parametro = await prisma.parametro.findFirst({ where: { nombre, metodo } })
+      if (!parametro) continue
+      await prisma.perfilProducto.upsert({
+        where: { producto_parametroId: { producto, parametroId: parametro.id } },
+        update: { orden: i + 1 },
+        create: { producto, parametroId: parametro.id, orden: i + 1 },
+      })
+    }
+  }
+
+  // Laboratorios (SFA e I+D son internos; NofaLab y Marvesa, del exterior).
+  const laboratorios: [string, boolean, boolean][] = [
+    ['SFA', false, false],
+    ['I+D', false, false],
+    ['Intertek', true, false],
+    ['Oleochem', true, false],
+    ['GreenLab', true, false],
+    ['Cotecna', true, false],
+    ['NofaLab', true, true],
+    ['HSE', true, false],
+    ['Protegras', true, false],
+    ['Litoral', true, false],
+    ['Marvesa', true, true],
+    ['Bio Group', true, false],
+    ['JLA', true, false],
+  ]
+  for (const [nombre, esExterno, delExterior] of laboratorios) {
+    await prisma.laboratorio.upsert({
+      where: { nombre },
+      update: { esExterno, delExterior },
+      create: { nombre, esExterno, delExterior },
+    })
+  }
+
+  const lugaresMuestreo = [
+    'SFA', 'SFF', 'Protegras', 'ECOSER', 'DH-SH', 'Molinos', 'Ecoparaná',
+    'Patagonia', 'Arenoil', 'TPR', 'Tello', 'ERA', 'Glardón', 'Vicentin Ricardone',
+  ]
+  for (const nombre of lugaresMuestreo) {
+    await prisma.lugarMuestreo.upsert({ where: { nombre }, update: {}, create: { nombre } })
+  }
+
+  // Motivos de muestreo (salen de los códigos PV, MOS, CO y MT de la hoja
+  // auxiliar, que hoy se cargan mezclados en la columna de cliente).
+  const motivos = [
+    'Control interno', 'Posible cliente o proveedor', 'Posible venta',
+    'Monitoreo semestral', 'Reclamo', 'Proyecto / I+D', 'Contramuestra',
+  ]
+  for (const nombre of motivos) {
+    await prisma.motivo.upsert({ where: { nombre }, update: {}, create: { nombre } })
+  }
+
   console.log('Seed completado')
 }
 

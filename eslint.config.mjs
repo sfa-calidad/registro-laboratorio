@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Subproyecto Electron (CommonJS, con su propio package.json):
+    // no aplican las reglas de la app Next.
+    "desktop/**",
   ]),
 ]);
 

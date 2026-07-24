@@ -32,6 +32,8 @@ export default async function TareasPage() {
               Historial de completadas
             </a>
           )}
+          {/* Descarga de archivo, no navegación: <Link> no corresponde acá. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/api/tareas/export"
             className="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50"

@@ -74,8 +74,11 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
       .then((data) => setConfig(data))
       .catch(() => {})
 
-    // Dentro de la app de escritorio se habilita la impresión rápida (sin diálogo).
+    // Dentro de la app de escritorio se habilita la impresión rápida (sin
+    // diálogo). window.desktopPrinter solo existe en el cliente (Electron),
+    // así que la detección no puede hacerse durante el render.
     if (window.desktopPrinter) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuickPrintAvailable(true)
       setSelectedPrinter(localStorage.getItem(PRINTER_STORAGE_KEY) || '')
       window.desktopPrinter.getPrinters().then(setPrinters).catch(() => {})
