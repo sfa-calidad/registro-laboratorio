@@ -37,6 +37,28 @@ const baseLinks = [
     ),
   },
   {
+    href: '/tanques',
+    label: 'Tanques',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/muestras',
+    label: 'Muestras',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2v6l4.5 8.5a2 2 0 0 1-1.76 2.95H7.26a2 2 0 0 1-1.76-2.95L10 8V2"/>
+        <line x1="8" y1="2" x2="16" y2="2"/>
+        <line x1="7" y1="16" x2="17" y2="16"/>
+      </svg>
+    ),
+  },
+  {
     href: '/tareas',
     label: 'Tareas',
     icon: (
@@ -83,6 +105,8 @@ export default function Sidebar() {
     if (onLogin) return
     fetch('/api/me').then(r => r.json()).then(d => setRole(d.role)).catch(() => {})
     fetch('/api/configuracion').then(r => r.json()).then(d => setLogo(d.logo || '')).catch(() => {})
+    // Preferencia guardada en el navegador: solo se puede leer en el cliente.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCollapsed(localStorage.getItem('sidebar_collapsed') === '1')
   }, [onLogin])
 
@@ -93,9 +117,13 @@ export default function Sidebar() {
     })
   }
 
-  useEffect(() => {
+  // Al navegar se cierra el menú móvil. Patrón de "ajustar estado durante el
+  // render" recomendado por React en lugar de un effect con setState.
+  const [prevPathname, setPrevPathname] = useState(pathname)
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname)
     setOpen(false)
-  }, [pathname])
+  }
 
   const links = baseLinks
 

@@ -86,7 +86,7 @@ function vencimientoBadge(fecha: string | Date) {
 }
 
 export default function KanbanBoard({ initialColumnas, initialTareas, analistas, role }: Props) {
-  const [columnas, setColumnas] = useState(initialColumnas)
+  const [columnas] = useState(initialColumnas)
   const [tareas, setTareas] = useState(initialTareas)
   const [modal, setModal] = useState<null | { mode: 'create'; columnaId: number } | { mode: 'edit'; tarea: Tarea }>(null)
   const [form, setForm] = useState(emptyForm())

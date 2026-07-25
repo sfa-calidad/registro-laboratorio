@@ -115,3 +115,143 @@ model NotaTablero {
   autor     String
   createdAt DateTime @default(now())
 }
+
+// --- Análisis de tanques y muestras a laboratorio ---------------------------
+
+// Catálogo único de ensayos: sirve para análisis de tanques y para muestras.
+// El método es parte de la identidad del ensayo: "Humedad · Termobalanza" y
+// "Humedad · Karl Fischer" miden cosas distintas y nunca se fusionan.
+model Parametro {
+  id          Int     @id @default(autoincrement())
+  nombre      String
+  metodo      String? // "Termobalanza", "Karl Fischer"
+  abreviatura String? // "Hum. TB", "Hum. KF" — encabezados de tabla
+  unidad      String? // "%", "ppm", "g/cm³"
+  decimales   Int     @default(2)
+  orden       Int     @default(0)
+  activo      Boolean @default(true)
+
+  resultadosTanque ResultadoTanque[]
+  perfiles         PerfilProducto[]
+  especificaciones Especificacion[]
+  muestraEnsayos   MuestraEnsayo[]
+
+  @@unique([nombre, metodo])
+}
+
+// Qué parámetros se muestran por defecto según el producto.
+model PerfilProducto {
+  id          Int       @id @default(autoincrement())
+  producto    String
+  parametroId Int
+  parametro   Parametro @relation(fields: [parametroId], references: [id])
+  orden       Int       @default(0)
+
+  @@unique([producto, parametroId])
+}
+
+// Rangos para marcar en rojo lo que se va de spec.
+model Especificacion {
+  id          Int       @id @default(autoincrement())
+  producto    String
+  parametroId Int
+  parametro   Parametro @relation(fields: [parametroId], references: [id])
+  min         Float?
+  max         Float?
+
+  @@unique([producto, parametroId])
+}
+
+model AnalisisTanque {
+  id       Int      @id @default(autoincrement())
+  fecha    DateTime
+  producto String
+  tanques  String // admite varios: "26 + 27", "114/118/119"
+  punto    String? // Válvula | Conjunto general | Superficie | Fondo | Recirculado | Purga de fondo
+  alturaM  Float?
+  // referencia y conjuntoHaciaArriba van separados a propósito: la referencia
+  // (AF/DS/AC) dice desde dónde se mide la altura; el HA dice que la muestra
+  // es un compuesto desde esa altura hacia arriba. Una muestra puntual y un
+  // conjunto no son lo mismo, y en la planilla vieja quedaban mezclados.
+  referencia          String? // AF | DS | AC | null
+  conjuntoHaciaArriba Boolean  @default(false)
+  analista            String?
+  comentario          String?
+  createdAt           DateTime @default(now())
+
+  resultados ResultadoTanque[]
+}
+
+model ResultadoTanque {
+  id          Int            @id @default(autoincrement())
+  analisisId  Int
+  analisis    AnalisisTanque @relation(fields: [analisisId], references: [id], onDelete: Cascade)
+  parametroId Int
+  parametro   Parametro      @relation(fields: [parametroId], references: [id])
+  valor       Float?
+  valorTexto  String? // para lo que no es numérico ("18 °C", "7 %")
+
+  @@unique([analisisId, parametroId])
+}
+
+model Laboratorio {
+  id          Int     @id @default(autoincrement())
+  nombre      String  @unique
+  esExterno   Boolean @default(true)
+  delExterior Boolean @default(false) // habilita el campo AWB
+  activo      Boolean @default(true)
+}
+
+model LugarMuestreo {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique
+  activo Boolean @default(true)
+}
+
+// Registro con el que el laboratorio identifica y sigue cualquier muestra que
+// entra, salga o no a un laboratorio externo. Sin relación con AnalisisTanque:
+// solo comparten el catálogo Parametro.
+model Muestra {
+  id                   Int       @id @default(autoincrement())
+  numero               String    @unique // "26222", serie por año — etiqueta física del envase
+  fecha                DateTime
+  producto             String
+  detalle              String?
+  motivo               String? // ver catálogo Motivo
+  tipoOrigen           String? // Tanque | Camión | Buque | Isotanque | Bidón | N/A
+  identificacionOrigen String?
+  lugarMuestreo        String?
+  contacto             String? // cliente / proveedor
+  solicitadoPor        String?
+  remito               String?
+  envase               String? // "bidón 5 L"
+  laboratorio          String?
+  estado               String    @default("IDENTIFICADA")
+  // IDENTIFICADA | EN_ANALISIS | ENVIADA | CON_RESULTADO | ANULADA
+  fechaEnvio           DateTime?
+  awb                  String?
+  protocolo            String?
+  fechaResultado       DateTime?
+  resultado            String?
+  adjuntoUrl           String?
+  observacion          String?
+  cargadoPor           String?
+  createdAt            DateTime  @default(now())
+
+  ensayos MuestraEnsayo[]
+}
+
+model Motivo {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique
+  activo Boolean @default(true)
+}
+
+model MuestraEnsayo {
+  id          Int        @id @default(autoincrement())
+  muestraId   Int
+  muestra     Muestra    @relation(fields: [muestraId], references: [id], onDelete: Cascade)
+  parametroId Int?
+  parametro   Parametro? @relation(fields: [parametroId], references: [id])
+  libre       String? // ensayo que no está en el catálogo
+}
