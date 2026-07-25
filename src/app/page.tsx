@@ -9,19 +9,20 @@ export const dynamic = 'force-dynamic'
 export default async function Dashboard() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const inicioMes = new Date(today.getFullYear(), today.getMonth(), 1)
 
   const role = await getRole()
 
-  const [totalIngresos, totalDespachos, ingresosHoy, despachosHoy, ultIngresos, ultDespachos, tareasPendientes, tareasVencidas] =
+  const [ingresosHoy, despachosHoy, ultIngresos, ultDespachos, tareasPendientes, tareasVencidas, analisisMes, muestrasPendientes] =
     await Promise.all([
-      prisma.ingreso.count(),
-      prisma.despacho.count(),
       prisma.ingreso.count({ where: { fecha: { gte: today } } }),
       prisma.despacho.count({ where: { fecha: { gte: today } } }),
       prisma.ingreso.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
       prisma.despacho.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
       prisma.tarea.count({ where: { completadaAt: null } }),
       prisma.tarea.count({ where: { completadaAt: null, fechaVencimiento: { lt: today } } }),
+      prisma.analisisTanque.count({ where: { fecha: { gte: inicioMes } } }),
+      prisma.muestra.count({ where: { estado: { notIn: ['CON_RESULTADO', 'ANULADA'] } } }),
     ])
 
   let estadisticas: { analistas: unknown[]; tareas: unknown[]; ingresos: unknown[]; despachos: unknown[] } | null = null
@@ -41,11 +42,13 @@ export default async function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <StatCard label="Ingresos hoy" value={ingresosHoy} color="green" />
             <StatCard label="Despachos hoy" value={despachosHoy} color="mustard" />
             <StatCard label="Tareas pendientes" value={tareasPendientes} color="dark" />
             <StatCard label="Tareas vencidas" value={tareasVencidas} color="red" />
+            <StatCard label="Análisis de tanque (mes)" value={analisisMes} color="green" />
+            <StatCard label="Muestras sin resultado" value={muestrasPendientes} color="mustard" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
