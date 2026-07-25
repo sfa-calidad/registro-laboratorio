@@ -5,6 +5,15 @@
 export type LabelData = Record<string, string>
 
 export function labelRows(tipo: string, data: LabelData): [string, string][] {
+  // Rótulo de muestra a laboratorio: identifica el envase físico.
+  if (tipo === 'MUESTRAS') {
+    return ([
+      ['N° muestra', data.numero || ''],
+      ['Producto', data.producto || ''],
+      ['Fecha', data.fecha || ''],
+      ['Motivo', data.motivo || ''],
+    ] as [string, string][]).filter(([, v]) => v)
+  }
   const esSalida = tipo === 'SALIDAS' || tipo === 'SFA_SALIDA'
   const rows: [string, string][] = esSalida
     ? [
