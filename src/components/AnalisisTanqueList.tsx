@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatDateOnly, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { buildInformeHTML, buildInformeSVG, type InformeTanque } from '@/lib/informe'
 
 type Producto = { id: number; nombre: string }
 type Analista = { id: number; nombre: string; apellido: string }
@@ -103,6 +104,15 @@ export default function AnalisisTanqueList({
   const [exportDesde, setExportDesde] = useState('')
   const [exportHasta, setExportHasta] = useState('')
   const [savedMsg, setSavedMsg] = useState('')
+  const [informeDe, setInformeDe] = useState<Analisis | null>(null)
+  const [config, setConfig] = useState({ empresa: 'Laboratorio SFA', logo: '' })
+
+  useEffect(() => {
+    fetch('/api/configuracion')
+      .then((r) => r.json())
+      .then((d) => setConfig({ empresa: d.empresa || 'Laboratorio SFA', logo: d.logo || '' }))
+      .catch(() => {})
+  }, [])
 
   const paramById = new Map(parametros.map((p) => [p.id, p]))
 
@@ -180,6 +190,96 @@ export default function AnalisisTanqueList({
     openEdit(a)
     setEditingId(null)
     setForm((f) => ({ ...f, fecha: todayISO() }))
+  }
+
+  // Arma el informe con TODOS los parámetros cargados, no solo las columnas
+  // fijas de la tabla. Los valores se muestran tal cual se guardaron (misma
+  // convención que el listado y el CSV): el formato lo da la unidad.
+  function armarInforme(a: Analisis): InformeTanque {
+    const identificacion: [string, string][] = [
+      ['Fecha', formatDateOnly(a.fecha)],
+      ['Producto', a.producto],
+      ['Tanques', a.tanques],
+      ['Altura', formatAltura(a.alturaM, a.referencia, a.conjuntoHaciaArriba) || '—'],
+      ['Analista', a.analista || '—'],
+      ['N° de análisis', String(a.id)],
+    ]
+
+    const resultados = [...a.resultados]
+      .sort((x, y) => x.parametro.orden - y.parametro.orden)
+      .map((r) => {
+        const espec = especDe(a.producto, r.parametroId)
+        const fuera = r.valor !== null && fueraDeSpec(a.producto, r.parametroId, r.valor)
+        const p = r.parametro
+        return {
+          etiqueta: `${p.nombre}${p.metodo ? ` · ${p.metodo}` : ''}`,
+          valor: r.valorTexto ?? (r.valor !== null ? String(r.valor).replace('.', ',') : '—'),
+          unidad: p.unidad || '',
+          spec: espec ? `${espec.min ?? '—'} a ${espec.max ?? '—'}` : '',
+          fueraDeSpec: fuera,
+        }
+      })
+
+    const ahora = new Date()
+    return {
+      empresa: config.empresa,
+      logo: config.logo,
+      titulo: 'Informe de análisis de tanque',
+      identificacion,
+      resultados,
+      comentario: a.comentario || '',
+      pie: `Generado el ${formatDateOnly(ahora)} a las ${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`,
+    }
+  }
+
+  function nombreArchivo(a: Analisis, ext: string) {
+    const fecha = new Date(a.fecha).toISOString().split('T')[0]
+    const tanques = a.tanques.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-')
+    return `analisis-${fecha}-${tanques}.${ext}`
+  }
+
+  function descargarPDF(a: Analisis) {
+    // Se abre el informe en una ventana y se dispara el diálogo de impresión:
+    // desde ahí se elige "Guardar como PDF". Mismo patrón que los rótulos, y
+    // evita sumar una librería de PDF al proyecto.
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.write(buildInformeHTML(armarInforme(a)))
+    w.document.close()
+    w.focus()
+    setTimeout(() => w.print(), 400)
+  }
+
+  function descargarImagen(a: Analisis) {
+    // El informe se arma como SVG (solo texto y formas, sin foreignObject) y
+    // se dibuja en un canvas para exportarlo como PNG. Todo nativo: sin SVG
+    // externo el canvas no queda bloqueado y toBlob() funciona.
+    const { svg, ancho, alto } = buildInformeSVG(armarInforme(a))
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
+    const img = new Image()
+    img.onload = () => {
+      const escala = 2 // se exporta al doble para que se lea bien al ampliar
+      const canvas = document.createElement('canvas')
+      canvas.width = ancho * escala
+      canvas.height = alto * escala
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.scale(escala, escala)
+      ctx.drawImage(img, 0, 0)
+      URL.revokeObjectURL(url)
+      canvas.toBlob((blob) => {
+        if (!blob) return
+        const enlace = document.createElement('a')
+        enlace.href = URL.createObjectURL(blob)
+        enlace.download = nombreArchivo(a, 'png')
+        enlace.click()
+        setTimeout(() => URL.revokeObjectURL(enlace.href), 1000)
+      }, 'image/png')
+    }
+    img.onerror = () => URL.revokeObjectURL(url)
+    img.src = url
   }
 
   async function handleDelete(id: number) {
@@ -467,6 +567,79 @@ export default function AnalisisTanqueList({
         </div>
       )}
 
+      {informeDe && (() => {
+        const inf = armarInforme(informeDe)
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setInformeDe(null)}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="p-5 overflow-y-auto">
+                <div className="flex items-center gap-3 border-b-4 border-brand-green pb-3 mb-4">
+                  {inf.logo && <img src={inf.logo} alt="Logo" className="h-12 max-w-32 object-contain" />}
+                  <div>
+                    <div className="text-lg font-bold text-brand-dark">{inf.empresa}</div>
+                    <div className="text-sm text-gray-500">{inf.titulo}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-5">
+                  {inf.identificacion.map(([k, v]) => (
+                    <div key={k} className="flex gap-2 text-sm border-b border-gray-100 pb-1">
+                      <span className="text-gray-500 min-w-28">{k}</span>
+                      <span className="font-semibold text-brand-dark">{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <h4 className="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-2">Resultados</h4>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b-2 border-gray-300">
+                      <th className="text-left px-2 py-1.5 text-gray-500">Parámetro</th>
+                      <th className="text-left px-2 py-1.5 text-gray-500">Resultado</th>
+                      <th className="text-left px-2 py-1.5 text-gray-500">Especificación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inf.resultados.map((r, i) => (
+                      <tr key={i} className={`border-b border-gray-100 ${r.fueraDeSpec ? 'text-brand-red' : ''}`}>
+                        <td className="px-2 py-1.5">{r.etiqueta}{r.fueraDeSpec && ' ⚠'}</td>
+                        <td className="px-2 py-1.5 font-semibold whitespace-nowrap">
+                          {r.valor}{r.unidad && <span className="font-normal text-gray-500 text-xs"> {r.unidad}</span>}
+                        </td>
+                        <td className="px-2 py-1.5 text-xs text-gray-500">{r.spec || '—'}</td>
+                      </tr>
+                    ))}
+                    {inf.resultados.length === 0 && (
+                      <tr><td colSpan={3} className="px-2 py-3 text-gray-400">Sin resultados cargados</td></tr>
+                    )}
+                  </tbody>
+                </table>
+
+                {inf.comentario && (
+                  <div className="mt-4 text-sm">
+                    <span className="text-gray-500 block mb-1">Comentario</span>
+                    <p className="bg-gray-50 border-l-4 border-gray-300 px-3 py-2 whitespace-pre-wrap">{inf.comentario}</p>
+                  </div>
+                )}
+                <p className="mt-4 pt-2 border-t text-xs text-gray-400">{inf.pie}</p>
+              </div>
+
+              <div className="p-4 border-t flex justify-end gap-2 flex-shrink-0">
+                <button onClick={() => setInformeDe(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cerrar</button>
+                <button onClick={() => descargarImagen(informeDe)}
+                  className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light">
+                  Descargar imagen
+                </button>
+                <button onClick={() => descargarPDF(informeDe)}
+                  className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
+                  Descargar PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-base">
           <thead className="bg-gray-50 border-b">
@@ -506,7 +679,8 @@ export default function AnalisisTanqueList({
                   })}
                   <td className="px-3 py-2">{a.analista || '—'}</td>
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-2 text-sm whitespace-nowrap">
+                      <button onClick={() => setInformeDe(a)} className="text-brand-green-dark hover:text-brand-green font-medium">Ver informe</button>
                       <button onClick={() => openEdit(a)} className="text-brand-green-dark hover:text-brand-green font-medium">Editar</button>
                       <button onClick={() => openDuplicate(a)} className="text-gray-500 hover:text-gray-700 font-medium">Duplicar</button>
                       <button onClick={() => handleDelete(a.id)} className="text-red-500 hover:text-red-700 font-medium pl-2 border-l border-gray-200">Eliminar</button>
