@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   })
 
   const headers = [
-    'Número', 'Fecha', 'Producto', 'Detalle', 'Motivo', 'Tipo de origen',
+    'Número', 'Fecha', 'Producto', 'Detalle', 'Tipo de origen',
     'Identificación origen', 'Lugar de muestreo', 'Contacto', 'Solicitado por',
     'Remito', 'Envase', 'Laboratorio', 'Estado', 'Fecha envío', 'AWB',
     'Protocolo', 'Fecha resultado', 'Resultado', 'Ensayos', 'Observación',
@@ -41,7 +41,6 @@ export async function GET(req: NextRequest) {
     formatDateOnly(m.fecha),
     m.producto,
     m.detalle || '',
-    m.motivo || '',
     m.tipoOrigen || '',
     m.identificacionOrigen || '',
     m.lugarMuestreo || '',

@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   const columnasParam = [...parametros.entries()].sort((a, b) => a[1].orden - b[1].orden)
 
   const headers = [
-    'ID', 'Fecha', 'Producto', 'Tanques', 'Punto', 'Altura (m)', 'Medida desde',
+    'ID', 'Fecha', 'Producto', 'Tanques', 'Altura (m)', 'Medida desde',
     'Conjunto HA', 'Analista', 'Comentario',
     ...columnasParam.map(([, c]) => c.etiqueta),
     'Creado',
@@ -58,7 +58,6 @@ export async function GET(req: NextRequest) {
       formatDateOnly(a.fecha),
       a.producto,
       a.tanques,
-      a.punto || '',
       a.alturaM ?? '',
       a.referencia || '',
       a.conjuntoHaciaArriba ? 'Sí' : '',

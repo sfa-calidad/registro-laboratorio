@@ -13,7 +13,6 @@ const schema = z.object({
   fecha: z.string(),
   producto: z.string().min(1),
   tanques: z.string().min(1),
-  punto: z.string().optional(),
   alturaM: z.number().nullable().optional(),
   referencia: z.enum(['AF', 'DS', 'AC']).nullable().optional(),
   conjuntoHaciaArriba: z.boolean().optional(),
@@ -44,7 +43,6 @@ export async function POST(req: NextRequest) {
     data: {
       ...datos,
       fecha: new Date(datos.fecha),
-      punto: datos.punto || null,
       alturaM: datos.alturaM ?? null,
       referencia: datos.referencia ?? null,
       conjuntoHaciaArriba: datos.conjuntoHaciaArriba ?? false,

@@ -167,7 +167,6 @@ model AnalisisTanque {
   fecha    DateTime
   producto String
   tanques  String // admite varios: "26 + 27", "114/118/119"
-  punto    String? // Válvula | Conjunto general | Superficie | Fondo | Recirculado | Purga de fondo
   alturaM  Float?
   // referencia y conjuntoHaciaArriba van separados a propósito: la referencia
   // (AF/DS/AC) dice desde dónde se mide la altura; el HA dice que la muestra
@@ -217,7 +216,6 @@ model Muestra {
   fecha                DateTime
   producto             String
   detalle              String?
-  motivo               String? // ver catálogo Motivo
   tipoOrigen           String? // Tanque | Camión | Buque | Isotanque | Bidón | N/A
   identificacionOrigen String?
   lugarMuestreo        String?
@@ -239,12 +237,6 @@ model Muestra {
   createdAt            DateTime  @default(now())
 
   ensayos MuestraEnsayo[]
-}
-
-model Motivo {
-  id     Int     @id @default(autoincrement())
-  nombre String  @unique
-  activo Boolean @default(true)
 }
 
 model MuestraEnsayo {

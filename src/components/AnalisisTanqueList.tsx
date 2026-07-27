@@ -23,7 +23,6 @@ type Analisis = {
   fecha: Date | string
   producto: string
   tanques: string
-  punto: string | null
   alturaM: number | null
   referencia: string | null
   conjuntoHaciaArriba: boolean
@@ -32,7 +31,6 @@ type Analisis = {
   resultados: Resultado[]
 }
 
-const PUNTOS = ['Válvula', 'Conjunto general', 'Superficie', 'Fondo', 'Recirculado', 'Purga de fondo']
 const REFERENCIAS = [
   { value: 'AF', label: 'AF — antes del fondo' },
   { value: 'DS', label: 'DS — desde la superficie' },
@@ -46,7 +44,6 @@ const emptyForm = {
   fecha: '',
   producto: '',
   tanques: '',
-  punto: '',
   alturaM: '',
   referencia: '',
   conjuntoHaciaArriba: false,
@@ -139,7 +136,6 @@ export default function AnalisisTanqueList({
     return (
       a.producto.toLowerCase().includes(q) ||
       a.tanques.toLowerCase().includes(q) ||
-      (a.punto || '').toLowerCase().includes(q) ||
       (a.analista || '').toLowerCase().includes(q)
     )
   })
@@ -165,7 +161,6 @@ export default function AnalisisTanqueList({
       fecha: new Date(a.fecha).toISOString().split('T')[0],
       producto: a.producto,
       tanques: a.tanques,
-      punto: a.punto || '',
       alturaM: a.alturaM !== null ? String(a.alturaM) : '',
       referencia: a.referencia || '',
       conjuntoHaciaArriba: a.conjuntoHaciaArriba,
@@ -209,7 +204,6 @@ export default function AnalisisTanqueList({
       fecha: form.fecha,
       producto: form.producto,
       tanques: form.tanques,
-      punto: form.punto || undefined,
       alturaM: form.alturaM !== '' ? parseNumero(form.alturaM) : null,
       referencia: (form.referencia || null) as 'AF' | 'DS' | 'AC' | null,
       conjuntoHaciaArriba: form.conjuntoHaciaArriba,
@@ -244,9 +238,7 @@ export default function AnalisisTanqueList({
     setLoading(false)
   }
 
-  const resumen = [form.punto, formatAltura(form.alturaM, form.referencia || null, form.conjuntoHaciaArriba)]
-    .filter(Boolean)
-    .join(' · ')
+  const resumen = formatAltura(form.alturaM, form.referencia || null, form.conjuntoHaciaArriba)
 
   const paramsForm = paramsDelFormulario()
 
@@ -255,7 +247,7 @@ export default function AnalisisTanqueList({
       <div className="flex justify-between items-center mb-3">
         <input
           type="text"
-          placeholder="Buscar por producto, tanque, punto o analista..."
+          placeholder="Buscar por producto, tanque o analista..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           className="border rounded-lg px-3 py-2 text-base w-80"
@@ -356,14 +348,6 @@ export default function AnalisisTanqueList({
                 <input required value={form.tanques} onChange={(e) => setForm({ ...form, tanques: e.target.value })}
                   placeholder={'"26 + 27", "114/118/119"'}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Punto de extracción</label>
-                <select value={form.punto} onChange={(e) => setForm({ ...form, punto: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base">
-                  <option value="">— Sin punto —</option>
-                  {PUNTOS.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Altura (m)</label>
@@ -490,7 +474,7 @@ export default function AnalisisTanqueList({
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Fecha</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Producto</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Tanques</th>
-              <th className="text-left px-3 py-2 font-semibold text-gray-600">Punto / Altura</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Altura</th>
               {columnasTabla.map((p) => (
                 <th key={p.id} className="text-left px-3 py-2 font-semibold text-gray-600" title={`${p.nombre}${p.metodo ? ` · ${p.metodo}` : ''}`}>
                   {etiquetaParametro(p)}
@@ -509,7 +493,7 @@ export default function AnalisisTanqueList({
                   <td className="px-3 py-2">{a.producto}</td>
                   <td className="px-3 py-2 font-mono text-sm">{a.tanques}</td>
                   <td className="px-3 py-2 text-sm">
-                    {[a.punto, formatAltura(a.alturaM, a.referencia, a.conjuntoHaciaArriba)].filter(Boolean).join(' · ') || '—'}
+                    {formatAltura(a.alturaM, a.referencia, a.conjuntoHaciaArriba) || '—'}
                   </td>
                   {columnasTabla.map((p) => {
                     const r = porParam.get(p.id)

@@ -342,16 +342,6 @@ async function main() {
     await prisma.lugarMuestreo.upsert({ where: { nombre }, update: {}, create: { nombre } })
   }
 
-  // Motivos de muestreo (salen de los códigos PV, MOS, CO y MT de la hoja
-  // auxiliar, que hoy se cargan mezclados en la columna de cliente).
-  const motivos = [
-    'Control interno', 'Posible cliente o proveedor', 'Posible venta',
-    'Monitoreo semestral', 'Reclamo', 'Proyecto / I+D', 'Contramuestra',
-  ]
-  for (const nombre of motivos) {
-    await prisma.motivo.upsert({ where: { nombre }, update: {}, create: { nombre } })
-  }
-
   console.log('Seed completado')
 }
 

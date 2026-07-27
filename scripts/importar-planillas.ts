@@ -6,8 +6,8 @@
  *
  * Se puede pasar solo una de las dos. Es idempotente: las muestras se
  * upsertean por número, y los análisis de tanque se saltean si ya existe uno
- * idéntico (misma fecha, producto, tanques, punto y altura). Termina
- * imprimiendo un resumen con importados, salteados y filas con problemas.
+ * idéntico (misma fecha, producto, tanques y altura). Termina imprimiendo un
+ * resumen con importados, salteados y filas con problemas.
  *
  * Convención de valores: el número se guarda TAL CUAL está en la planilla
  * (0,0157 y no 1,57): el formato de presentación lo pone la unidad del
@@ -46,17 +46,17 @@ export function normalizarProducto(raw: string): string {
 }
 
 // La columna de cliente del listado viejo mezcla códigos de motivo (hoja
-// auxiliar) con el nombre del cliente: "PV Fulano" = posible venta a Fulano.
-export const MOTIVO_CODIGOS: Record<string, string> = {
-  'PV': 'Posible venta',
-  'MOS': 'Monitoreo semestral',
-  'CO': 'Control interno',
-  'MT': 'Contramuestra',
-}
+// auxiliar, PV/MOS/CO/MT) con el nombre del cliente: "PV Fulano". La app no
+// guarda el motivo como campo propio, pero el código igual se separa del
+// nombre para no importar "PV Fulano" como si fuera la razón social.
+const CODIGO_MOTIVO_PREFIJO = /^(PV|MOS|CO|MT)\b[\s:-]*/i
 
 // --- Parser de alturas -------------------------------------------------------
 // El texto libre de la planilla ("Conj Gral 0,5m AF HA", "val 2AF", "2m DS")
-// se descompone en punto + alturaM + referencia + conjuntoHaciaArriba.
+// se descompone en punto + alturaM + referencia + conjuntoHaciaArriba. El
+// punto (Válvula, Conjunto general, etc.) se usa solo como paso intermedio
+// para separar correctamente el resto de la altura del texto — la app ya no
+// tiene un campo propio para guardarlo, así que no se persiste.
 // Si algo no matchea, ok=false y el texto original va a comentario con el
 // prefijo [altura sin parsear] en vez de perderse.
 
@@ -326,11 +326,13 @@ async function importarTanques(path: string) {
       problemas.push(`Fila ${i + 1}: altura sin parsear "${alturaRaw}"`)
     }
 
-    // Idempotencia: mismo día + producto + tanques + punto + altura = mismo análisis.
+    // Idempotencia: mismo día + producto + tanques + altura = mismo análisis.
+    // La app ya no guarda el punto de extracción como campo propio (se sacó
+    // del modelo); si la altura no matcheó, se compara igual por null para
+    // no reimportar la misma fila sin parsear en cada corrida.
     const existente = await prisma.analisisTanque.findFirst({
       where: {
         fecha, producto, tanques,
-        punto: alt.ok ? alt.punto : null,
         alturaM: alt.ok ? alt.alturaM : null,
         referencia: alt.ok ? alt.referencia : null,
       },
@@ -349,7 +351,6 @@ async function importarTanques(path: string) {
     await prisma.analisisTanque.create({
       data: {
         fecha, producto, tanques,
-        punto: alt.ok ? alt.punto : null,
         alturaM: alt.ok ? alt.alturaM : null,
         referencia: alt.ok ? alt.referencia : null,
         conjuntoHaciaArriba: alt.ok ? alt.conjuntoHaciaArriba : false,
@@ -418,14 +419,11 @@ async function importarMuestras(path: string) {
         continue
       }
 
-      // La columna de cliente puede traer el código de motivo adelante.
+      // La columna de cliente puede traer el código de motivo adelante; se
+      // descarta (la app no lo guarda) pero se limpia del nombre del contacto.
       let contacto = col.cliente >= 0 ? (fila[col.cliente] || '').trim() : ''
-      let motivo: string | null = null
-      const codigo = contacto.match(/^(PV|MOS|CO|MT)\b[\s:-]*/i)
-      if (codigo) {
-        motivo = MOTIVO_CODIGOS[codigo[1].toUpperCase()] || null
-        contacto = contacto.slice(codigo[0].length).trim()
-      }
+      const codigo = contacto.match(CODIGO_MOTIVO_PREFIJO)
+      if (codigo) contacto = contacto.slice(codigo[0].length).trim()
 
       const laboratorio = col.laboratorio >= 0 ? (fila[col.laboratorio] || '').trim() || null : null
       const lab = laboratorio ? labs.find((l) => l.nombre.toLowerCase() === laboratorio.toLowerCase()) : null
@@ -443,7 +441,6 @@ async function importarMuestras(path: string) {
       const datos = {
         fecha, producto,
         detalle: col.detalle >= 0 ? (fila[col.detalle] || '').trim() || null : null,
-        motivo,
         identificacionOrigen: col.origen >= 0 ? (fila[col.origen] || '').trim() || null : null,
         lugarMuestreo: col.lugar >= 0 ? (fila[col.lugar] || '').trim() || null : null,
         contacto: contacto || null,
