@@ -6,7 +6,6 @@ import { buildLabelZPL } from '@/lib/zpl'
 import { buildLabelHTML } from '@/lib/etiqueta'
 
 type Producto = { id: number; nombre: string }
-type Motivo = { id: number; nombre: string }
 type Laboratorio = { id: number; nombre: string; esExterno: boolean; delExterior: boolean }
 type Lugar = { id: number; nombre: string }
 type Parametro = { id: number; nombre: string; metodo: string | null; abreviatura: string | null; unidad: string | null }
@@ -19,7 +18,6 @@ type Muestra = {
   fecha: Date | string
   producto: string
   detalle: string | null
-  motivo: string | null
   tipoOrigen: string | null
   identificacionOrigen: string | null
   lugarMuestreo: string | null
@@ -57,7 +55,6 @@ const emptyForm = {
   fecha: '',
   producto: '',
   detalle: '',
-  motivo: '',
   tipoOrigen: '',
   identificacionOrigen: '',
   lugarMuestreo: '',
@@ -94,7 +91,6 @@ function etiquetaEnsayo(e: Ensayo): string {
 export default function MuestrasList({
   muestras,
   productos,
-  motivos,
   laboratorios,
   lugares,
   parametros,
@@ -103,7 +99,6 @@ export default function MuestrasList({
 }: {
   muestras: Muestra[]
   productos: Producto[]
-  motivos: Motivo[]
   laboratorios: Laboratorio[]
   lugares: Lugar[]
   parametros: Parametro[]
@@ -116,7 +111,6 @@ export default function MuestrasList({
   const PAGE_SIZE = 15
   const [soloSinResultado, setSoloSinResultado] = useState(false)
   const [filtroLab, setFiltroLab] = useState('')
-  const [filtroMotivo, setFiltroMotivo] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -156,8 +150,7 @@ export default function MuestrasList({
       (m.protocolo || '').toLowerCase().includes(q)
     const matchSinResultado = !soloSinResultado || (m.estado !== 'CON_RESULTADO' && m.estado !== 'ANULADA')
     const matchLab = !filtroLab || m.laboratorio === filtroLab
-    const matchMotivo = !filtroMotivo || m.motivo === filtroMotivo
-    return matchTexto && matchSinResultado && matchLab && matchMotivo
+    return matchTexto && matchSinResultado && matchLab
   })
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
@@ -181,7 +174,6 @@ export default function MuestrasList({
       fecha: new Date(m.fecha).toISOString().split('T')[0],
       producto: m.producto,
       detalle: m.detalle || '',
-      motivo: m.motivo || '',
       tipoOrigen: m.tipoOrigen || '',
       identificacionOrigen: m.identificacionOrigen || '',
       lugarMuestreo: m.lugarMuestreo || '',
@@ -217,7 +209,6 @@ export default function MuestrasList({
       fecha: form.fecha,
       producto: form.producto,
       detalle: form.detalle || undefined,
-      motivo: form.motivo || undefined,
       tipoOrigen: form.tipoOrigen || undefined,
       identificacionOrigen: form.identificacionOrigen || undefined,
       lugarMuestreo: form.lugarMuestreo || undefined,
@@ -259,12 +250,11 @@ export default function MuestrasList({
     setLoading(false)
   }
 
-  async function imprimirRotulo(m: { numero: string; producto: string; fecha: Date | string; motivo?: string | null }) {
+  async function imprimirRotulo(m: { numero: string; producto: string; fecha: Date | string }) {
     const data = {
       numero: m.numero,
       producto: m.producto,
       fecha: formatDateOnly(m.fecha),
-      motivo: m.motivo || '',
     }
     // Queda registrado en la pantalla de Rótulos como tipo MUESTRAS.
     fetch('/api/rotulos', {
@@ -350,11 +340,6 @@ export default function MuestrasList({
           <option value="">Todos los laboratorios</option>
           {laboratorios.map((l) => <option key={l.id} value={l.nombre}>{l.nombre}</option>)}
         </select>
-        <select value={filtroMotivo} onChange={(e) => { setFiltroMotivo(e.target.value); setPage(1) }}
-          className="border rounded-lg px-2 py-2 text-sm">
-          <option value="">Todos los motivos</option>
-          {motivos.map((m) => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
-        </select>
         <div className="ml-auto flex gap-2">
           <button onClick={() => setShowExport(true)}
             className="border border-green-600 text-green-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-50">
@@ -435,14 +420,6 @@ export default function MuestrasList({
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-base">
                   <option value="">Seleccionar...</option>
                   {productos.map((p) => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Motivo</label>
-                <select value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base">
-                  <option value="">— Sin motivo —</option>
-                  {motivos.map((m) => <option key={m.id} value={m.nombre}>{m.nombre}</option>)}
                 </select>
               </div>
               <div className="col-span-2">
@@ -610,7 +587,6 @@ export default function MuestrasList({
               <th className="text-left px-3 py-2 font-semibold text-gray-600">N°</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Fecha</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Producto</th>
-              <th className="text-left px-3 py-2 font-semibold text-gray-600">Motivo</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Origen</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Laboratorio</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Ensayos</th>
@@ -624,7 +600,6 @@ export default function MuestrasList({
                 <td className="px-3 py-2 font-mono font-semibold">{m.numero}</td>
                 <td className="px-3 py-2">{formatDateOnly(m.fecha)}</td>
                 <td className="px-3 py-2">{m.producto}</td>
-                <td className="px-3 py-2 text-sm">{m.motivo || '—'}</td>
                 <td className="px-3 py-2 text-sm">
                   {m.tipoOrigen ? `${m.tipoOrigen}${m.identificacionOrigen ? ` · ${m.identificacionOrigen}` : ''}` : '—'}
                 </td>
@@ -644,7 +619,7 @@ export default function MuestrasList({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-3 py-6 text-center text-gray-400 text-base">
+                <td colSpan={8} className="px-3 py-6 text-center text-gray-400 text-base">
                   Sin muestras registradas
                 </td>
               </tr>

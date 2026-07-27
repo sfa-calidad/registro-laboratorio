@@ -11,7 +11,6 @@ export function labelRows(tipo: string, data: LabelData): [string, string][] {
       ['N° muestra', data.numero || ''],
       ['Producto', data.producto || ''],
       ['Fecha', data.fecha || ''],
-      ['Motivo', data.motivo || ''],
     ] as [string, string][]).filter(([, v]) => v)
   }
   const esSalida = tipo === 'SALIDAS' || tipo === 'SFA_SALIDA'
