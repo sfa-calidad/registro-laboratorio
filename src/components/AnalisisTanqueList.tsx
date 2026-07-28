@@ -573,11 +573,13 @@ export default function AnalisisTanqueList({
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setInformeDe(null)}>
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="p-5 overflow-y-auto">
+                {/* Con logo cargado no se repite el nombre de la empresa en
+                    texto: el título queda como encabezado principal. */}
                 <div className="flex items-center gap-3 border-b-4 border-brand-green pb-3 mb-4">
-                  {inf.logo && <img src={inf.logo} alt="Logo" className="h-12 max-w-32 object-contain" />}
+                  {inf.logo && <img src={inf.logo} alt={inf.empresa} className="h-12 max-w-32 object-contain" />}
                   <div>
-                    <div className="text-lg font-bold text-brand-dark">{inf.empresa}</div>
-                    <div className="text-sm text-gray-500">{inf.titulo}</div>
+                    {!inf.logo && <div className="text-lg font-bold text-brand-dark">{inf.empresa}</div>}
+                    <div className={inf.logo ? 'text-base font-bold text-brand-dark' : 'text-sm text-gray-500'}>{inf.titulo}</div>
                   </div>
                 </div>
 
