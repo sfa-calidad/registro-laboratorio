@@ -93,7 +93,7 @@ export default function RotuladorCalado({
       setAbierto(false)
       return
     }
-    onMensaje(`Rótulo de calado del tanque ${datos.tanque} enviado a la impresora`)
+    onMensaje(`Rótulo del tanque ${datos.tanque} enviado a la impresora`)
     setAbierto(false)
   }
 
@@ -114,14 +114,14 @@ export default function RotuladorCalado({
         onClick={abrir}
         className="bg-brand-green text-white hover:bg-brand-green-dark text-sm font-medium px-3 py-1.5 rounded-lg"
       >
-        Rótulo de calado
+        Rotulador
       </button>
 
       {abierto && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setAbierto(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-5 border-b">
-              <h3 className="text-lg font-bold text-gray-800">Rótulo de calado</h3>
+              <h3 className="text-lg font-bold text-gray-800">Rotulador</h3>
               <p className="text-sm text-gray-500 mt-0.5">
                 Se imprime nada más: no queda registrado en el listado de rótulos ni en los análisis.
               </p>

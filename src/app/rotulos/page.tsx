@@ -12,7 +12,7 @@ export default async function RotulosPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Rótulos</h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Rótulos Movimientos</h2>
       <RotulosList rotulos={rotulos} />
     </div>
   )
