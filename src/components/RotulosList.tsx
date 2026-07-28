@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react'
 import { formatDate } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { buildLabelZPL } from '@/lib/zpl'
 import { buildLabelHTML } from '@/lib/etiqueta'
+import { imprimirEtiqueta, PRINTER_STORAGE_KEY } from '@/lib/impresion'
+import RotuladorCalado from '@/components/RotuladorCalado'
 
 const TIPO_LABELS: Record<string, string> = {
   INGRESOS: 'Ingreso',
@@ -27,22 +28,6 @@ type Rotulo = {
   ingreso: { hrRemito: string; origen: string } | null
   despacho: { hrContrato: string; destino: string } | null
 }
-
-// API que expone la app de escritorio (Electron) para imprimir sin diálogo.
-type DesktopPrinter = {
-  getPrinters: () => Promise<{ name: string; isDefault: boolean }[]>
-  printLabel: (opts: { html: string; zpl?: string; deviceName?: string; widthMm: number; heightMm: number }) => Promise<{ success: boolean; failureReason: string; usedDialog?: boolean; usedZpl?: boolean }>
-  // Existe desde la versión 1.1.0 de la app de escritorio.
-  getVersion?: () => Promise<string>
-}
-
-declare global {
-  interface Window {
-    desktopPrinter?: DesktopPrinter
-  }
-}
-
-const PRINTER_STORAGE_KEY = 'rotulos_impresora'
 
 function PrinterIcon({ size = 14 }: { size?: number }) {
   return (
@@ -106,24 +91,13 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
   async function handleQuickPrint(rotulo: Rotulo) {
     if (!window.desktopPrinter) return
     const data = rotulo.data as Record<string, string>
-    const html = buildLabelHTML(rotulo.tipo, data, config)
-    try {
-      const res = await window.desktopPrinter.printLabel({
-        html,
-        zpl: buildLabelZPL(rotulo.tipo, data, config),
-        deviceName: selectedPrinter || undefined,
-        widthMm: Number(config.etiquetaAncho) || 100,
-        heightMm: Number(config.etiquetaAlto) || 45,
-      })
-      if (res.success && res.usedDialog) {
-        showQuickMsg('La impresión directa falló en esta PC; se usó el diálogo de impresión')
-      } else if (res.success) {
-        showQuickMsg(`Rótulo #${rotulo.id} enviado a ${selectedPrinter || 'la impresora predeterminada'}`)
-      } else {
-        showQuickMsg(`No se pudo imprimir: ${res.failureReason || 'error desconocido'}`, true)
-      }
-    } catch {
-      showQuickMsg('No se pudo imprimir el rótulo', true)
+    const res = await imprimirEtiqueta(rotulo.tipo, data, config, { deviceName: selectedPrinter || undefined })
+    if (!res.ok) {
+      showQuickMsg(`No se pudo imprimir: ${res.mensaje}`, true)
+    } else if (res.usoDialogo) {
+      showQuickMsg('La impresión directa falló en esta PC; se usó el diálogo de impresión')
+    } else {
+      showQuickMsg(`Rótulo #${rotulo.id} enviado a ${selectedPrinter || 'la impresora predeterminada'}`)
     }
   }
 
@@ -140,6 +114,16 @@ export default function RotulosList({ rotulos }: { rotulos: Rotulo[] }) {
 
   return (
     <div>
+      <div className="mb-3 flex items-center gap-3 flex-wrap">
+        <RotuladorCalado
+          config={config}
+          deviceName={selectedPrinter || undefined}
+          onMensaje={showQuickMsg}
+        />
+        <span className="text-sm text-gray-500">
+          Para rotular en el momento de calar: no se guarda, se imprime nada más.
+        </span>
+      </div>
       {quickPrintAvailable && (
         <div className="mb-3">
           <div className="flex items-center gap-2 text-sm">

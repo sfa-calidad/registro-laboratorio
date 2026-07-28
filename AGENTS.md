@@ -37,6 +37,13 @@ Resumen para trabajar en el código:
 - **App de escritorio (Electron)**: no usar `alert()`/`confirm()` nativos en
   flujos con foco (rompen la ventana); usar avisos in-app. La impresión de
   rótulos usa ZPL crudo por spooler para Zebra (`desktop/main.js`, `src/lib/zpl.ts`).
+- **Rótulos**: el contenido de cada tipo se define una sola vez en `labelRows`
+  (`src/lib/zpl.ts`) y lo renderizan las dos salidas: ZPL para la Zebra y HTML
+  para el diálogo de impresión (`src/lib/etiqueta.ts`). `imprimirEtiqueta`
+  (`src/lib/impresion.ts`) elige el camino según haya o no app de escritorio.
+  En ZPL cada fila es de una línea: si el valor no entra se le achica la letra
+  (hasta 16) en vez de cortarlo. El rótulo de calado (`RotuladorCalado`) se
+  imprime sin guardar nada: es solo la etiqueta del envase.
 - **Datos base** (productos, columnas, contactos/razones sociales, parámetros,
   perfiles, laboratorios, lugares de muestreo): se cargan en `prisma/seed.ts`,
   que corre en cada deploy de forma idempotente.
