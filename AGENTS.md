@@ -18,6 +18,13 @@ Resumen para trabajar en el código:
   `ColumnaKanban`, `Rotulo`, `Contacto`, `Analista`, `Producto`, `Configuracion`
   (ver `prisma/schema.prisma`). Las páginas server-component consultan Prisma
   directo; hay APIs en `src/app/api/*` para las mutaciones del cliente.
+- **Análisis de tanques y muestras**: dos módulos independientes que solo
+  comparten el catálogo `Parametro` (el método es parte de la identidad del
+  ensayo: "Humedad · Termobalanza" y "Humedad · Karl Fischer" nunca se fusionan).
+  Tanques: `AnalisisTanque` + `ResultadoTanque`, con `PerfilProducto` (qué
+  parámetros mostrar) y `Especificacion` (rangos). Muestras: `Muestra` +
+  `MuestraEnsayo`, con `Laboratorio` y `LugarMuestreo`. El informe descargable
+  (PDF vía `window.print()`, PNG vía SVG→canvas) vive en `src/lib/informe.ts`.
 
 ## Convenciones aprendidas (respetar)
 
@@ -30,5 +37,26 @@ Resumen para trabajar en el código:
 - **App de escritorio (Electron)**: no usar `alert()`/`confirm()` nativos en
   flujos con foco (rompen la ventana); usar avisos in-app. La impresión de
   rótulos usa ZPL crudo por spooler para Zebra (`desktop/main.js`, `src/lib/zpl.ts`).
-- **Datos base** (productos, columnas, contactos/razones sociales): se cargan en
-  `prisma/seed.ts`, que corre en cada deploy de forma idempotente.
+- **Datos base** (productos, columnas, contactos/razones sociales, parámetros,
+  perfiles, laboratorios, lugares de muestreo): se cargan en `prisma/seed.ts`,
+  que corre en cada deploy de forma idempotente.
+- **Numeración de muestras**: `proximoNumero()` en `src/lib/muestras.ts` arma
+  `AA` + secuencia de 3 dígitos. `PRIMERA_SECUENCIA` fija el piso de los años
+  que ya venían numerados en la planilla de Excel (2026 arranca en `26300`);
+  el piso solo empuja hacia adelante, nunca devuelve un número existente.
+- **Nombres de ensayos**: hay ensayos que parecen otra cosa. `27/3` no es una
+  fecha: es la dilución de 3 ml de Bio en 27 ml de metanol para detectar aceite
+  (transparente = OK, precipita = no OK). No "corregir" ni parsear estos nombres.
+
+## Notas de mantenimiento
+
+- **Deploy**: Vercel despliega solo al mergear a la rama por defecto
+  (`claude/charming-brown-mrqmvi`; no existe `main`). Commitear a una rama de
+  trabajo no despliega nada.
+- **Instalador de escritorio**: el `.exe` solo hay que regenerarlo cuando cambia
+  algo dentro de `desktop/`. Todo lo demás es web y le llega al usuario con el
+  deploy, sin reinstalar.
+- **`scripts/limpiar-obsoletos.ts`**: paso del build que borra objetos de
+  esquema ya eliminados. Sus sentencias actuales ya corrieron en producción, así
+  que se puede sacar del `build` en `package.json` junto con el script cuando se
+  quiera limpiar (ver el comentario del propio archivo).
