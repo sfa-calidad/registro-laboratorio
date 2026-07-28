@@ -1,0 +1,280 @@
+'use client'
+import { useState, useEffect } from 'react'
+import { formatDateOnly, todayISO } from '@/lib/utils'
+import { buildLabelHTML, type EtiquetaConfig } from '@/lib/etiqueta'
+import { imprimirEtiqueta } from '@/lib/impresion'
+
+// Rotulador para el calado: se completa en el momento de salir a calar y se
+// imprime. No se guarda nada en la base — es solo la etiqueta del envase.
+
+const REFERENCIAS = [
+  { value: 'AF', label: 'AF — antes del fondo' },
+  { value: 'DS', label: 'DS — desde la superficie' },
+  { value: 'AC', label: 'AC — antes del cono' },
+]
+
+type Producto = { id: number; nombre: string }
+type Analista = { id: number; nombre: string; apellido: string }
+
+const emptyForm = {
+  tanque: '',
+  producto: '',
+  alturaM: '',
+  referencia: '',
+  conjuntoHaciaArriba: false,
+  fecha: '',
+  analista1: '',
+  analista2: '',
+  observacion: '',
+}
+
+// Misma convención que en Análisis de tanques: la altura nunca se muestra sin
+// su referencia (2 m AF y 2 m DS son puntos distintos del tanque). En el rótulo
+// el conjunto va como "HA" y no con la flecha ↑, porque las fuentes de la Zebra
+// no tienen ese símbolo.
+function formatAlturaRotulo(alturaM: string, referencia: string, ha: boolean): string {
+  const partes: string[] = []
+  if (alturaM.trim()) partes.push(`${alturaM.trim().replace('.', ',')} m${referencia ? ` ${referencia}` : ''}`)
+  if (ha) partes.push('HA')
+  return partes.join(' ')
+}
+
+export default function RotuladorCalado({
+  config,
+  deviceName,
+  onMensaje,
+}: {
+  config: EtiquetaConfig
+  deviceName?: string
+  onMensaje: (texto: string, error?: boolean) => void
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const [form, setForm] = useState(emptyForm)
+  const [productos, setProductos] = useState<Producto[]>([])
+  const [analistas, setAnalistas] = useState<Analista[]>([])
+  const [imprimiendo, setImprimiendo] = useState(false)
+
+  // Los catálogos se piden recién al abrir el rotulador: la pantalla de
+  // Rótulos no los necesita para nada más.
+  useEffect(() => {
+    if (!abierto || productos.length || analistas.length) return
+    fetch('/api/productos').then((r) => r.json()).then(setProductos).catch(() => {})
+    fetch('/api/analistas').then((r) => r.json()).then(setAnalistas).catch(() => {})
+  }, [abierto, productos.length, analistas.length])
+
+  function abrir() {
+    setForm({ ...emptyForm, fecha: todayISO() })
+    setAbierto(true)
+  }
+
+  const datos = {
+    tanque: form.tanque.trim(),
+    producto: form.producto,
+    altura: formatAlturaRotulo(form.alturaM, form.referencia, form.conjuntoHaciaArriba),
+    fecha: form.fecha ? formatDateOnly(form.fecha) : '',
+    analista1: form.analista1,
+    analista2: form.analista2,
+    observacion: form.observacion.trim(),
+  }
+
+  const listo = Boolean(datos.tanque && datos.producto)
+
+  async function imprimir() {
+    if (!listo || imprimiendo) return
+    setImprimiendo(true)
+    const res = await imprimirEtiqueta('CALADO', datos, config, { deviceName })
+    setImprimiendo(false)
+    if (!res.ok) {
+      onMensaje(`No se pudo imprimir: ${res.mensaje}`, true)
+      return
+    }
+    if (res.usoDialogo) {
+      // En el navegador se abre el diálogo: el aviso sobra.
+      setAbierto(false)
+      return
+    }
+    onMensaje(`Rótulo del tanque ${datos.tanque} enviado a la impresora`)
+    setAbierto(false)
+  }
+
+  const nombresAnalistas = analistas.map((a) => `${a.nombre} ${a.apellido}`)
+
+  // Tamaño de la vista previa: los milímetros de la etiqueta pasados a píxeles
+  // de pantalla (96 dpi) y escalados para que entren en el panel.
+  const anchoMm = Number(config.etiquetaAncho) || 100
+  const altoMm = Number(config.etiquetaAlto) || 45
+  const anchoPx = Math.round((anchoMm * 96) / 25.4)
+  const altoPx = Math.round((altoMm * 96) / 25.4)
+  const ANCHO_PANEL = 384
+  const escala = Math.min(1, ANCHO_PANEL / anchoPx)
+
+  return (
+    <>
+      <button
+        onClick={abrir}
+        className="bg-brand-green text-white hover:bg-brand-green-dark text-sm font-medium px-3 py-1.5 rounded-lg"
+      >
+        Rotulador
+      </button>
+
+      {abierto && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setAbierto(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 border-b">
+              <h3 className="text-lg font-bold text-gray-800">Rotulador</h3>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Se imprime nada más: no queda registrado en el listado de rótulos ni en los análisis.
+              </p>
+            </div>
+
+            <div className="p-5 grid grid-cols-1 md:grid-cols-[1fr_400px] gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-700">Tanque *</label>
+                  <input
+                    autoFocus
+                    value={form.tanque}
+                    onChange={(e) => setForm({ ...form, tanque: e.target.value })}
+                    placeholder={'"26", "26 + 27"'}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-700">Producto *</label>
+                  <select
+                    value={form.producto}
+                    onChange={(e) => setForm({ ...form, producto: e.target.value })}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {productos.map((p) => (
+                      <option key={p.id} value={p.nombre}>{p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Altura (m)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.alturaM}
+                    onChange={(e) => setForm({ ...form, alturaM: e.target.value })}
+                    placeholder="0,5"
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Medida desde</label>
+                  <select
+                    value={form.referencia}
+                    onChange={(e) => setForm({ ...form, referencia: e.target.value })}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
+                  >
+                    <option value="">No aplica</option>
+                    {REFERENCIAS.map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={form.conjuntoHaciaArriba}
+                      onChange={(e) => setForm({ ...form, conjuntoHaciaArriba: e.target.checked })}
+                    />
+                    Conjunto hacia arriba (HA)
+                  </label>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-700">Fecha</label>
+                  <input
+                    type="date"
+                    value={form.fecha}
+                    onChange={(e) => setForm({ ...form, fecha: e.target.value })}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Analista 1</label>
+                  <select
+                    value={form.analista1}
+                    onChange={(e) => setForm({ ...form, analista1: e.target.value })}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
+                  >
+                    <option value="">—</option>
+                    {nombresAnalistas.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Analista 2</label>
+                  <select
+                    value={form.analista2}
+                    onChange={(e) => setForm({ ...form, analista2: e.target.value })}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
+                  >
+                    <option value="">—</option>
+                    {nombresAnalistas.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-gray-700">Observación</label>
+                  <textarea
+                    rows={3}
+                    value={form.observacion}
+                    onChange={(e) => setForm({ ...form, observacion: e.target.value })}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-1">Vista previa</div>
+                <div className="border rounded-lg bg-gray-50 p-2">
+                  {/* La etiqueta se arma en milímetros reales y se escala para
+                      que entre en el panel: así se ve completa, sin recortes,
+                      con cualquier tamaño configurado. */}
+                  <div style={{ width: anchoPx * escala, height: altoPx * escala }}>
+                    <iframe
+                      title="Vista previa del rótulo"
+                      srcDoc={buildLabelHTML('CALADO', datos, config)}
+                      scrolling="no"
+                      className="bg-white border-0"
+                      style={{
+                        width: anchoPx,
+                        height: altoPx,
+                        transform: `scale(${escala})`,
+                        transformOrigin: 'top left',
+                      }}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Se imprime en el tamaño configurado ({anchoMm} × {altoMm} mm).
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 border-t flex justify-end gap-2">
+              <button onClick={() => setAbierto(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
+                Cancelar
+              </button>
+              <button
+                onClick={imprimir}
+                disabled={!listo || imprimiendo}
+                className="bg-brand-green text-white hover:bg-brand-green-dark disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 text-sm font-medium rounded-lg"
+                title={listo ? '' : 'Completá al menos el tanque y el producto'}
+              >
+                {imprimiendo ? 'Imprimiendo...' : 'Imprimir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

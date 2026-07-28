@@ -42,7 +42,9 @@ export function buildLabelHTML(tipo: string, data: LabelData, config: EtiquetaCo
     td:first-child { font-weight: bold; width: 38%; color: #444; }
     tr { border-bottom: 1px solid #eee; }
     tr:last-child { border-bottom: none; }
-    .obs { width: 40%; border-left: 1px solid #000; padding-left: 5px; display: flex; flex-direction: column; }
+    /* Menos ancho que antes (40%) para que entren los valores largos de la
+       izquierda; mismo reparto que el ZPL. */
+    .obs { width: 32%; border-left: 1px solid #000; padding-left: 5px; display: flex; flex-direction: column; }
     .obs-title { font-weight: bold; color: #444; font-size: ${fs}pt; margin-bottom: 3px; }
     .obs-text { font-size: ${fs}pt; line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
     @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } @page { size: ${w}mm ${h}mm; margin: 2mm; } }
