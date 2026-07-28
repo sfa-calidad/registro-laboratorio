@@ -70,6 +70,9 @@ export function buildInformeHTML(informe: InformeTanque): string {
     header img { max-height: 52px; max-width: 130px; object-fit: contain; }
     .empresa { font-size: 19px; font-weight: bold; }
     .titulo { font-size: 13px; color: ${COLOR_SUAVE}; margin-top: 2px; }
+    /* Con logo cargado, el nombre de la empresa no se repite en texto: el
+       título queda como encabezado principal. */
+    .titulo.solo { font-size: 17px; font-weight: bold; color: ${COLOR_TEXTO}; margin-top: 0; }
     .ident { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin-bottom: 20px; }
     .campo { display: flex; gap: 6px; font-size: 13px; border-bottom: 1px solid #f3f4f6; padding-bottom: 4px; }
     .lbl { color: ${COLOR_SUAVE}; min-width: 110px; }
@@ -93,11 +96,13 @@ export function buildInformeHTML(informe: InformeTanque): string {
 <body>
   <div class="hoja">
     <header>
-      ${informe.logo ? `<img src="${informe.logo}" alt="logo">` : ''}
-      <div>
+      ${informe.logo
+        ? `<img src="${informe.logo}" alt="${escaparXml(informe.empresa)}">
+      <div><div class="titulo solo">${escaparXml(informe.titulo)}</div></div>`
+        : `<div>
         <div class="empresa">${escaparXml(informe.empresa)}</div>
         <div class="titulo">${escaparXml(informe.titulo)}</div>
-      </div>
+      </div>`}
     </header>
     <div class="ident">${ident}</div>
     <h2>Resultados</h2>
@@ -123,13 +128,15 @@ export function buildInformeSVG(informe: InformeTanque): { svg: string; ancho: n
   const partes: string[] = []
   let y = margen
 
-  // Encabezado
+  // Encabezado. Con logo cargado no se repite el nombre de la empresa en
+  // texto (el logo ya lo dice): el título pasa a ser el encabezado principal.
   if (informe.logo) {
     partes.push(`<image href="${informe.logo}" x="${margen}" y="${y}" height="48" width="120" preserveAspectRatio="xMinYMid meet"/>`)
+    partes.push(`<text x="${margen + 134}" y="${y + 31}" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="${COLOR_TEXTO}">${escaparXml(informe.titulo)}</text>`)
+  } else {
+    partes.push(`<text x="${margen}" y="${y + 22}" font-family="Arial, sans-serif" font-size="21" font-weight="bold" fill="${COLOR_TEXTO}">${escaparXml(informe.empresa)}</text>`)
+    partes.push(`<text x="${margen}" y="${y + 42}" font-family="Arial, sans-serif" font-size="13" fill="${COLOR_SUAVE}">${escaparXml(informe.titulo)}</text>`)
   }
-  const xTexto = informe.logo ? margen + 134 : margen
-  partes.push(`<text x="${xTexto}" y="${y + 22}" font-family="Arial, sans-serif" font-size="21" font-weight="bold" fill="${COLOR_TEXTO}">${escaparXml(informe.empresa)}</text>`)
-  partes.push(`<text x="${xTexto}" y="${y + 42}" font-family="Arial, sans-serif" font-size="13" fill="${COLOR_SUAVE}">${escaparXml(informe.titulo)}</text>`)
   y += 60
   partes.push(`<rect x="${margen}" y="${y}" width="${anchoUtil}" height="3" fill="${COLOR_VERDE}"/>`)
   y += 26
