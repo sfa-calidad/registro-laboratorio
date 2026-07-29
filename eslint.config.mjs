@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Subproyecto Electron (CommonJS, con su propio package.json):
     // no aplican las reglas de la app Next.
     "desktop/**",
+    // Lanzador de los tests: script de Node en CommonJS, no código de la app.
+    "scripts/test.js",
   ]),
 ]);
 

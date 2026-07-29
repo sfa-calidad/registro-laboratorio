@@ -63,7 +63,15 @@ Resumen para trabajar en el código:
 - **Instalador de escritorio**: el `.exe` solo hay que regenerarlo cuando cambia
   algo dentro de `desktop/`. Todo lo demás es web y le llega al usuario con el
   deploy, sin reinstalar.
-- **`scripts/limpiar-obsoletos.ts`**: paso del build que borra objetos de
-  esquema ya eliminados. Sus sentencias actuales ya corrieron en producción, así
-  que se puede sacar del `build` en `package.json` junto con el script cuando se
-  quiera limpiar (ver el comentario del propio archivo).
+- **Borrar una columna o tabla con datos**: `prisma db push` aborta con "data
+  loss" y el deploy falla. Esa protección es deseable (evita que un cambio de
+  esquema se lleve puestos datos reales), así que la salida no es
+  `--accept-data-loss`: hay que agregar un paso previo al build que ejecute el
+  `DROP`/`ALTER ... DROP COLUMN` explícito con `IF EXISTS`, y sacarlo una vez que
+  corrió en todos los entornos. Se hizo así para `Motivo` y `punto`; el script
+  ya cumplió y se eliminó. Por eso `Ingreso.fechaAnalisis` sigue en el esquema
+  aunque no se use: sacarlo requiere ese paso.
+- **Tests**: `npm test` corre el runner incorporado de Node sobre `tests/`, sin
+  dependencias extra. Cubre las funciones puras donde aparecieron bugs (firma de
+  la sesión, estado de las muestras, fechas del laboratorio, rótulos). Si tocás
+  una de esas, el test tiene que fallar antes de que lo arregles.

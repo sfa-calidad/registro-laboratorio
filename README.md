@@ -74,7 +74,12 @@ npm install
 # definir DATABASE_URL y las contraseñas (por ejemplo en un archivo .env)
 npx prisma db push   # crea/actualiza el esquema en la base
 npm run dev          # http://localhost:3000
+npm test             # tests de las funciones puras
+npm run lint
 ```
+
+Los mismos tres comandos (`test`, `lint`, `build:local`) corren solos en cada
+push y cada pull request; ver `.github/workflows/ci.yml`.
 
 ## Deploy (Vercel + Neon)
 
