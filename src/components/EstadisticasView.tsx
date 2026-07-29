@@ -3,12 +3,12 @@ import { useState, useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 type Analista = { id: number; nombre: string; apellido: string }
+// Solo lo que estas estadísticas realmente miran: el dashboard traía la tarea
+// entera con tres relaciones completas para usar cinco campos.
 type Tarea = {
-  id: number
-  titulo: string
   columna: { nombre: string }
-  firma1: Analista | null
-  firma2: Analista | null
+  analistaId1: number | null
+  analistaId2: number | null
   completadaAt: string | Date | null
   createdAt: string | Date
 }
@@ -21,10 +21,13 @@ type Props = {
   despachos: Movimiento[]
 }
 
+// El período más largo acota lo que se trae de la base: antes se cargaba la
+// tabla entera de tareas, ingresos y despachos en cada visita al dashboard, y
+// crecía sin techo. Tiene que coincidir con PERIODO_MAX_DIAS en src/app/page.tsx.
 const PERIODOS = [
   { label: 'Últimos 7 días', days: 7 },
   { label: 'Últimos 30 días', days: 30 },
-  { label: 'Todo el tiempo', days: 0 },
+  { label: 'Último año', days: 365 },
 ]
 
 const PIE_COLORS = ['#8bc53f', '#e0a32a', '#d1d5db']
@@ -46,11 +49,15 @@ export default function EstadisticasView({ analistas, tareas, ingresos, despacho
 
       const tareasFiltered = tareas.filter(t =>
         isInPeriod(t.createdAt, periodo) &&
-        (t.firma1?.id === a.id || t.firma2?.id === a.id)
+        (t.analistaId1 === a.id || t.analistaId2 === a.id)
       )
+      // Las tres categorías son excluyentes: una tarea completada que quedó en
+      // la columna "Pendiente" contaba a la vez como completada y como
+      // pendiente, y las porciones del gráfico sumaban más que el total.
       const completadas = tareasFiltered.filter(t => t.completadaAt).length
-      const enProgreso = tareasFiltered.filter(t => !t.completadaAt && !t.columna.nombre.toLowerCase().includes('pendiente')).length
-      const pendientes = tareasFiltered.filter(t => t.columna.nombre.toLowerCase().includes('pendiente')).length
+      const sinCompletar = tareasFiltered.filter(t => !t.completadaAt)
+      const pendientes = sinCompletar.filter(t => t.columna.nombre.toLowerCase().includes('pendiente')).length
+      const enProgreso = sinCompletar.length - pendientes
 
       const ingresosCount = ingresos.filter(i => i.operador === nombreCompleto && isInPeriod(i.createdAt, periodo)).length
       const despachosCount = despachos.filter(d => d.operador === nombreCompleto && isInPeriod(d.createdAt, periodo)).length

@@ -6,6 +6,10 @@ import NotasTablero from '@/components/NotasTablero'
 
 export const dynamic = 'force-dynamic'
 
+// Período más largo que ofrece el selector de estadísticas. Tiene que coincidir
+// con el mayor de PERIODOS en src/components/EstadisticasView.tsx.
+const PERIODO_MAX_DIAS = 365
+
 export default async function Dashboard() {
   // "Hoy" es el día del laboratorio, no el del proceso: en Vercel el servidor
   // corre en UTC y a partir de las 21:00 hora argentina ya está en el día
@@ -37,11 +41,26 @@ export default async function Dashboard() {
 
   let estadisticas: { analistas: unknown[]; tareas: unknown[]; ingresos: unknown[]; despachos: unknown[] } | null = null
   if (role === 'supervisor') {
+    // Acotado al período más largo que ofrece el selector de EstadisticasView.
+    // Antes se traían las tablas enteras —todas las tareas con tres relaciones
+    // completas, todos los ingresos y todos los despachos— en cada visita al
+    // dashboard, y el peso crecía sin techo. Además se piden solo los cinco
+    // campos que las estadísticas miran de verdad.
+    const desde = sumarDias(hoy, -PERIODO_MAX_DIAS)
     const [analistas, tareas, ingresosOp, despachosOp] = await Promise.all([
       prisma.analista.findMany({ where: { activo: true }, orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }] }),
-      prisma.tarea.findMany({ include: { firma1: true, firma2: true, columna: true } }),
-      prisma.ingreso.findMany({ select: { operador: true, createdAt: true } }),
-      prisma.despacho.findMany({ select: { operador: true, createdAt: true } }),
+      prisma.tarea.findMany({
+        where: { createdAt: { gte: desde } },
+        select: {
+          createdAt: true,
+          completadaAt: true,
+          analistaId1: true,
+          analistaId2: true,
+          columna: { select: { nombre: true } },
+        },
+      }),
+      prisma.ingreso.findMany({ where: { createdAt: { gte: desde } }, select: { operador: true, createdAt: true } }),
+      prisma.despacho.findMany({ where: { createdAt: { gte: desde } }, select: { operador: true, createdAt: true } }),
     ])
     estadisticas = { analistas, tareas, ingresos: ingresosOp, despachos: despachosOp }
   }
