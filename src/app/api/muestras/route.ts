@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     : null
 
   const estado = datos.estado ?? derivarEstado({
+    numero: datos.numero,
     fechaResultado: datos.fechaResultado,
     resultado: datos.resultado,
     protocolo: datos.protocolo,

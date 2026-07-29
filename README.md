@@ -16,7 +16,7 @@ El acceso es por contraseña, con dos roles:
 
 La sesión se guarda en una cookie firmada y **expira sola a las 3 horas**
 (configurable con `SESSION_HOURS`). El acceso a todas las páginas y APIs lo
-controla `src/middleware.ts` (proxy de Next.js).
+controla `src/proxy.ts` (el proxy de Next.js, antes "middleware").
 
 ## Funcionalidades
 

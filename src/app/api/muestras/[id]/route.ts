@@ -48,6 +48,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     : null
 
   const estado = datos.estado ?? derivarEstado({
+    numero: datos.numero,
     fechaResultado: datos.fechaResultado,
     resultado: datos.resultado,
     protocolo: datos.protocolo,

@@ -21,9 +21,12 @@ type Producto = { id: number; nombre: string }
 type Contacto = { id: number; nombre: string }
 type Analista = { id: number; nombre: string; apellido: string }
 
+// La fecha arranca vacía: la pone quien abre el formulario (openNew /
+// openDuplicate). Calcularla acá la congelaba al cargar el módulo, y además
+// daba un valor en el servidor y otro en el navegador.
 const emptyForm = {
   hrContrato: '',
-  fecha: todayISO(),
+  fecha: '',
   destino: '',
   producto: '',
   deposito: '',

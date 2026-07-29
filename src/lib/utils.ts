@@ -18,6 +18,10 @@ export function formatDateOnly(date: Date | string): string {
   return format(local, 'dd/MM/yyyy', { locale: es })
 }
 
+// Fecha de hoy en YYYY-MM-DD para precargar los <input type="date">.
+// Va por componentes LOCALES a propósito: `toISOString()` da la fecha UTC, así
+// que a partir de las 21:00 hora argentina devolvía el día siguiente y todo lo
+// que se cargaba en el turno tarde quedaba fechado un día adelante.
 export function todayISO(): string {
-  return new Date().toISOString().split('T')[0]
+  return format(new Date(), 'yyyy-MM-dd')
 }

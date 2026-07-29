@@ -13,7 +13,7 @@ Resumen para trabajar en el código:
   PostgreSQL (Neon en prod), Tailwind 4. Electron en `desktop/`.
 - **Auth**: por contraseña, roles `supervisor` / `analista`. La sesión es una
   cookie (`lab_session`) con vencimiento embebido, validada en `src/lib/auth.ts`
-  y en el proxy `src/middleware.ts`. Configurable con `SESSION_HOURS`.
+  y en el proxy `src/proxy.ts`. Configurable con `SESSION_HOURS`.
 - **Dominio**: `Ingreso`, `Despacho`, `Tarea` (Kanban con campo `orden`),
   `ColumnaKanban`, `Rotulo`, `Contacto`, `Analista`, `Producto`, `Configuracion`
   (ver `prisma/schema.prisma`). Las páginas server-component consultan Prisma
