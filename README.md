@@ -14,9 +14,15 @@ El acceso es por contraseña, con dos roles:
 - **Supervisor**: además gestiona analistas, contactos (proveedores/clientes),
   archiva tareas completadas y ve las estadísticas del dashboard.
 
-La sesión se guarda en una cookie firmada y **expira sola a las 3 horas**
+La sesión se guarda en una cookie `lab_session` **firmada con HMAC-SHA256** (rol
+y vencimiento van dentro de la firma, así que no se puede fabricar una sesión ni
+estirar su duración editando la cookie) y **expira sola a las 3 horas**
 (configurable con `SESSION_HOURS`). El acceso a todas las páginas y APIs lo
 controla `src/proxy.ts` (el proxy de Next.js, antes "middleware").
+
+La clave de firma sale de `SESSION_SECRET` si está definida y, si no, se deriva
+de las contraseñas: no hace falta configurar nada. Cambiar cualquiera de las dos
+contraseñas invalida las sesiones abiertas.
 
 ## Funcionalidades
 
@@ -51,6 +57,15 @@ controla `src/proxy.ts` (el proxy de Next.js, antes "middleware").
 | `ANALISTA_PASSWORD` | Contraseña del rol analista. |
 | `APP_PASSWORD` | Alternativa única para ambos roles (compatibilidad). |
 | `SESSION_HOURS` | Duración de la sesión en horas (por defecto 3). |
+| `SESSION_SECRET` | Clave para firmar la cookie de sesión. Opcional: si falta, se deriva de las contraseñas. |
+| `TZ` | Zona horaria del servidor. Conviene `America/Argentina/Buenos_Aires`. |
+
+> **Sobre `TZ`.** El servidor de Vercel corre en UTC, tres horas adelante de la
+> planta: a partir de las 21:00 hora argentina el proceso ya está en el día
+> siguiente. Los cálculos de "hoy", "este mes" y "este año" no dependen de esto
+> (van anclados a la zona del laboratorio en `src/lib/utils.ts`), pero definir
+> `TZ` hace que además los horarios que se muestran en pantalla y en los CSV
+> sean los de acá y no los de Greenwich.
 
 ## Desarrollo local
 

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { formatDateOnly, todayISO } from '@/lib/utils'
+import { formatDate, formatDateOnly, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { buildInformeHTML, buildInformeSVG, type InformeTanque } from '@/lib/informe'
 
@@ -220,7 +220,12 @@ export default function AnalisisTanqueList({
         }
       })
 
+    // El momento de emisión es un timestamp real, así que fecha y hora salen
+    // las dos del mismo reloj. Con formatDateOnly (componentes UTC) la fecha
+    // podía ser del día siguiente y la hora del día anterior en el mismo
+    // renglón de un informe que se le entrega al cliente.
     const ahora = new Date()
+    const pie = `Generado el ${formatDate(ahora)} a las ${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`
     return {
       empresa: config.empresa,
       logo: config.logo,
@@ -228,7 +233,7 @@ export default function AnalisisTanqueList({
       identificacion,
       resultados,
       comentario: a.comentario || '',
-      pie: `Generado el ${formatDateOnly(ahora)} a las ${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`,
+      pie,
     }
   }
 

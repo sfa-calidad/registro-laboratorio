@@ -18,10 +18,42 @@ export function formatDateOnly(date: Date | string): string {
   return format(local, 'dd/MM/yyyy', { locale: es })
 }
 
-// Fecha de hoy en YYYY-MM-DD para precargar los <input type="date">.
-// Va por componentes LOCALES a propósito: `toISOString()` da la fecha UTC, así
-// que a partir de las 21:00 hora argentina devolvía el día siguiente y todo lo
-// que se cargaba en el turno tarde quedaba fechado un día adelante.
-export function todayISO(): string {
-  return format(new Date(), 'yyyy-MM-dd')
+// Zona del laboratorio. El "día" del laboratorio no es el del proceso que
+// ejecuta el código: en Vercel el servidor corre en UTC y a partir de las 21:00
+// hora argentina ya está en el día siguiente. Todo lo que sea "hoy", "este mes"
+// o "este año" se ancla acá y no al reloj de la máquina, así funciona igual en
+// Vercel, en el navegador del operador y en una PC de planta.
+export const ZONA_LABORATORIO = 'America/Argentina/Buenos_Aires'
+
+// Fecha de hoy en el laboratorio, como YYYY-MM-DD. Es lo que se precarga en los
+// <input type="date">. Antes usaba `toISOString()`, que da la fecha UTC, así que
+// después de las 21:00 devolvía el día siguiente y todo lo que se cargaba en el
+// turno tarde quedaba fechado un día adelante.
+export function todayISO(ahora: Date = new Date()): string {
+  // en-CA formatea como YYYY-MM-DD, que es justo lo que espera el input.
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: ZONA_LABORATORIO,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(ahora)
+}
+
+// Medianoche UTC del día que hoy es en el laboratorio, para comparar contra las
+// fechas-calendario de la base (que se guardan como medianoche UTC).
+export function hoyEnLaboratorio(ahora: Date = new Date()): Date {
+  return new Date(`${todayISO(ahora)}T00:00:00.000Z`)
+}
+
+// Suma días a una fecha-calendario sin salirse de UTC (para armar el tope
+// superior de un rango: "desde hoy y antes de mañana").
+export function sumarDias(fecha: Date, dias: number): Date {
+  return new Date(fecha.getTime() + dias * 86400000)
+}
+
+// Los parámetros de ruta llegan como texto. Sin validar, un /api/tareas/abc
+// terminaba en Prisma con NaN y devolvía un 500 con el stack en vez de un 400.
+export function parseId(valor: string): number | null {
+  const n = Number(valor)
+  return Number.isInteger(n) && n > 0 ? n : null
 }

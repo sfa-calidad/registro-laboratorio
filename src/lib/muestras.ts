@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { todayISO } from '@/lib/utils'
 
 // Deriva el estado de una muestra cuando el usuario no lo manda explícito.
 //
@@ -44,14 +45,20 @@ const PRIMERA_SECUENCIA: Record<string, number> = { '26': 300 }
 // fije otro piso. Si hay números fuera de formato (importados viejos), se
 // ignoran para el cálculo.
 export async function proximoNumero(): Promise<string> {
-  const prefijo = String(new Date().getFullYear()).slice(-2)
+  // El año es el del laboratorio, no el del servidor: en Vercel corre en UTC y
+  // el 31 de diciembre después de las 21:00 ya habría numerado con el año
+  // siguiente.
+  const prefijo = todayISO().slice(2, 4)
   const delAnio = await prisma.muestra.findMany({
     where: { numero: { startsWith: prefijo } },
     select: { numero: true },
   })
   const secuencias = delAnio
     .map((m) => m.numero)
-    .filter((n) => new RegExp(`^${prefijo}\\d{3,}$`).test(n))
+    // Exactamente 3 dígitos: con \d{3,} un "263000" mal tipeado se leía como
+    // secuencia 3000 y la serie del año saltaba ~2700 números. El número es la
+    // etiqueta física del frasco, así que el salto no es cosmético.
+    .filter((n) => new RegExp(`^${prefijo}\\d{3}$`).test(n))
     .map((n) => parseInt(n.slice(2), 10))
   const piso = PRIMERA_SECUENCIA[prefijo] ?? 0
   // El piso solo empuja hacia adelante: si ya hay una muestra más alta cargada,
