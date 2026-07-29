@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { getRoleFromRequest } from '@/lib/auth'
+import { parseId } from '@/lib/utils'
+import { conManejoDeErrores } from '@/lib/api'
 
 const resultadoSchema = z.object({
   parametroId: z.number().int(),
@@ -24,6 +26,8 @@ const schema = z.object({
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
+  const idNum = parseId(id)
+  if (idNum === null) return NextResponse.json({ error: 'Id inválido' }, { status: 400 })
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
@@ -32,7 +36,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // Los resultados se reemplazan completos: es una carga chica y evita
   // diferenciar altas, bajas y modificaciones una por una.
   const analisis = await prisma.analisisTanque.update({
-    where: { id: Number(id) },
+    where: { id: idNum },
     data: {
       ...datos,
       fecha: new Date(datos.fecha),
@@ -56,7 +60,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
-  // Los resultados caen solos por el onDelete: Cascade de la relación.
-  await prisma.analisisTanque.delete({ where: { id: Number(id) } })
-  return NextResponse.json({ ok: true })
+  const idNum = parseId(id)
+  if (idNum === null) return NextResponse.json({ error: 'Id inválido' }, { status: 400 })
+  return conManejoDeErrores(async () => {
+    // Los resultados caen solos por el onDelete: Cascade de la relación.
+    await prisma.analisisTanque.delete({ where: { id: idNum } })
+    return NextResponse.json({ ok: true })
+  })
 }

@@ -1,37 +1,66 @@
 import { prisma } from '@/lib/prisma'
-import { formatDateOnly } from '@/lib/utils'
+import { formatDateOnly, hoyEnLaboratorio, sumarDias } from '@/lib/utils'
 import { getRole } from '@/lib/auth'
 import EstadisticasView from '@/components/EstadisticasView'
 import NotasTablero from '@/components/NotasTablero'
 
 export const dynamic = 'force-dynamic'
 
+// Período más largo que ofrece el selector de estadísticas. Tiene que coincidir
+// con el mayor de PERIODOS en src/components/EstadisticasView.tsx.
+const PERIODO_MAX_DIAS = 365
+
 export default async function Dashboard() {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const inicioMes = new Date(today.getFullYear(), today.getMonth(), 1)
+  // "Hoy" es el día del laboratorio, no el del proceso: en Vercel el servidor
+  // corre en UTC y a partir de las 21:00 hora argentina ya está en el día
+  // siguiente, así que las tarjetas de "hoy" cambiaban a media tarde.
+  const hoy = hoyEnLaboratorio()
+  const manana = sumarDias(hoy, 1)
+  const inicioMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1))
 
   const role = await getRole()
 
+  // Las tareas archivadas no cuentan como pendientes ni como vencidas: el
+  // tablero ya las esconde, pero acá seguían sumando para siempre si se
+  // archivaba una tarea que nunca se completó.
+  const tareasActivas = { completadaAt: null, archivadaAt: null }
+
   const [ingresosHoy, despachosHoy, ultIngresos, ultDespachos, tareasPendientes, tareasVencidas, analisisMes, muestrasPendientes] =
     await Promise.all([
-      prisma.ingreso.count({ where: { fecha: { gte: today } } }),
-      prisma.despacho.count({ where: { fecha: { gte: today } } }),
+      // Con tope superior: sin él, cualquier registro con fecha futura contaba
+      // como "hoy".
+      prisma.ingreso.count({ where: { fecha: { gte: hoy, lt: manana } } }),
+      prisma.despacho.count({ where: { fecha: { gte: hoy, lt: manana } } }),
       prisma.ingreso.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
       prisma.despacho.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
-      prisma.tarea.count({ where: { completadaAt: null } }),
-      prisma.tarea.count({ where: { completadaAt: null, fechaVencimiento: { lt: today } } }),
+      prisma.tarea.count({ where: tareasActivas }),
+      prisma.tarea.count({ where: { ...tareasActivas, fechaVencimiento: { lt: hoy } } }),
       prisma.analisisTanque.count({ where: { fecha: { gte: inicioMes } } }),
       prisma.muestra.count({ where: { estado: { notIn: ['CON_RESULTADO', 'ANULADA'] } } }),
     ])
 
   let estadisticas: { analistas: unknown[]; tareas: unknown[]; ingresos: unknown[]; despachos: unknown[] } | null = null
   if (role === 'supervisor') {
+    // Acotado al período más largo que ofrece el selector de EstadisticasView.
+    // Antes se traían las tablas enteras —todas las tareas con tres relaciones
+    // completas, todos los ingresos y todos los despachos— en cada visita al
+    // dashboard, y el peso crecía sin techo. Además se piden solo los cinco
+    // campos que las estadísticas miran de verdad.
+    const desde = sumarDias(hoy, -PERIODO_MAX_DIAS)
     const [analistas, tareas, ingresosOp, despachosOp] = await Promise.all([
       prisma.analista.findMany({ where: { activo: true }, orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }] }),
-      prisma.tarea.findMany({ include: { firma1: true, firma2: true, columna: true } }),
-      prisma.ingreso.findMany({ select: { operador: true, createdAt: true } }),
-      prisma.despacho.findMany({ select: { operador: true, createdAt: true } }),
+      prisma.tarea.findMany({
+        where: { createdAt: { gte: desde } },
+        select: {
+          createdAt: true,
+          completadaAt: true,
+          analistaId1: true,
+          analistaId2: true,
+          columna: { select: { nombre: true } },
+        },
+      }),
+      prisma.ingreso.findMany({ where: { createdAt: { gte: desde } }, select: { operador: true, createdAt: true } }),
+      prisma.despacho.findMany({ where: { createdAt: { gte: desde } }, select: { operador: true, createdAt: true } }),
     ])
     estadisticas = { analistas, tareas, ingresos: ingresosOp, despachos: despachosOp }
   }

@@ -1,0 +1,30 @@
+name: CI
+
+# Corre en cada push y en cada pull request. No toca la base: usa build:local,
+# porque el `build` de producción incluye `prisma db push` y `db seed`.
+on:
+  push:
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build:local

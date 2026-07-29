@@ -1,3 +1,5 @@
+import { escaparXml, logoSeguro } from '@/lib/texto'
+
 // Informe de un análisis de tanque, para ver todos los parámetros cargados
 // (la tabla del listado solo muestra las columnas fijas más usadas) y poder
 // llevárselo como PDF o imagen.
@@ -23,15 +25,6 @@ export type InformeTanque = {
   resultados: FilaResultado[]
   comentario: string
   pie: string
-}
-
-function escaparXml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
 }
 
 const COLOR_TEXTO = '#2b332a'
@@ -97,7 +90,7 @@ export function buildInformeHTML(informe: InformeTanque): string {
   <div class="hoja">
     <header>
       ${informe.logo
-        ? `<img src="${informe.logo}" alt="${escaparXml(informe.empresa)}">
+        ? `<img src="${escaparXml(logoSeguro(informe.logo))}" alt="${escaparXml(informe.empresa)}">
       <div><div class="titulo solo">${escaparXml(informe.titulo)}</div></div>`
         : `<div>
         <div class="empresa">${escaparXml(informe.empresa)}</div>
@@ -131,7 +124,7 @@ export function buildInformeSVG(informe: InformeTanque): { svg: string; ancho: n
   // Encabezado. Con logo cargado no se repite el nombre de la empresa en
   // texto (el logo ya lo dice): el título pasa a ser el encabezado principal.
   if (informe.logo) {
-    partes.push(`<image href="${informe.logo}" x="${margen}" y="${y}" height="48" width="120" preserveAspectRatio="xMinYMid meet"/>`)
+    partes.push(`<image href="${escaparXml(logoSeguro(informe.logo))}" x="${margen}" y="${y}" height="48" width="120" preserveAspectRatio="xMinYMid meet"/>`)
     partes.push(`<text x="${margen + 134}" y="${y + 31}" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="${COLOR_TEXTO}">${escaparXml(informe.titulo)}</text>`)
   } else {
     partes.push(`<text x="${margen}" y="${y + 22}" font-family="Arial, sans-serif" font-size="21" font-weight="bold" fill="${COLOR_TEXTO}">${escaparXml(informe.empresa)}</text>`)

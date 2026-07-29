@@ -1,4 +1,12 @@
 import { labelRows, type LabelData } from '@/lib/zpl'
+import { escaparXml, logoSeguro } from '@/lib/texto'
+
+// Un número dentro de un rango razonable; cualquier basura cae en el default.
+function medida(valor: string | undefined, porDefecto: number, min = 10, max = 300): number {
+  const n = Number(valor)
+  if (!Number.isFinite(n) || n < min || n > max) return porDefecto
+  return n
+}
 
 export type EtiquetaConfig = {
   etiquetaAncho: string
@@ -12,15 +20,18 @@ export type EtiquetaConfig = {
 // ZPL para impresión directa en Zebra vive en src/lib/zpl.ts; las dos usan
 // las mismas filas (labelRows) para que el contenido no se desalinee.
 export function buildLabelHTML(tipo: string, data: LabelData, config: EtiquetaConfig): string {
-  const w = config.etiquetaAncho || '100'
-  const h = config.etiquetaAlto || '45'
-  const fs = Number(config.etiquetaFuente || '9')
-  const empresa = config.empresa || 'Laboratorio SFA'
-  const logo = config.logo
+  // Las medidas se interpolan dentro del <style>, así que van por Number con un
+  // rango acotado: un valor de texto ahí adentro podía cerrar la etiqueta de
+  // estilo, y uno negativo o absurdo dejaba el rótulo ilegible.
+  const w = medida(config.etiquetaAncho, 100)
+  const h = medida(config.etiquetaAlto, 45)
+  const fs = medida(config.etiquetaFuente, 9, 5, 40)
+  const empresa = escaparXml(config.empresa || 'Laboratorio SFA')
+  const logo = logoSeguro(config.logo)
 
   const rows = labelRows(tipo, data)
 
-  const observaciones = data.observacion || data.observaciones || ''
+  const observaciones = escaparXml(data.observacion || data.observaciones || '')
 
   return `<!DOCTYPE html>
 <html style="color-scheme: light;">
@@ -53,11 +64,11 @@ export function buildLabelHTML(tipo: string, data: LabelData, config: EtiquetaCo
 <body>
   <div class="label">
     <div class="header">
-      ${logo ? `<img src="${logo}" class="logo" alt="logo" />` : `<div class="company">${empresa}</div>`}
+      ${logo ? `<img src="${escaparXml(logo)}" class="logo" alt="logo" />` : `<div class="company">${empresa}</div>`}
     </div>
     <div class="body">
       <table>
-        ${rows.filter(([, v]) => v).map(([k, v]) => `<tr><td>${k}:</td><td>${v}</td></tr>`).join('\n        ')}
+        ${rows.filter(([, v]) => v).map(([k, v]) => `<tr><td>${escaparXml(k)}:</td><td>${escaparXml(v)}</td></tr>`).join('\n        ')}
       </table>
       <div class="obs">
         <div class="obs-title">Observaciones</div>

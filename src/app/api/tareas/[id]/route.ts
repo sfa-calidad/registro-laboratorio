@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { getRoleFromRequest } from '@/lib/auth'
+import { parseId } from '@/lib/utils'
+import { conManejoDeErrores } from '@/lib/api'
 
 const schema = z.object({
   titulo: z.string().min(1).optional(),
@@ -26,6 +28,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!role) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const { id } = await params
+  const idNum = parseId(id)
+  if (idNum === null) return NextResponse.json({ error: 'Id inválido' }, { status: 400 })
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
@@ -35,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   if (parsed.data.completadaAt) {
-    const actual = await prisma.tarea.findUnique({ where: { id: Number(id) }, select: { analistaId1: true } })
+    const actual = await prisma.tarea.findUnique({ where: { id: idNum }, select: { analistaId1: true } })
     const firmaFinal = parsed.data.analistaId1 !== undefined ? parsed.data.analistaId1 : actual?.analistaId1
     if (!firmaFinal) {
       return NextResponse.json({ error: 'La tarea debe tener al menos una firma antes de marcarse como completada' }, { status: 400 })
@@ -44,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { fechaVencimiento, completadaAt, archivadaAt, ...rest } = parsed.data
   const tarea = await prisma.tarea.update({
-    where: { id: Number(id) },
+    where: { id: idNum },
     data: {
       ...rest,
       ...(fechaVencimiento !== undefined ? { fechaVencimiento: fechaVencimiento ? new Date(fechaVencimiento) : null } : {}),
@@ -57,8 +61,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  const { id } = await params
-  await prisma.tarea.delete({ where: { id: Number(id) } })
-  return NextResponse.json({ ok: true })
+  return conManejoDeErrores(async () => {
+    // El botón de eliminar ya estaba oculto para el analista en el tablero, pero
+    // la API lo aceptaba igual. Archivar (que es reversible) sí estaba protegido;
+    // eliminar (que no lo es) no.
+    if (getRoleFromRequest(req) !== 'supervisor') {
+      return NextResponse.json({ error: 'Solo el supervisor puede eliminar tareas' }, { status: 403 })
+    }
+    const { id } = await params
+    const idNum = parseId(id)
+    if (idNum === null) return NextResponse.json({ error: 'Id inválido' }, { status: 400 })
+    await prisma.tarea.delete({ where: { id: idNum } })
+    return NextResponse.json({ ok: true })
+  })
 }

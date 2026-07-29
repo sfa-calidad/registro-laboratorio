@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { formatDateOnly, todayISO } from '@/lib/utils'
+import { formatDateOnly, hoyEnLaboratorio, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { buildLabelZPL } from '@/lib/zpl'
 import { buildLabelHTML } from '@/lib/etiqueta'
@@ -73,8 +73,12 @@ const emptyForm = {
   anulada: false,
 }
 
+// Días entre una fecha-calendario (medianoche UTC) y hoy. Se comparan dos
+// fechas-calendario, no un instante contra una medianoche: si no, el contador
+// avanzaba tres horas antes de que cambiara el día para el operador.
 function diasDesde(fecha: Date | string): number {
-  return Math.floor((Date.now() - new Date(fecha).getTime()) / 86400000)
+  const desde = new Date(fecha).setUTCHours(0, 0, 0, 0)
+  return Math.round((hoyEnLaboratorio().getTime() - desde) / 86400000)
 }
 
 // Una ENVIADA sin protocolo por más de 15 días está demorada: hay que
@@ -132,9 +136,11 @@ export default function MuestrasList({
   const labSeleccionado = laboratorios.find((l) => l.nombre === form.laboratorio)
   const labsExternos = new Set(laboratorios.filter((l) => l.esExterno).map((l) => l.nombre))
 
-  // Tarjetas de arriba: el pulso del registro en el año.
-  const anio = new Date().getFullYear()
-  const delAnio = muestras.filter((m) => new Date(m.fecha).getFullYear() === anio)
+  // Tarjetas de arriba: el pulso del registro en el año. El año de la muestra
+  // sale de sus componentes UTC: leído en hora local, el 1 de enero se ve como
+  // el 31 de diciembre anterior y quedaba fuera del conteo todo el año.
+  const anio = hoyEnLaboratorio().getUTCFullYear()
+  const delAnio = muestras.filter((m) => new Date(m.fecha).getUTCFullYear() === anio)
   const identificadasAnio = delAnio.length
   const enviadasExterno = delAnio.filter((m) => m.laboratorio && labsExternos.has(m.laboratorio) && m.fechaEnvio).length
   const sinResultado = muestras.filter((m) => m.estado !== 'CON_RESULTADO' && m.estado !== 'ANULADA').length

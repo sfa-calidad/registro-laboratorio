@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { getRoleFromRequest } from '@/lib/auth'
+import { parseId } from '@/lib/utils'
+import { conManejoDeErrores } from '@/lib/api'
 import { derivarEstado } from '@/lib/muestras'
 
 const ensayoSchema = z.object({
@@ -37,6 +40,8 @@ const schema = z.object({
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
+  const idNum = parseId(id)
+  if (idNum === null) return NextResponse.json({ error: 'Id inválido' }, { status: 400 })
   const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
@@ -48,6 +53,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     : null
 
   const estado = datos.estado ?? derivarEstado({
+    numero: datos.numero,
     fechaResultado: datos.fechaResultado,
     resultado: datos.resultado,
     protocolo: datos.protocolo,
@@ -57,47 +63,61 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const protocolo = datos.protocolo || (lab && !lab.esExterno ? datos.numero : null)
 
-  const muestra = await prisma.muestra.update({
-    where: { id: Number(id) },
-    data: {
-      numero: datos.numero.trim(),
-      fecha: new Date(datos.fecha),
-      producto: datos.producto,
-      detalle: datos.detalle || null,
-      tipoOrigen: datos.tipoOrigen || null,
-      identificacionOrigen: datos.identificacionOrigen || null,
-      lugarMuestreo: datos.lugarMuestreo || null,
-      contacto: datos.contacto || null,
-      solicitadoPor: datos.solicitadoPor || null,
-      remito: datos.remito || null,
-      envase: datos.envase || null,
-      laboratorio: datos.laboratorio || null,
-      estado,
-      fechaEnvio: datos.fechaEnvio ? new Date(datos.fechaEnvio) : null,
-      awb: datos.awb || null,
-      protocolo,
-      fechaResultado: datos.fechaResultado ? new Date(datos.fechaResultado) : null,
-      resultado: datos.resultado || null,
-      adjuntoUrl: datos.adjuntoUrl || null,
-      observacion: datos.observacion || null,
-      cargadoPor: datos.cargadoPor || null,
-      // Los ensayos se reemplazan completos, igual que los resultados de tanque.
-      ensayos: {
-        deleteMany: {},
-        create: (ensayos ?? [])
-          .filter((e) => e.parametroId != null || e.libre)
-          .map((e) => ({ parametroId: e.parametroId ?? null, libre: e.libre || null })),
+  try {
+    const muestra = await prisma.muestra.update({
+      where: { id: idNum },
+      data: {
+        numero: datos.numero.trim(),
+        fecha: new Date(datos.fecha),
+        producto: datos.producto,
+        detalle: datos.detalle || null,
+        tipoOrigen: datos.tipoOrigen || null,
+        identificacionOrigen: datos.identificacionOrigen || null,
+        lugarMuestreo: datos.lugarMuestreo || null,
+        contacto: datos.contacto || null,
+        solicitadoPor: datos.solicitadoPor || null,
+        remito: datos.remito || null,
+        envase: datos.envase || null,
+        laboratorio: datos.laboratorio || null,
+        estado,
+        fechaEnvio: datos.fechaEnvio ? new Date(datos.fechaEnvio) : null,
+        awb: datos.awb || null,
+        protocolo,
+        fechaResultado: datos.fechaResultado ? new Date(datos.fechaResultado) : null,
+        resultado: datos.resultado || null,
+        adjuntoUrl: datos.adjuntoUrl || null,
+        observacion: datos.observacion || null,
+        cargadoPor: datos.cargadoPor || null,
+        // Los ensayos se reemplazan completos, igual que los resultados de tanque.
+        ensayos: {
+          deleteMany: {},
+          create: (ensayos ?? [])
+            .filter((e) => e.parametroId != null || e.libre)
+            .map((e) => ({ parametroId: e.parametroId ?? null, libre: e.libre || null })),
+        },
       },
-    },
-    include: { ensayos: { include: { parametro: true } } },
-  })
-  return NextResponse.json(muestra)
+      include: { ensayos: { include: { parametro: true } } },
+    })
+    return NextResponse.json(muestra)
+  } catch (e) {
+    // Mismo caso que en el alta: el número es único y acá también se puede
+    // editar, así que corregirlo a uno ya usado tiene que dar un aviso y no un
+    // 500 con el stack.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      return NextResponse.json({ error: 'Ese número de muestra ya está usado por otra muestra.' }, { status: 409 })
+    }
+    throw e
+  }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!getRoleFromRequest(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
-  // Los ensayos caen solos por el onDelete: Cascade de la relación.
-  await prisma.muestra.delete({ where: { id: Number(id) } })
-  return NextResponse.json({ ok: true })
+  const idNum = parseId(id)
+  if (idNum === null) return NextResponse.json({ error: 'Id inválido' }, { status: 400 })
+  return conManejoDeErrores(async () => {
+    // Los ensayos caen solos por el onDelete: Cascade de la relación.
+    await prisma.muestra.delete({ where: { id: idNum } })
+    return NextResponse.json({ ok: true })
+  })
 }

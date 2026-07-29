@@ -4,13 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && npm run limpiar-obsoletos && prisma db push --skip-generate && prisma db seed && next build",
+    "build": "prisma generate && prisma db push --skip-generate && prisma db seed && next build",
     "build:local": "next build",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint",
     "seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
-    "limpiar-obsoletos": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/limpiar-obsoletos.ts"
+    "test": "node scripts/test.js"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

@@ -21,6 +21,8 @@ model Ingreso {
   fechaAnalisis DateTime?
   createdAt     DateTime  @default(now())
   rotulos       Rotulo[]
+
+  @@index([fecha, id])
 }
 
 model Despacho {
@@ -37,6 +39,8 @@ model Despacho {
   operador      String?
   createdAt     DateTime @default(now())
   rotulos       Rotulo[]
+
+  @@index([fecha, id])
 }
 
 model Configuracion {
@@ -54,6 +58,10 @@ model Rotulo {
   ingreso    Ingreso?  @relation(fields: [ingresoId], references: [id])
   despacho   Despacho? @relation(fields: [despachoId], references: [id])
   createdAt  DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([ingresoId])
+  @@index([despachoId])
 }
 
 model Producto {
@@ -106,6 +114,10 @@ model Tarea {
   archivadaAt      DateTime?
   checklist        String?
   mostrarChecklist Boolean       @default(false)
+
+  @@index([columnaId, orden])
+  @@index([archivadaAt])
+  @@index([completadaAt])
 }
 
 model NotaTablero {
@@ -179,6 +191,8 @@ model AnalisisTanque {
   createdAt           DateTime @default(now())
 
   resultados ResultadoTanque[]
+
+  @@index([fecha, id])
 }
 
 model ResultadoTanque {
@@ -237,6 +251,9 @@ model Muestra {
   createdAt            DateTime  @default(now())
 
   ensayos MuestraEnsayo[]
+
+  @@index([fecha, id])
+  @@index([estado])
 }
 
 model MuestraEnsayo {
@@ -246,4 +263,6 @@ model MuestraEnsayo {
   parametroId Int?
   parametro   Parametro? @relation(fields: [parametroId], references: [id])
   libre       String? // ensayo que no está en el catálogo
+
+  @@index([muestraId])
 }
