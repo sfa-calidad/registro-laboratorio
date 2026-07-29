@@ -18,7 +18,10 @@ export async function GET(req: NextRequest) {
     if (desde) where.fecha.gte = new Date(desde)
     if (hasta) {
       const h = new Date(hasta)
-      h.setHours(23, 59, 59, 999)
+      // setUTCHours y no setHours: `fecha` se guarda como medianoche UTC, y con
+      // horas locales el tope del rango caía en otro día según la zona del
+      // proceso (arrastraba registros del día siguiente).
+      h.setUTCHours(23, 59, 59, 999)
       where.fecha.lte = h
     }
   }

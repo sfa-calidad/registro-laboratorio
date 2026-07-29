@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { getRoleFromRequest } from '@/lib/auth'
+import { formatDateOnly } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,9 @@ export async function GET(req: NextRequest) {
     t.descripcion || '',
     t.columna.nombre,
     t.prioridad || '',
-    t.fechaVencimiento ? format(new Date(t.fechaVencimiento), 'dd/MM/yyyy', { locale: es }) : '',
+    // fechaVencimiento es una fecha-calendario: va con formatDateOnly, como en
+    // los otros cuatro export. Con format() salía un día antes según la zona.
+    t.fechaVencimiento ? formatDateOnly(t.fechaVencimiento) : '',
     t.firma1 ? `${t.firma1.nombre} ${t.firma1.apellido}` : '',
     t.firma2 ? `${t.firma2.nombre} ${t.firma2.apellido}` : '',
     t.creadoPor,
