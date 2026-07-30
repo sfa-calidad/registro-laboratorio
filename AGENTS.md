@@ -45,10 +45,12 @@ Resumen para trabajar en el código:
   (hasta 16) en vez de cortarlo. El rótulo de calado (`RotuladorCalado`) se
   imprime sin guardar nada: es solo la etiqueta del envase.
 - **Los dos modos de impresión** (`ModoImpresion` en `src/lib/impresion.ts`):
-  con `'zpl'` se manda ZPL crudo al spooler (rápido y nítido, pero la Zebra
-  dibuja solo lo que el ZPL describe: sin logo); con `'diseno'` no se manda ZPL
-  y la app de escritorio imprime el HTML como gráfico, igual que la vista
-  previa. En el navegador no aplica: siempre va por el diálogo.
+  con `'zpl'` se manda ZPL crudo al spooler, sin diálogo (rápido y nítido, pero
+  la Zebra dibuja solo lo que el ZPL describe: sin logo); con `'diseno'` se abre
+  el diálogo con el HTML, igual que "Imprimir rótulo" de los movimientos, y sale
+  con logo. **No usar la impresión silenciosa de Chromium para el diseño**: en
+  Windows el driver de la Zebra la rechaza con "Invalid printer settings"
+  (electron#39092). Ya se probó y falla; el diálogo funciona.
 - **Datos base** (productos, columnas, contactos/razones sociales, parámetros,
   perfiles, laboratorios, lugares de muestreo): se cargan en `prisma/seed.ts`,
   que corre en cada deploy de forma idempotente.
