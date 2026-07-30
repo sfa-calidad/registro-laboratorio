@@ -27,17 +27,29 @@ export const PRINTER_STORAGE_KEY = 'rotulos_impresora'
 
 export type ResultadoImpresion = { ok: boolean; mensaje: string; usoDialogo: boolean }
 
-// Cómo mandar el rótulo a una Zebra desde la app de escritorio:
+// Los dos caminos para imprimir un rótulo:
 //
-//  - 'zpl': ZPL crudo al spooler. Es el camino más rápido y confiable, y el
-//    texto sale nítido, pero la Zebra dibuja solo lo que el ZPL describe: no
-//    hay logo ni tipografías.
-//  - 'diseno': se imprime el HTML como gráfico, así que sale igual que la
-//    vista previa, con el logo. Tarda un poco más.
+//  - 'zpl' (impresión rápida): manda ZPL crudo al spooler, sin diálogo. Es lo
+//    más rápido y el texto sale nítido, pero la Zebra dibuja solo lo que el ZPL
+//    describe: sin logo ni tipografías. Solo existe en la app de escritorio.
+//  - 'diseno': abre la ventana con el diálogo de impresión y manda el HTML,
+//    igual que el botón "Imprimir rótulo" de los rótulos de movimientos. Sale
+//    tal cual la vista previa, con logo.
 //
-// En el navegador no aplica: siempre va por el diálogo de impresión, que ya
-// imprime el HTML.
+// No se usa el camino de impresión silenciosa de Chromium para el diseño: en
+// Windows el driver de la Zebra lo rechaza con "Invalid printer settings"
+// (electron#39092). El diálogo, en cambio, funciona.
 export type ModoImpresion = 'zpl' | 'diseno'
+
+function imprimirPorDialogo(html: string): ResultadoImpresion {
+  const w = window.open('', '_blank')
+  if (!w) return { ok: false, mensaje: 'El navegador bloqueó la ventana de impresión', usoDialogo: true }
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  setTimeout(() => w.print(), 500)
+  return { ok: true, mensaje: '', usoDialogo: true }
+}
 
 export async function imprimirEtiqueta(
   tipo: string,
@@ -48,23 +60,17 @@ export async function imprimirEtiqueta(
   const html = buildLabelHTML(tipo, data, config)
   const modo: ModoImpresion = opciones.modo ?? 'zpl'
 
-  if (!window.desktopPrinter) {
-    const w = window.open('', '_blank')
-    if (!w) return { ok: false, mensaje: 'El navegador bloqueó la ventana de impresión', usoDialogo: true }
-    w.document.write(html)
-    w.document.close()
-    w.focus()
-    setTimeout(() => w.print(), 500)
-    return { ok: true, mensaje: '', usoDialogo: true }
+  // En el navegador siempre va por el diálogo; en la app de escritorio, cuando
+  // se pide el diseño.
+  if (!window.desktopPrinter || modo === 'diseno') {
+    return imprimirPorDialogo(html)
   }
 
   const deviceName = opciones.deviceName || localStorage.getItem(PRINTER_STORAGE_KEY) || undefined
   try {
     const res = await window.desktopPrinter.printLabel({
       html,
-      // Sin ZPL, la app de escritorio imprime el HTML como gráfico: es lo que
-      // hace que salga el logo.
-      zpl: modo === 'zpl' ? buildLabelZPL(tipo, data, config) : undefined,
+      zpl: buildLabelZPL(tipo, data, config),
       deviceName,
       widthMm: Number(config.etiquetaAncho) || 100,
       heightMm: Number(config.etiquetaAlto) || 45,

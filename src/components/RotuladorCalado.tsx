@@ -301,8 +301,8 @@ export default function RotuladorCalado({
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
                     {modo === 'diseno'
-                      ? 'Sale igual que la vista previa, con el logo. Tarda un poco más.'
-                      : 'Va directo a la Zebra en su propio lenguaje: el texto sale más nítido y es más rápido, pero sin logo.'}
+                      ? 'Abre el diálogo de impresión y sale igual que la vista previa, con el logo.'
+                      : 'Impresión rápida: va directo a la Zebra, sin diálogo. Más nítida, pero sin logo.'}
                   </p>
                 </div>
               )}
