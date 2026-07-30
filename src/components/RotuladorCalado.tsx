@@ -2,10 +2,13 @@
 import { useState, useEffect } from 'react'
 import { formatDateOnly, todayISO } from '@/lib/utils'
 import { buildLabelHTML, type EtiquetaConfig } from '@/lib/etiqueta'
-import { imprimirEtiqueta } from '@/lib/impresion'
+import { imprimirEtiqueta, type ModoImpresion } from '@/lib/impresion'
 
 // Rotulador para el calado: se completa en el momento de salir a calar y se
 // imprime. No se guarda nada en la base — es solo la etiqueta del envase.
+
+// Se recuerda por PC cuál de los dos caminos de impresión prefiere el usuario.
+const MODO_STORAGE_KEY = 'rotulos_modo_impresion'
 
 const REFERENCIAS = [
   { value: 'AF', label: 'AF — antes del fondo' },
@@ -53,6 +56,10 @@ export default function RotuladorCalado({
   const [productos, setProductos] = useState<Producto[]>([])
   const [analistas, setAnalistas] = useState<Analista[]>([])
   const [imprimiendo, setImprimiendo] = useState(false)
+  // Cómo se manda a la Zebra desde la app de escritorio. Se recuerda por PC,
+  // igual que la impresora elegida.
+  const [modo, setModo] = useState<ModoImpresion>('diseno')
+  const [enEscritorio, setEnEscritorio] = useState(false)
 
   // Los catálogos se piden recién al abrir el rotulador: la pantalla de
   // Rótulos no los necesita para nada más.
@@ -61,6 +68,18 @@ export default function RotuladorCalado({
     fetch('/api/productos').then((r) => r.json()).then(setProductos).catch(() => {})
     fetch('/api/analistas').then((r) => r.json()).then(setAnalistas).catch(() => {})
   }, [abierto, productos.length, analistas.length])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEnEscritorio(!!window.desktopPrinter)
+    const guardado = localStorage.getItem(MODO_STORAGE_KEY)
+    if (guardado === 'zpl' || guardado === 'diseno') setModo(guardado)
+  }, [])
+
+  function elegirModo(m: ModoImpresion) {
+    setModo(m)
+    localStorage.setItem(MODO_STORAGE_KEY, m)
+  }
 
   function abrir() {
     setForm({ ...emptyForm, fecha: todayISO() })
@@ -82,7 +101,7 @@ export default function RotuladorCalado({
   async function imprimir() {
     if (!listo || imprimiendo) return
     setImprimiendo(true)
-    const res = await imprimirEtiqueta('CALADO', datos, config, { deviceName })
+    const res = await imprimirEtiqueta('CALADO', datos, config, { deviceName, modo })
     setImprimiendo(false)
     if (!res.ok) {
       onMensaje(`No se pudo imprimir: ${res.mensaje}`, true)
@@ -259,7 +278,34 @@ export default function RotuladorCalado({
               </div>
             </div>
 
-            <div className="p-5 border-t flex justify-end gap-2">
+            <div className="p-5 border-t flex flex-wrap items-center justify-end gap-3">
+              {/* Solo tiene sentido en la app de escritorio: en el navegador
+                  siempre se abre el diálogo, que ya imprime el diseño. */}
+              {enEscritorio && (
+                <div className="mr-auto">
+                  <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+                    <button
+                      type="button"
+                      onClick={() => elegirModo('diseno')}
+                      className={`px-3 py-1.5 ${modo === 'diseno' ? 'bg-brand-green text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      Con logo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => elegirModo('zpl')}
+                      className={`px-3 py-1.5 border-l border-gray-300 ${modo === 'zpl' ? 'bg-brand-green text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      Solo texto
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {modo === 'diseno'
+                      ? 'Sale igual que la vista previa, con el logo. Tarda un poco más.'
+                      : 'Va directo a la Zebra en su propio lenguaje: el texto sale más nítido y es más rápido, pero sin logo.'}
+                  </p>
+                </div>
+              )}
               <button onClick={() => setAbierto(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
                 Cancelar
               </button>
