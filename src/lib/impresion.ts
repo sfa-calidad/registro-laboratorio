@@ -27,16 +27,26 @@ export const PRINTER_STORAGE_KEY = 'rotulos_impresora'
 
 export type ResultadoImpresion = { ok: boolean; mensaje: string; usoDialogo: boolean }
 
-// Imprime un rótulo. En la app de escritorio va directo a la impresora elegida
-// (ZPL crudo si es una Zebra); en el navegador abre la ventana con el diálogo
-// de impresión de siempre.
+// Cómo mandar el rótulo a una Zebra desde la app de escritorio:
+//
+//  - 'zpl': ZPL crudo al spooler. Es el camino más rápido y confiable, y el
+//    texto sale nítido, pero la Zebra dibuja solo lo que el ZPL describe: no
+//    hay logo ni tipografías.
+//  - 'diseno': se imprime el HTML como gráfico, así que sale igual que la
+//    vista previa, con el logo. Tarda un poco más.
+//
+// En el navegador no aplica: siempre va por el diálogo de impresión, que ya
+// imprime el HTML.
+export type ModoImpresion = 'zpl' | 'diseno'
+
 export async function imprimirEtiqueta(
   tipo: string,
   data: LabelData,
   config: EtiquetaConfig,
-  opciones: { deviceName?: string } = {}
+  opciones: { deviceName?: string; modo?: ModoImpresion } = {}
 ): Promise<ResultadoImpresion> {
   const html = buildLabelHTML(tipo, data, config)
+  const modo: ModoImpresion = opciones.modo ?? 'zpl'
 
   if (!window.desktopPrinter) {
     const w = window.open('', '_blank')
@@ -52,7 +62,9 @@ export async function imprimirEtiqueta(
   try {
     const res = await window.desktopPrinter.printLabel({
       html,
-      zpl: buildLabelZPL(tipo, data, config),
+      // Sin ZPL, la app de escritorio imprime el HTML como gráfico: es lo que
+      // hace que salga el logo.
+      zpl: modo === 'zpl' ? buildLabelZPL(tipo, data, config) : undefined,
       deviceName,
       widthMm: Number(config.etiquetaAncho) || 100,
       heightMm: Number(config.etiquetaAlto) || 45,

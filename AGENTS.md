@@ -44,6 +44,11 @@ Resumen para trabajar en el código:
   En ZPL cada fila es de una línea: si el valor no entra se le achica la letra
   (hasta 16) en vez de cortarlo. El rótulo de calado (`RotuladorCalado`) se
   imprime sin guardar nada: es solo la etiqueta del envase.
+- **Los dos modos de impresión** (`ModoImpresion` en `src/lib/impresion.ts`):
+  con `'zpl'` se manda ZPL crudo al spooler (rápido y nítido, pero la Zebra
+  dibuja solo lo que el ZPL describe: sin logo); con `'diseno'` no se manda ZPL
+  y la app de escritorio imprime el HTML como gráfico, igual que la vista
+  previa. En el navegador no aplica: siempre va por el diálogo.
 - **Datos base** (productos, columnas, contactos/razones sociales, parámetros,
   perfiles, laboratorios, lugares de muestreo): se cargan en `prisma/seed.ts`,
   que corre en cada deploy de forma idempotente.

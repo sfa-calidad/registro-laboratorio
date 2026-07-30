@@ -106,13 +106,32 @@ export default function AnalisisTanqueList({
   const [savedMsg, setSavedMsg] = useState('')
   const [informeDe, setInformeDe] = useState<Analisis | null>(null)
   const [config, setConfig] = useState({ empresa: 'Laboratorio SFA', logo: '' })
+  const [aviso, setAviso] = useState<{ texto: string; error: boolean } | null>(null)
+  // Compartir con archivos existe en Windows y Android, no en todos lados; el
+  // botón solo aparece donde funciona. Se resuelve en el cliente.
+  const [puedeCompartir, setPuedeCompartir] = useState(false)
+  const [puedeCopiar, setPuedeCopiar] = useState(false)
 
   useEffect(() => {
     fetch('/api/configuracion')
       .then((r) => r.json())
       .then((d) => setConfig({ empresa: d.empresa || 'Laboratorio SFA', logo: d.logo || '' }))
       .catch(() => {})
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPuedeCopiar(typeof ClipboardItem !== 'undefined' && !!navigator.clipboard?.write)
+    try {
+      const prueba = new File([''], 'informe.png', { type: 'image/png' })
+      setPuedeCompartir(!!navigator.canShare?.({ files: [prueba] }))
+    } catch {
+      setPuedeCompartir(false)
+    }
   }, [])
+
+  function avisar(texto: string, error = false) {
+    setAviso({ texto, error })
+    setTimeout(() => setAviso(null), 5000)
+  }
 
   const paramById = new Map(parametros.map((p) => [p.id, p]))
 
@@ -255,36 +274,74 @@ export default function AnalisisTanqueList({
     setTimeout(() => w.print(), 400)
   }
 
-  function descargarImagen(a: Analisis) {
-    // El informe se arma como SVG (solo texto y formas, sin foreignObject) y
-    // se dibuja en un canvas para exportarlo como PNG. Todo nativo: sin SVG
-    // externo el canvas no queda bloqueado y toBlob() funciona.
-    const { svg, ancho, alto } = buildInformeSVG(armarInforme(a))
-    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
-    const img = new Image()
-    img.onload = () => {
-      const escala = 2 // se exporta al doble para que se lea bien al ampliar
-      const canvas = document.createElement('canvas')
-      canvas.width = ancho * escala
-      canvas.height = alto * escala
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.scale(escala, escala)
-      ctx.drawImage(img, 0, 0)
-      URL.revokeObjectURL(url)
-      canvas.toBlob((blob) => {
-        if (!blob) return
-        const enlace = document.createElement('a')
-        enlace.href = URL.createObjectURL(blob)
-        enlace.download = nombreArchivo(a, 'png')
-        enlace.click()
-        setTimeout(() => URL.revokeObjectURL(enlace.href), 1000)
-      }, 'image/png')
+  // El informe se arma como SVG (solo texto y formas, sin foreignObject) y se
+  // dibuja en un canvas para exportarlo como PNG. Todo nativo: sin SVG externo
+  // el canvas no queda bloqueado y toBlob() funciona.
+  function informeAPng(a: Analisis): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      const { svg, ancho, alto } = buildInformeSVG(armarInforme(a))
+      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
+      const img = new Image()
+      img.onload = () => {
+        const escala = 2 // se exporta al doble para que se lea bien al ampliar
+        const canvas = document.createElement('canvas')
+        canvas.width = ancho * escala
+        canvas.height = alto * escala
+        const ctx = canvas.getContext('2d')
+        URL.revokeObjectURL(url)
+        if (!ctx) return resolve(null)
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.scale(escala, escala)
+        ctx.drawImage(img, 0, 0)
+        canvas.toBlob((blob) => resolve(blob), 'image/png')
+      }
+      img.onerror = () => {
+        URL.revokeObjectURL(url)
+        resolve(null)
+      }
+      img.src = url
+    })
+  }
+
+  async function descargarImagen(a: Analisis) {
+    const blob = await informeAPng(a)
+    if (!blob) return avisar('No se pudo generar la imagen', true)
+    const enlace = document.createElement('a')
+    enlace.href = URL.createObjectURL(blob)
+    enlace.download = nombreArchivo(a, 'png')
+    enlace.click()
+    setTimeout(() => URL.revokeObjectURL(enlace.href), 1000)
+  }
+
+  // Deja el informe en el portapapeles como imagen: se pega directo en
+  // WhatsApp Web, en un mail o en un chat, sin descargar y volver a subir.
+  async function copiarImagen(a: Analisis) {
+    const blob = await informeAPng(a)
+    if (!blob) return avisar('No se pudo generar la imagen', true)
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      avisar('Informe copiado: pegalo en WhatsApp o en el mail con Ctrl+V')
+    } catch {
+      avisar('El navegador no dejó copiar la imagen. Probá con "Descargar imagen".', true)
     }
-    img.onerror = () => URL.revokeObjectURL(url)
-    img.src = url
+  }
+
+  // Abre el menú de compartir del sistema (WhatsApp, mail, Drive...) con el
+  // informe ya adjunto. En Windows y Android; en otros casos el botón no se
+  // muestra.
+  async function compartirImagen(a: Analisis) {
+    const blob = await informeAPng(a)
+    if (!blob) return avisar('No se pudo generar la imagen', true)
+    const archivo = new File([blob], nombreArchivo(a, 'png'), { type: 'image/png' })
+    try {
+      await navigator.share({ files: [archivo], title: 'Informe de análisis de tanque' })
+    } catch (e) {
+      // Cancelar el menú de compartir no es un error que valga la pena avisar.
+      if ((e as Error)?.name !== 'AbortError') {
+        avisar('No se pudo compartir el informe', true)
+      }
+    }
   }
 
   async function handleDelete(id: number) {
@@ -631,14 +688,29 @@ export default function AnalisisTanqueList({
                 <p className="mt-4 pt-2 border-t text-xs text-gray-400">{inf.pie}</p>
               </div>
 
-              <div className="p-4 border-t flex justify-end gap-2 flex-shrink-0">
-                <button onClick={() => setInformeDe(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cerrar</button>
+              <div className="p-4 border-t flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
+                <button onClick={() => setInformeDe(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg mr-auto">Cerrar</button>
+                {/* Enviar sin pasar por "descargar y volver a subir": copiar
+                    pega el informe en WhatsApp o en el mail con Ctrl+V, y
+                    compartir abre el menú del sistema con el archivo adjunto. */}
+                {puedeCopiar && (
+                  <button onClick={() => copiarImagen(informeDe)}
+                    className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
+                    Copiar imagen
+                  </button>
+                )}
+                {puedeCompartir && (
+                  <button onClick={() => compartirImagen(informeDe)}
+                    className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
+                    Compartir
+                  </button>
+                )}
                 <button onClick={() => descargarImagen(informeDe)}
                   className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light">
                   Descargar imagen
                 </button>
                 <button onClick={() => descargarPDF(informeDe)}
-                  className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
+                  className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light">
                   Descargar PDF
                 </button>
               </div>
@@ -729,6 +801,12 @@ export default function AnalisisTanqueList({
               Siguiente
             </button>
           </div>
+        </div>
+      )}
+
+      {aviso && (
+        <div className={`fixed bottom-4 right-4 z-[70] px-4 py-2.5 rounded-lg shadow-lg text-sm text-white animate-fade-in ${aviso.error ? 'bg-brand-red' : 'bg-brand-dark'}`}>
+          {aviso.error ? '⚠️ ' : '✓ '}{aviso.texto}
         </div>
       )}
     </div>
