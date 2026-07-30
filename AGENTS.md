@@ -26,6 +26,13 @@ Resumen para trabajar en el código:
   `MuestraEnsayo`, con `Laboratorio` y `LugarMuestreo`. El informe descargable
   (PDF vía `window.print()`, PNG vía SVG→canvas) vive en `src/lib/informe.ts`.
 
+## Interfaz
+
+Los colores, los tamaños de texto, las clases de cada componente y cómo se
+construyen los informes (HTML para imprimir y SVG para imagen) están en
+**`docs/ESTILOS.md`**. Antes de escribir una pantalla o un informe nuevo,
+copiar de ahí en vez de inventar una variante.
+
 ## Convenciones aprendidas (respetar)
 
 - **Fechas-calendario** (`fecha`, `fechaVencimiento`): se guardan como medianoche
