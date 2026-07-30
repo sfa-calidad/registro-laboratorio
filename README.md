@@ -48,6 +48,9 @@ contraseñas invalida las sesiones abiertas.
 - **Tailwind CSS 4**
 - **Electron** para la app de escritorio (carpeta `desktop/`)
 
+La paleta, la tipografía, las clases de cada componente y cómo se construyen los
+informes están documentados en [`docs/ESTILOS.md`](docs/ESTILOS.md).
+
 ## Variables de entorno
 
 | Variable | Descripción |
