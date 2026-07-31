@@ -221,7 +221,67 @@ className="rounded-xl border p-4 bg-brand-green-light border-brand-green text-br
 
 ---
 
-## 7. Modales
+## 7. Gráficos
+
+Recharts, sin dependencias nuevas. Los gráficos son SVG puro, así que no rompen
+la regla de no cargar nada de internet.
+
+**La paleta no alcanza para series categóricas.** Hay tres colores semánticos
+(verde = listo, mostaza = atención, rojo = actuar) y ninguna escala de
+categorías. Para una serie más se usa `#d1d5db` (`gray-300`), que es el neutro
+que ya venía usándose. Si un gráfico necesita seis colores distintos, casi
+siempre el problema es el gráfico y no la paleta.
+
+```tsx
+const VERDE = '#8bc53f'; const VERDE_OSCURO = '#6fa32e'
+const MOSTAZA = '#e0a32a'; const ROJO = '#b6394a'; const GRIS = '#d1d5db'
+
+<ResponsiveContainer width="100%" height={280}>
+  <ComposedChart data={datos} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+    <XAxis dataKey="etiqueta" tick={{ fontSize: 12, fill: '#6b7280' }}
+           tickLine={false} axisLine={{ stroke: GRIS }} />
+    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }}
+           tickLine={false} axisLine={false} />
+    <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${GRIS}`, fontSize: 13 }} />
+    <Legend wrapperStyle={{ fontSize: 13 }} />
+    <Bar dataKey="identificadas" fill={VERDE} radius={[4, 4, 0, 0]} />
+  </ComposedChart>
+</ResponsiveContainer>
+```
+
+Reglas de la casa:
+
+- **Grilla tenue y ejes sin línea.** `stroke="#f3f4f6"`, `axisLine={false}`,
+  `tickLine={false}`. El dato manda, no el marco.
+- **`allowDecimals={false}`** en cualquier eje que cuente cosas: no existen 2,5
+  muestras.
+- Cada gráfico va en su tarjeta (`bg-white rounded-xl shadow p-5`) con título y
+  **una línea que explica cómo leerlo**. Un gráfico que necesita que alguien lo
+  interprete al lado no está terminado.
+- **Barras horizontales cuando la categoría es un nombre** (analistas, tramos):
+  los nombres no entran rotados en el eje de abajo.
+- Números en columnas con `tabular-nums`, para que se puedan comparar de un
+  vistazo.
+
+### Cómo se presentan los números
+
+Las decisiones de análisis están en `src/lib/metricas.ts`, que son funciones
+puras y tienen tests. Las que conviene respetar en cualquier métrica nueva:
+
+- **Mediana y percentil 90, nunca promedio.** En los datos de prueba el
+  laboratorio externo da mediana 12 días y promedio 27,3 por una sola muestra
+  olvidada de 60 días. El promedio describe un laboratorio que no existe.
+- **Junto a cada número agregado, sobre cuántos casos se calculó.** Una muestra
+  puede quedar cerrada sin fecha de resultado, así que no todas las cerradas se
+  pueden medir: se muestra "medido sobre 3 de 4".
+- **Lo que no tiene analista cargado va en una fila "Sin asignar", no se
+  descarta.** Cuatro de las formas de atribuir trabajo son texto y admiten
+  vacío; esconder ese resto haría que los totales no cierren.
+- **Mostrar la cobertura de atribución.** Si menos del 70% de los registros
+  tiene analista, comparar personas es comparar ruido, y el panel lo advierte.
+
+## 8. Modales
 
 Fondo negro al 40%, tarjeta centrada. Cabeza, cuerpo y pie separados por bordes.
 El clic en el fondo cierra; el clic dentro no (`stopPropagation`). El ancho lo
@@ -247,7 +307,7 @@ bug de un modal escondido detrás del formulario.
 
 ---
 
-## 8. Navegación
+## 9. Navegación
 
 Es la única superficie oscura de la app. Se puede colapsar a solo iconos y en
 pantalla chica pasa a ser una barra superior.
@@ -260,7 +320,7 @@ className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
 
 ---
 
-## 9. Los informes
+## 10. Los informes
 
 Esta es la parte que más conviene entender antes de armar un informe nuevo.
 
@@ -375,7 +435,7 @@ Copiar y compartir se muestran solo si el navegador los soporta
 
 ---
 
-## 10. Armar un informe nuevo
+## 11. Armar un informe nuevo
 
 La estructura de `informe.ts` sirve para cualquier informe de una ficha con
 encabezado, datos, tabla y comentario.
@@ -396,7 +456,7 @@ encabezado, datos, tabla y comentario.
 
 ---
 
-## 11. Reglas que no se rompen
+## 12. Reglas que no se rompen
 
 Cada una está acá porque ya falló una vez.
 

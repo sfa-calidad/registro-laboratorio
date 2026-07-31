@@ -201,6 +201,36 @@ export default function MuestrasList({
     setShowForm(true)
   }
 
+  // Las muestras se cargan en tandas que comparten casi todo: mismo producto,
+  // mismo origen, mismo panel de ensayos. Se copia esa parte y se limpia todo
+  // el ciclo de vida posterior — copiar protocolo, resultado o fechaResultado
+  // haría que derivarEstado mande la muestra nueva directo a CON_RESULTADO.
+  async function openDuplicate(m: Muestra) {
+    openEdit(m)
+    // openEdit deja `guardada` apuntando al original, lo que habilita
+    // "Imprimir rótulo": sin esto se puede imprimir un rótulo con el número
+    // viejo antes de guardar.
+    setGuardada(null)
+    setEditingId(null)
+
+    const numero = await fetch('/api/muestras/proximo-numero')
+      .then((r) => r.json())
+      .then((d) => d.numero as string)
+      .catch(() => '')
+
+    setForm((f) => ({
+      ...f,
+      numero,
+      fecha: todayISO(),
+      fechaEnvio: '',
+      awb: '',
+      protocolo: '',
+      fechaResultado: '',
+      resultado: '',
+      anulada: false,
+    }))
+  }
+
   async function handleDelete(id: number) {
     if (!confirm('¿Eliminar esta muestra y sus ensayos?')) return
     await fetch(`/api/muestras/${id}`, { method: 'DELETE' })
@@ -617,6 +647,7 @@ export default function MuestrasList({
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2 text-sm">
                     <button onClick={() => openEdit(m)} className="text-brand-green-dark hover:text-brand-green font-medium">Editar</button>
+                    <button onClick={() => openDuplicate(m)} className="text-gray-500 hover:text-gray-700 font-medium">Duplicar</button>
                     <button onClick={() => imprimirRotulo(m)} className="text-gray-500 hover:text-gray-700 font-medium">Imprimir rótulo</button>
                     <button onClick={() => handleDelete(m.id)} className="text-red-500 hover:text-red-700 font-medium pl-2 border-l border-gray-200">Eliminar</button>
                   </div>

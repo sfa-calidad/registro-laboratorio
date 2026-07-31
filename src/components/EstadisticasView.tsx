@@ -1,187 +1,141 @@
 'use client'
-import { useState, useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { SIN_ASIGNAR } from '@/lib/metricas'
 
-type Analista = { id: number; nombre: string; apellido: string }
-// Solo lo que estas estadísticas realmente miran: el dashboard traía la tarea
-// entera con tres relaciones completas para usar cinco campos.
-type Tarea = {
-  columna: { nombre: string }
-  analistaId1: number | null
-  analistaId2: number | null
-  completadaAt: string | Date | null
-  createdAt: string | Date
-}
-type Movimiento = { operador: string | null; createdAt: string | Date }
-
-type Props = {
-  analistas: Analista[]
-  tareas: Tarea[]
-  ingresos: Movimiento[]
-  despachos: Movimiento[]
+export type FilaAnalista = {
+  nombre: string
+  tareasCompletadas: number
+  tareasEnCurso: number
+  medianaDiasTarea: number | null
+  analisis: number
+  muestras: number
+  movimientos: number
 }
 
-// El período más largo acota lo que se trae de la base: antes se cargaba la
-// tabla entera de tareas, ingresos y despachos en cada visita al dashboard, y
-// crecía sin techo. Tiene que coincidir con PERIODO_MAX_DIAS en src/app/page.tsx.
-const PERIODOS = [
-  { label: 'Últimos 7 días', days: 7 },
-  { label: 'Últimos 30 días', days: 30 },
-  { label: 'Último año', days: 365 },
-]
+const VERDE = '#8bc53f'
+const VERDE_OSCURO = '#6fa32e'
+const MOSTAZA = '#e0a32a'
+const GRIS = '#d1d5db'
 
-const PIE_COLORS = ['#8bc53f', '#e0a32a', '#d1d5db']
+export default function EstadisticasView({
+  filas,
+  cobertura,
+  dias,
+}: {
+  filas: FilaAnalista[]
+  cobertura: { conDato: number; total: number; porcentaje: number }
+  dias: number
+}) {
+  if (filas.length === 0) {
+    return (
+      <section className="bg-white rounded-xl shadow p-5">
+        <h4 className="font-semibold text-gray-700 border-b pb-2 mb-3">Carga de trabajo por analista</h4>
+        <p className="text-sm text-gray-400 py-8 text-center">
+          No hay analistas cargados. Se agregan desde Configuración.
+        </p>
+      </section>
+    )
+  }
 
-function isInPeriod(date: string | Date, days: number): boolean {
-  if (!days) return true
-  const d = new Date(date)
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - days)
-  return d >= cutoff
-}
-
-export default function EstadisticasView({ analistas, tareas, ingresos, despachos }: Props) {
-  const [periodo, setPeriodo] = useState(30)
-
-  const stats = useMemo(() => {
-    return analistas.map(a => {
-      const nombreCompleto = `${a.nombre} ${a.apellido}`
-
-      const tareasFiltered = tareas.filter(t =>
-        isInPeriod(t.createdAt, periodo) &&
-        (t.analistaId1 === a.id || t.analistaId2 === a.id)
-      )
-      // Las tres categorías son excluyentes: una tarea completada que quedó en
-      // la columna "Pendiente" contaba a la vez como completada y como
-      // pendiente, y las porciones del gráfico sumaban más que el total.
-      const completadas = tareasFiltered.filter(t => t.completadaAt).length
-      const sinCompletar = tareasFiltered.filter(t => !t.completadaAt)
-      const pendientes = sinCompletar.filter(t => t.columna.nombre.toLowerCase().includes('pendiente')).length
-      const enProgreso = sinCompletar.length - pendientes
-
-      const ingresosCount = ingresos.filter(i => i.operador === nombreCompleto && isInPeriod(i.createdAt, periodo)).length
-      const despachosCount = despachos.filter(d => d.operador === nombreCompleto && isInPeriod(d.createdAt, periodo)).length
-
-      return {
-        nombre: nombreCompleto,
-        analista: a,
-        completadas, enProgreso, pendientes,
-        total: tareasFiltered.length,
-        ingresos: ingresosCount, despachos: despachosCount,
-        camiones: ingresosCount + despachosCount,
-      }
-    })
-  }, [analistas, tareas, ingresos, despachos, periodo])
-
-  const totalCompletadas = stats.reduce((s, x) => s + x.completadas, 0)
-  const totalEnProgreso = stats.reduce((s, x) => s + x.enProgreso, 0)
-  const totalPendientes = stats.reduce((s, x) => s + x.pendientes, 0)
-  const pieData = [
-    { name: 'Completadas', value: totalCompletadas },
-    { name: 'En progreso', value: totalEnProgreso },
-    { name: 'Pendientes', value: totalPendientes },
-  ].filter(d => d.value > 0)
+  // El gráfico deja afuera "Sin asignar": no es una persona y su barra
+  // desplazaría la escala. En la tabla sí aparece, porque el dato importa.
+  const paraGrafico = filas.filter((f) => f.nombre !== SIN_ASIGNAR)
+  const alto = Math.max(200, paraGrafico.length * 46 + 60)
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-2">
-        {PERIODOS.map(p => (
-          <button
-            key={p.days}
-            onClick={() => setPeriodo(p.days)}
-            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${periodo === p.days ? 'bg-brand-green text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow p-5 lg:col-span-2">
-          <h2 className="font-semibold text-gray-800 mb-4">Tareas por analista</h2>
-          {stats.length === 0 ? (
-            <p className="text-gray-400 text-sm">Sin datos</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={Math.max(220, stats.length * 50)}>
-              <BarChart data={stats} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" allowDecimals={false} />
-                <YAxis type="category" dataKey="nombre" width={120} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="completadas" name="Completadas" stackId="t" fill="#8bc53f" />
-                <Bar dataKey="enProgreso" name="En progreso" stackId="t" fill="#e0a32a" />
-                <Bar dataKey="pendientes" name="Pendientes" stackId="t" fill="#d1d5db" />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        <div className="bg-white rounded-xl shadow p-5">
-          <h2 className="font-semibold text-gray-800 mb-4">Distribución de tareas</h2>
-          {pieData.length === 0 ? (
-            <p className="text-gray-400 text-sm">Sin datos</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                  {pieData.map((_, idx) => <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />)}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-
+    <section className="space-y-6">
       <div className="bg-white rounded-xl shadow p-5">
-        <h2 className="font-semibold text-gray-800 mb-4">Movimientos de camiones por analista</h2>
-        {stats.length === 0 ? (
-          <p className="text-gray-400 text-sm">Sin datos</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={Math.max(220, stats.length * 50)}>
-            <BarChart data={stats} layout="vertical" margin={{ left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" allowDecimals={false} />
-              <YAxis type="category" dataKey="nombre" width={120} tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="ingresos" name="Ingresos" fill="#6fa32e" />
-              <Bar dataKey="despachos" name="Despachos" fill="#b6394a" />
+        <div className="border-b pb-2 mb-4">
+          <h4 className="font-semibold text-gray-700">Carga de trabajo por analista</h4>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Lo que cada uno cargó y firmó en los últimos {dias} días. Sirve para ver cómo está repartido
+            el trabajo, no para comparar rendimiento entre personas.
+          </p>
+        </div>
+
+        {paraGrafico.length > 0 && (
+          <ResponsiveContainer width="100%" height={alto}>
+            <BarChart data={paraGrafico} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickLine={false} axisLine={false} />
+              <YAxis
+                type="category"
+                dataKey="nombre"
+                width={150}
+                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${GRIS}`, fontSize: 13 }} />
+              <Legend wrapperStyle={{ fontSize: 13 }} />
+              <Bar dataKey="tareasCompletadas" name="Tareas completadas" stackId="t" fill={VERDE} />
+              <Bar dataKey="tareasEnCurso" name="Tareas en curso" stackId="t" fill={MOSTAZA} radius={[0, 4, 4, 0]} />
+              <Bar dataKey="analisis" name="Análisis de tanque" fill={VERDE_OSCURO} radius={[0, 4, 4, 0]} />
+              <Bar dataKey="muestras" name="Muestras cargadas" fill={GRIS} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
-      </div>
 
-      <div className="bg-white rounded-xl shadow overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="text-left px-4 py-3 font-medium text-gray-600">Analista</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600">Tareas total</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600">Completadas</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600">Ingresos</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600">Despachos</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600">Total movimientos</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.map(s => (
-              <tr key={s.analista.id} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-800">{s.nombre}</td>
-                <td className="px-4 py-3 text-center text-gray-800">{s.total}</td>
-                <td className="px-4 py-3 text-center text-green-600 font-medium">{s.completadas}</td>
-                <td className="px-4 py-3 text-center text-emerald-600">{s.ingresos}</td>
-                <td className="px-4 py-3 text-center text-orange-600">{s.despachos}</td>
-                <td className="px-4 py-3 text-center font-medium text-gray-800">{s.camiones}</td>
+        <div className="overflow-x-auto mt-4">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="text-left px-3 py-2 font-medium text-gray-600">Analista</th>
+                <th className="text-right px-3 py-2 font-medium text-gray-600">Tareas completadas</th>
+                <th className="text-right px-3 py-2 font-medium text-gray-600">En curso</th>
+                <th className="text-right px-3 py-2 font-medium text-gray-600">Días por tarea</th>
+                <th className="text-right px-3 py-2 font-medium text-gray-600">Análisis</th>
+                <th className="text-right px-3 py-2 font-medium text-gray-600">Muestras</th>
+                <th className="text-right px-3 py-2 font-medium text-gray-600">Movimientos</th>
               </tr>
-            ))}
-            {stats.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Sin analistas registrados</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filas.map((f) => (
+                <tr
+                  key={f.nombre}
+                  className={`border-b last:border-0 hover:bg-gray-50 ${f.nombre === SIN_ASIGNAR ? 'text-gray-400 italic' : ''}`}
+                >
+                  <td className="px-3 py-2">{f.nombre}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{f.tareasCompletadas}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{f.tareasEnCurso}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {f.medianaDiasTarea === null ? '—' : f.medianaDiasTarea}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">{f.analisis}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{f.muestras}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{f.movimientos}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="text-xs text-gray-400 mt-4 space-y-1 leading-relaxed">
+          <p>
+            <b>Días por tarea</b> es la mediana entre que se crea y que se completa. Una tarea firmada
+            por dos analistas cuenta para los dos, así que la suma de la columna no es la cantidad de
+            tareas.
+          </p>
+          <CoberturaAviso cobertura={cobertura} />
+        </div>
       </div>
-    </div>
+    </section>
+  )
+}
+
+// El analista queda guardado como texto en muestras, análisis y movimientos, y
+// los formularios permiten dejarlo vacío. Si la mayoría de los registros no
+// tiene nadie cargado, comparar personas es comparar ruido — y eso hay que
+// decirlo, no esconderlo.
+function CoberturaAviso({ cobertura }: { cobertura: { conDato: number; total: number; porcentaje: number } }) {
+  if (cobertura.total === 0) return null
+  const bajo = cobertura.porcentaje < 70
+  return (
+    <p className={bajo ? 'text-brand-mustard-dark' : undefined}>
+      {bajo && '⚠ '}
+      <b>{cobertura.porcentaje}%</b> de los registros del período ({cobertura.conDato} de {cobertura.total}) tiene
+      analista cargado.
+      {bajo && ' Con esta cobertura, los números de abajo muestran una parte del trabajo real.'}
+    </p>
   )
 }
