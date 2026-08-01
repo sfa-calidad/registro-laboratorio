@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react'
 import { formatDate, formatDateOnly, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { buildInformeHTML, buildInformeSVG, type InformeTanque } from '@/lib/informe'
+import { type InformeTanque } from '@/lib/informe'
+import VisorInforme from './VisorInforme'
 
 type Producto = { id: number; nombre: string }
 type Analista = { id: number; nombre: string; apellido: string }
@@ -107,25 +108,12 @@ export default function AnalisisTanqueList({
   const [informeDe, setInformeDe] = useState<Analisis | null>(null)
   const [config, setConfig] = useState({ empresa: 'Laboratorio SFA', logo: '' })
   const [aviso, setAviso] = useState<{ texto: string; error: boolean } | null>(null)
-  // Compartir con archivos existe en Windows y Android, no en todos lados; el
-  // botón solo aparece donde funciona. Se resuelve en el cliente.
-  const [puedeCompartir, setPuedeCompartir] = useState(false)
-  const [puedeCopiar, setPuedeCopiar] = useState(false)
 
   useEffect(() => {
     fetch('/api/configuracion')
       .then((r) => r.json())
       .then((d) => setConfig({ empresa: d.empresa || 'Laboratorio SFA', logo: d.logo || '' }))
       .catch(() => {})
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPuedeCopiar(typeof ClipboardItem !== 'undefined' && !!navigator.clipboard?.write)
-    try {
-      const prueba = new File([''], 'informe.png', { type: 'image/png' })
-      setPuedeCompartir(!!navigator.canShare?.({ files: [prueba] }))
-    } catch {
-      setPuedeCompartir(false)
-    }
   }, [])
 
   function avisar(texto: string, error = false) {
@@ -256,92 +244,11 @@ export default function AnalisisTanqueList({
     }
   }
 
-  function nombreArchivo(a: Analisis, ext: string) {
+  // Sin extensión: la agrega el visor según lo que se exporte.
+  function nombreArchivo(a: Analisis) {
     const fecha = new Date(a.fecha).toISOString().split('T')[0]
     const tanques = a.tanques.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-')
-    return `analisis-${fecha}-${tanques}.${ext}`
-  }
-
-  function descargarPDF(a: Analisis) {
-    // Se abre el informe en una ventana y se dispara el diálogo de impresión:
-    // desde ahí se elige "Guardar como PDF". Mismo patrón que los rótulos, y
-    // evita sumar una librería de PDF al proyecto.
-    const w = window.open('', '_blank')
-    if (!w) return
-    w.document.write(buildInformeHTML(armarInforme(a)))
-    w.document.close()
-    w.focus()
-    setTimeout(() => w.print(), 400)
-  }
-
-  // El informe se arma como SVG (solo texto y formas, sin foreignObject) y se
-  // dibuja en un canvas para exportarlo como PNG. Todo nativo: sin SVG externo
-  // el canvas no queda bloqueado y toBlob() funciona.
-  function informeAPng(a: Analisis): Promise<Blob | null> {
-    return new Promise((resolve) => {
-      const { svg, ancho, alto } = buildInformeSVG(armarInforme(a))
-      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
-      const img = new Image()
-      img.onload = () => {
-        const escala = 2 // se exporta al doble para que se lea bien al ampliar
-        const canvas = document.createElement('canvas')
-        canvas.width = ancho * escala
-        canvas.height = alto * escala
-        const ctx = canvas.getContext('2d')
-        URL.revokeObjectURL(url)
-        if (!ctx) return resolve(null)
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.scale(escala, escala)
-        ctx.drawImage(img, 0, 0)
-        canvas.toBlob((blob) => resolve(blob), 'image/png')
-      }
-      img.onerror = () => {
-        URL.revokeObjectURL(url)
-        resolve(null)
-      }
-      img.src = url
-    })
-  }
-
-  async function descargarImagen(a: Analisis) {
-    const blob = await informeAPng(a)
-    if (!blob) return avisar('No se pudo generar la imagen', true)
-    const enlace = document.createElement('a')
-    enlace.href = URL.createObjectURL(blob)
-    enlace.download = nombreArchivo(a, 'png')
-    enlace.click()
-    setTimeout(() => URL.revokeObjectURL(enlace.href), 1000)
-  }
-
-  // Deja el informe en el portapapeles como imagen: se pega directo en
-  // WhatsApp Web, en un mail o en un chat, sin descargar y volver a subir.
-  async function copiarImagen(a: Analisis) {
-    const blob = await informeAPng(a)
-    if (!blob) return avisar('No se pudo generar la imagen', true)
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-      avisar('Informe copiado: pegalo en WhatsApp o en el mail con Ctrl+V')
-    } catch {
-      avisar('El navegador no dejó copiar la imagen. Probá con "Descargar imagen".', true)
-    }
-  }
-
-  // Abre el menú de compartir del sistema (WhatsApp, mail, Drive...) con el
-  // informe ya adjunto. En Windows y Android; en otros casos el botón no se
-  // muestra.
-  async function compartirImagen(a: Analisis) {
-    const blob = await informeAPng(a)
-    if (!blob) return avisar('No se pudo generar la imagen', true)
-    const archivo = new File([blob], nombreArchivo(a, 'png'), { type: 'image/png' })
-    try {
-      await navigator.share({ files: [archivo], title: 'Informe de análisis de tanque' })
-    } catch (e) {
-      // Cancelar el menú de compartir no es un error que valga la pena avisar.
-      if ((e as Error)?.name !== 'AbortError') {
-        avisar('No se pudo compartir el informe', true)
-      }
-    }
+    return `analisis-${fecha}-${tanques}`
   }
 
   async function handleDelete(id: number) {
@@ -629,95 +536,14 @@ export default function AnalisisTanqueList({
         </div>
       )}
 
-      {informeDe && (() => {
-        const inf = armarInforme(informeDe)
-        return (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setInformeDe(null)}>
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-              <div className="p-5 overflow-y-auto">
-                {/* Con logo cargado no se repite el nombre de la empresa en
-                    texto: el título queda como encabezado principal. */}
-                <div className="flex items-center gap-3 border-b-4 border-brand-green pb-3 mb-4">
-                  {inf.logo && <img src={inf.logo} alt={inf.empresa} className="h-12 max-w-32 object-contain" />}
-                  <div>
-                    {!inf.logo && <div className="text-lg font-bold text-brand-dark">{inf.empresa}</div>}
-                    <div className={inf.logo ? 'text-base font-bold text-brand-dark' : 'text-sm text-gray-500'}>{inf.titulo}</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-5">
-                  {inf.identificacion.map(([k, v]) => (
-                    <div key={k} className="flex gap-2 text-sm border-b border-gray-100 pb-1">
-                      <span className="text-gray-500 min-w-28">{k}</span>
-                      <span className="font-semibold text-brand-dark">{v}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <h4 className="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-2">Resultados</h4>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b-2 border-gray-300">
-                      <th className="text-left px-2 py-1.5 text-gray-500">Parámetro</th>
-                      <th className="text-left px-2 py-1.5 text-gray-500">Resultado</th>
-                      <th className="text-left px-2 py-1.5 text-gray-500">Especificación</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inf.resultados.map((r, i) => (
-                      <tr key={i} className={`border-b border-gray-100 ${r.fueraDeSpec ? 'text-brand-red' : ''}`}>
-                        <td className="px-2 py-1.5">{r.etiqueta}{r.fueraDeSpec && ' ⚠'}</td>
-                        <td className="px-2 py-1.5 font-semibold whitespace-nowrap">
-                          {r.valor}{r.unidad && <span className="font-normal text-gray-500 text-xs"> {r.unidad}</span>}
-                        </td>
-                        <td className="px-2 py-1.5 text-xs text-gray-500">{r.spec || '—'}</td>
-                      </tr>
-                    ))}
-                    {inf.resultados.length === 0 && (
-                      <tr><td colSpan={3} className="px-2 py-3 text-gray-400">Sin resultados cargados</td></tr>
-                    )}
-                  </tbody>
-                </table>
-
-                {inf.comentario && (
-                  <div className="mt-4 text-sm">
-                    <span className="text-gray-500 block mb-1">Comentario</span>
-                    <p className="bg-gray-50 border-l-4 border-gray-300 px-3 py-2 whitespace-pre-wrap">{inf.comentario}</p>
-                  </div>
-                )}
-                <p className="mt-4 pt-2 border-t text-xs text-gray-400">{inf.pie}</p>
-              </div>
-
-              <div className="p-4 border-t flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
-                <button onClick={() => setInformeDe(null)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg mr-auto">Cerrar</button>
-                {/* Enviar sin pasar por "descargar y volver a subir": copiar
-                    pega el informe en WhatsApp o en el mail con Ctrl+V, y
-                    compartir abre el menú del sistema con el archivo adjunto. */}
-                {puedeCopiar && (
-                  <button onClick={() => copiarImagen(informeDe)}
-                    className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
-                    Copiar imagen
-                  </button>
-                )}
-                {puedeCompartir && (
-                  <button onClick={() => compartirImagen(informeDe)}
-                    className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
-                    Compartir
-                  </button>
-                )}
-                <button onClick={() => descargarImagen(informeDe)}
-                  className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light">
-                  Descargar imagen
-                </button>
-                <button onClick={() => descargarPDF(informeDe)}
-                  className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light">
-                  Descargar PDF
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {informeDe && (
+        <VisorInforme
+          informe={armarInforme(informeDe)}
+          nombreArchivo={nombreArchivo(informeDe)}
+          onCerrar={() => setInformeDe(null)}
+          onAviso={avisar}
+        />
+      )}
 
       <div className="bg-white rounded-xl shadow overflow-x-auto">
         <table className="w-full text-base">

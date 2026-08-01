@@ -7,9 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model Ingreso {
-  id            Int       @id @default(autoincrement())
+  id            Int                   @id @default(autoincrement())
   hrRemito      String
   fecha         DateTime
   origen        String
@@ -19,8 +18,9 @@ model Ingreso {
   precinto      String?
   operador      String?
   fechaAnalisis DateTime?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime              @default(now())
   rotulos       Rotulo[]
+  analisis      AnalisisMateriaPrima?
 
   @@index([fecha, id])
 }
@@ -44,9 +44,9 @@ model Despacho {
 }
 
 model Configuracion {
-  id             Int    @id @default(autoincrement())
-  clave          String @unique
-  valor          String
+  id    Int    @id @default(autoincrement())
+  clave String @unique
+  valor String
 }
 
 model Rotulo {
@@ -143,10 +143,11 @@ model Parametro {
   orden       Int     @default(0)
   activo      Boolean @default(true)
 
-  resultadosTanque ResultadoTanque[]
-  perfiles         PerfilProducto[]
-  especificaciones Especificacion[]
-  muestraEnsayos   MuestraEnsayo[]
+  resultadosTanque       ResultadoTanque[]
+  resultadosMateriaPrima ResultadoMateriaPrima[]
+  perfiles               PerfilProducto[]
+  especificaciones       Especificacion[]
+  muestraEnsayos         MuestraEnsayo[]
 
   @@unique([nombre, metodo])
 }
@@ -158,8 +159,12 @@ model PerfilProducto {
   parametroId Int
   parametro   Parametro @relation(fields: [parametroId], references: [id])
   orden       Int       @default(0)
+  // El mismo producto se analiza distinto según de dónde venga la muestra: el
+  // camión que entra lleva más ensayos que el control de tanque. Sin esto,
+  // sumar los del camión alargaría el formulario de tanques.
+  contexto    String    @default("TANQUE") // TANQUE | MATERIA_PRIMA
 
-  @@unique([producto, parametroId])
+  @@unique([producto, parametroId, contexto])
 }
 
 // Rangos para marcar en rojo lo que se va de spec.
@@ -175,11 +180,11 @@ model Especificacion {
 }
 
 model AnalisisTanque {
-  id       Int      @id @default(autoincrement())
-  fecha    DateTime
-  producto String
-  tanques  String // admite varios: "26 + 27", "114/118/119"
-  alturaM  Float?
+  id                  Int      @id @default(autoincrement())
+  fecha               DateTime
+  producto            String
+  tanques             String // admite varios: "26 + 27", "114/118/119"
+  alturaM             Float?
   // referencia y conjuntoHaciaArriba van separados a propósito: la referencia
   // (AF/DS/AC) dice desde dónde se mide la altura; el HA dice que la muestra
   // es un compuesto desde esa altura hacia arriba. Una muestra puntual y un
@@ -265,4 +270,42 @@ model MuestraEnsayo {
   libre       String? // ensayo que no está en el catálogo
 
   @@index([muestraId])
+}
+
+// --- Análisis de materia prima al ingreso -----------------------------------
+
+// El análisis del camión que entra a planta. Cuelga del Ingreso ya cargado, así
+// que no repite origen, remito ni producto: los toma de ahí. Uno por ingreso,
+// como en la planilla de Excel, donde un camión con varias cisternas es un solo
+// bloque de resultados.
+model AnalisisMateriaPrima {
+  id          Int      @id @default(autoincrement())
+  ingresoId   Int      @unique
+  ingreso     Ingreso  @relation(fields: [ingresoId], references: [id], onDelete: Cascade)
+  fecha       DateTime // fecha del análisis, no la del ingreso
+  // El producto se copia del ingreso al analizar: si después se corrige el
+  // ingreso, el informe ya emitido sigue diciendo lo que se analizó.
+  producto    String
+  cisternas   String?
+  ordenCompra String?
+  analista    String?
+  comentario  String?
+  createdAt   DateTime @default(now())
+
+  resultados ResultadoMateriaPrima[]
+
+  @@index([fecha, id])
+}
+
+model ResultadoMateriaPrima {
+  id          Int                  @id @default(autoincrement())
+  analisisId  Int
+  analisis    AnalisisMateriaPrima @relation(fields: [analisisId], references: [id], onDelete: Cascade)
+  parametroId Int
+  parametro   Parametro            @relation(fields: [parametroId], references: [id])
+  valor       Float?
+  valorTexto  String? // para lo que no es numérico ("OK", "18 °C")
+
+  @@unique([analisisId, parametroId])
+  @@index([analisisId])
 }

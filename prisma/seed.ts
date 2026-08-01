@@ -269,6 +269,27 @@ async function main() {
     ordenParametro++
   }
 
+  // Ensayos que aparecen en el reporte de calidad de materia prima y no están
+  // en las listas de arriba.
+  const parametrosMateriaPrima: [string, string | null, string | null, string | null][] = [
+    ['Jabones', null, null, 'ppm'],
+    ['C18:2', null, null, '%'],
+  ]
+  for (const [nombre, metodo, abreviatura, unidad] of parametrosMateriaPrima) {
+    const existe = await prisma.parametro.findFirst({ where: { nombre, metodo } })
+    if (!existe) {
+      await prisma.parametro.create({ data: { nombre, metodo, abreviatura, unidad, orden: ordenParametro } })
+    }
+    ordenParametro++
+  }
+
+  // La materia grasa entró por la hoja de codificación, sin unidad. En el
+  // reporte de materia prima se informa en % y es la que calcula la app.
+  await prisma.parametro.updateMany({
+    where: { nombre: 'Materia grasa', metodo: null, unidad: null },
+    data: { unidad: '%', abreviatura: 'M. grasa' },
+  })
+
   // Perfiles por producto: qué parámetros se muestran por defecto al cargar
   // un análisis de tanque de ese producto.
   const perfiles: Record<string, [string, string | null][]> = {
@@ -297,16 +318,73 @@ async function main() {
       ['Insaponificables', null],
     ],
   }
-  for (const [producto, params] of Object.entries(perfiles)) {
-    for (let i = 0; i < params.length; i++) {
-      const [nombre, metodo] = params[i]
-      const parametro = await prisma.parametro.findFirst({ where: { nombre, metodo } })
-      if (!parametro) continue
-      await prisma.perfilProducto.upsert({
-        where: { producto_parametroId: { producto, parametroId: parametro.id } },
-        update: { orden: i + 1 },
-        create: { producto, parametroId: parametro.id, orden: i + 1 },
-      })
+  // Perfiles del camión que entra, tomados del "Reporte de calidad": cada
+  // familia de producto tiene su juego de ensayos y es más largo que el del
+  // control de tanque. La materia grasa va última porque se calcula a partir de
+  // la humedad y los insolubles de arriba.
+  const aceites: [string, string | null][] = [
+    ['Humedad', 'Karl Fischer'],
+    ['Insolubles en hexano', null],
+    ['Insolubles en acetona', null],
+    ['Acidez (como ác. oleico)', null],
+    ['Sedimento por centrífuga', null],
+    ['Densidad', null],
+    ['Jabones', null],
+    ['Materia grasa', null],
+  ]
+  const borras: [string, string | null][] = [
+    ['Humedad y volátiles', 'Termobalanza'],
+    ['Insolubles en acetona', null],
+    ['Jabones', null],
+    ['Fósforo', null],
+    ['Materia grasa', null],
+  ]
+  const perfilesMateriaPrima: Record<string, [string, string | null][]> = {
+    'Aceite': aceites,
+    'Aceite Animal': aceites,
+    'Ácido graso': [['Humedad y volátiles', 'Termobalanza'], ...aceites],
+    'UCO': [
+      ['Humedad y volátiles', 'Termobalanza'],
+      ['Insolubles en hexano', null],
+      ['Insolubles en acetona', null],
+      ['Acidez (como ác. oleico)', null],
+      ['Sedimento por centrífuga', null],
+      ['Materia grasa', null],
+    ],
+    'Oleína': [
+      ['Humedad', 'Karl Fischer'],
+      ['Insolubles en hexano', null],
+      ['Insolubles en acetona', null],
+      ['Acidez (como ác. oleico)', null],
+      ['Sedimento por centrífuga', null],
+      ['Insaponificables', null],
+      ['Índice de yodo', null],
+      ['Fósforo', null],
+      ['C18:2', null],
+      ['pH', null],
+      ['Materia grasa', null],
+    ],
+    'Borra': borras,
+    'Borra Neutra': borras,
+    'BN GMP+': borras,
+  }
+
+  const perfilesPorContexto: [string, Record<string, [string, string | null][]>][] = [
+    ['TANQUE', perfiles],
+    ['MATERIA_PRIMA', perfilesMateriaPrima],
+  ]
+  for (const [contexto, mapa] of perfilesPorContexto) {
+    for (const [producto, params] of Object.entries(mapa)) {
+      for (let i = 0; i < params.length; i++) {
+        const [nombre, metodo] = params[i]
+        const parametro = await prisma.parametro.findFirst({ where: { nombre, metodo } })
+        if (!parametro) continue
+        await prisma.perfilProducto.upsert({
+          where: { producto_parametroId_contexto: { producto, parametroId: parametro.id, contexto } },
+          update: { orden: i + 1 },
+          create: { producto, parametroId: parametro.id, contexto, orden: i + 1 },
+        })
+      }
     }
   }
 
