@@ -22,8 +22,8 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
   const [newLab, setNewLab] = useState({ nombre: '', esExterno: true, delExterior: false })
   const [lugares, setLugares] = useState<{id:number,nombre:string}[]>([])
   const [newLugar, setNewLugar] = useState('')
-  const [perfiles, setPerfiles] = useState<{id:number,producto:string,parametroId:number,orden:number,parametro:{nombre:string,metodo:string|null,abreviatura:string|null}}[]>([])
-  const [newPerfil, setNewPerfil] = useState({ producto: '', parametroId: '' })
+  const [perfiles, setPerfiles] = useState<{id:number,producto:string,parametroId:number,orden:number,contexto:string,parametro:{nombre:string,metodo:string|null,abreviatura:string|null}}[]>([])
+  const [newPerfil, setNewPerfil] = useState({ producto: '', parametroId: '', contexto: 'TANQUE' })
   const [especs, setEspecs] = useState<{id:number,producto:string,parametroId:number,min:number|null,max:number|null,parametro:{nombre:string,metodo:string|null,abreviatura:string|null}}[]>([])
   const [newEspec, setNewEspec] = useState({ producto: '', parametroId: '', min: '', max: '' })
 
@@ -253,7 +253,11 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
     const res = await fetch('/api/perfiles-producto', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ producto: newPerfil.producto, parametroId: Number(newPerfil.parametroId) }),
+      body: JSON.stringify({
+        producto: newPerfil.producto,
+        parametroId: Number(newPerfil.parametroId),
+        contexto: newPerfil.contexto,
+      }),
     })
     if (res.ok) {
       const p = await res.json()
@@ -556,8 +560,17 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
 
       <div className="bg-white rounded-xl shadow p-5 space-y-3">
         <h3 className="font-semibold text-gray-700 border-b pb-2">Perfiles por producto</h3>
-        <p className="text-xs text-gray-400">Qué parámetros se muestran por defecto al cargar un análisis de tanque de cada producto.</p>
-        <div className="flex gap-1.5">
+        <p className="text-xs text-gray-400">
+          Qué parámetros se muestran por defecto al cargar un análisis de cada producto. El
+          camión que entra (materia prima) lleva más ensayos que el control de tanque, por eso
+          cada uno tiene su propio perfil.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          <select value={newPerfil.contexto} onChange={(e) => setNewPerfil({ ...newPerfil, contexto: e.target.value })}
+            className="border rounded-lg px-2 py-1.5 text-sm">
+            <option value="TANQUE">Tanques</option>
+            <option value="MATERIA_PRIMA">Materia prima</option>
+          </select>
           <select value={newPerfil.producto} onChange={(e) => setNewPerfil({ ...newPerfil, producto: e.target.value })}
             className="border rounded-lg px-2 py-1.5 text-sm flex-1">
             <option value="">Producto...</option>
@@ -572,17 +585,30 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
             className="bg-brand-green text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-brand-green-dark">Agregar</button>
         </div>
         <ul className="space-y-1 max-h-56 overflow-y-auto">
-          {[...new Set(perfiles.map(p => p.producto))].sort().map(prod => (
-            <li key={prod} className="py-1 px-2 text-sm">
-              <span className="font-medium text-gray-700">{prod}:</span>{' '}
-              {perfiles.filter(p => p.producto === prod).sort((a, b) => a.orden - b.orden).map(p => (
-                <span key={p.id} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 mr-1 mb-0.5">
-                  {p.parametro.abreviatura || etiquetaParam(p.parametro)}
-                  <button onClick={() => deletePerfil(p.id)} className="text-red-400 hover:text-red-600">×</button>
-                </span>
-              ))}
-            </li>
-          ))}
+          {(['TANQUE', 'MATERIA_PRIMA'] as const).map(ctx => {
+            const delContexto = perfiles.filter(p => (p.contexto || 'TANQUE') === ctx)
+            if (delContexto.length === 0) return null
+            return (
+              <li key={ctx}>
+                <div className="text-xs uppercase tracking-wide text-gray-400 font-semibold px-2 pt-2">
+                  {ctx === 'TANQUE' ? 'Tanques' : 'Materia prima'}
+                </div>
+                <ul>
+                  {[...new Set(delContexto.map(p => p.producto))].sort().map(prod => (
+                    <li key={prod} className="py-1 px-2 text-sm">
+                      <span className="font-medium text-gray-700">{prod}:</span>{' '}
+                      {delContexto.filter(p => p.producto === prod).sort((a, b) => a.orden - b.orden).map(p => (
+                        <span key={p.id} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 mr-1 mb-0.5">
+                          {p.parametro.abreviatura || etiquetaParam(p.parametro)}
+                          <button onClick={() => deletePerfil(p.id)} className="text-red-400 hover:text-red-600">×</button>
+                        </span>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            )
+          })}
           {perfiles.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin perfiles</li>}
         </ul>
       </div>

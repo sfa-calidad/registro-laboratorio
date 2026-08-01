@@ -2,6 +2,27 @@
 import { useState, useEffect } from 'react'
 import { formatDateOnly, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { fueraDeRango } from '@/lib/calculos'
+import type { InformeTanque } from '@/lib/informe'
+import VisorInforme from './VisorInforme'
+import AnalisisMateriaPrimaModal, {
+  construirInforme,
+  type Especificacion,
+  type FilaInforme,
+  type Parametro,
+  type Perfil,
+} from './AnalisisMateriaPrimaModal'
+
+type AnalisisGuardado = {
+  id: number
+  fecha: Date | string
+  producto: string
+  cisternas: string | null
+  ordenCompra: string | null
+  analista: string | null
+  comentario: string | null
+  resultados: { parametroId: number; valor: number | null; valorTexto: string | null }[]
+}
 
 type Ingreso = {
   id: number
@@ -13,6 +34,7 @@ type Ingreso = {
   observacion: string | null
   precinto: string | null
   operador: string | null
+  analisis: AnalisisGuardado | null
 }
 
 type Producto = { id: number; nombre: string }
@@ -36,13 +58,20 @@ const emptyForm = {
 export default function IngresosList({
   ingresos,
   productos,
+  parametros,
+  perfiles,
+  especificaciones,
+  analistas,
 }: {
   ingresos: Ingreso[]
   productos: Producto[]
+  parametros: Parametro[]
+  perfiles: Perfil[]
+  especificaciones: Especificacion[]
+  analistas: Analista[]
 }) {
   const router = useRouter()
   const [proveedores, setProveedores] = useState<Contacto[]>([])
-  const [analistas, setAnalistas] = useState<Analista[]>([])
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -54,11 +83,77 @@ export default function IngresosList({
   const [exportHasta, setExportHasta] = useState('')
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 15
+  // Análisis de materia prima: el ingreso que se está analizando y el informe
+  // que se está mirando.
+  const [analizando, setAnalizando] = useState<Ingreso | null>(null)
+  const [informe, setInforme] = useState<{ datos: InformeTanque; nombre: string } | null>(null)
+  const [config, setConfig] = useState({ empresa: 'Laboratorio SFA', logo: '' })
+  const [aviso, setAviso] = useState<{ texto: string; error: boolean } | null>(null)
 
   useEffect(() => {
     fetch('/api/contactos').then(r => r.json()).then(setProveedores)
-    fetch('/api/analistas').then(r => r.json()).then(setAnalistas)
+    fetch('/api/configuracion')
+      .then((r) => r.json())
+      .then((d) => setConfig({ empresa: d.empresa || 'Laboratorio SFA', logo: d.logo || '' }))
+      .catch(() => {})
   }, [])
+
+  function avisar(texto: string, error = false) {
+    setAviso({ texto, error })
+    setTimeout(() => setAviso(null), 5000)
+  }
+
+  const paramPorId = new Map(parametros.map((p) => [p.id, p]))
+
+  // Las filas del informe salen de lo guardado, ordenadas por el perfil del
+  // producto para que el informe reabierto se lea igual que el del formulario.
+  function filasDe(a: AnalisisGuardado): FilaInforme[] {
+    const orden = new Map(
+      perfiles.filter((pf) => pf.producto === a.producto).map((pf) => [pf.parametroId, pf.orden])
+    )
+    return a.resultados
+      .map((r) => {
+        const parametro = paramPorId.get(r.parametroId)
+        return parametro ? { parametro, valor: r.valor, texto: r.valorTexto } : null
+      })
+      .filter((f): f is FilaInforme => f !== null)
+      .sort(
+        (x, y) =>
+          (orden.get(x.parametro.id) ?? 1e6 + x.parametro.orden) -
+          (orden.get(y.parametro.id) ?? 1e6 + y.parametro.orden)
+      )
+  }
+
+  function informeDe(i: Ingreso): { datos: InformeTanque; nombre: string } | null {
+    const a = i.analisis
+    if (!a) return null
+    const fecha = new Date(a.fecha).toISOString().split('T')[0]
+    return {
+      datos: construirInforme({
+        config,
+        fecha: a.fecha,
+        producto: a.producto,
+        origen: i.origen,
+        hrRemito: i.hrRemito,
+        ordenCompra: a.ordenCompra,
+        cisternas: a.cisternas,
+        analista: a.analista,
+        comentario: a.comentario,
+        filas: filasDe(a),
+        especificaciones,
+      }),
+      nombre: `analisis-${fecha}-${i.hrRemito}`.replace(/[^\w.-]+/g, '-'),
+    }
+  }
+
+  // Pastilla del listado: para poder buscar después "los camiones fuera de
+  // spec del mes" sin abrir uno por uno.
+  function hayDesvio(a: AnalisisGuardado): boolean {
+    return a.resultados.some((r) => {
+      const e = especificaciones.find((x) => x.producto === a.producto && x.parametroId === r.parametroId)
+      return !!e && fueraDeRango(r.valor, { min: e.min, max: e.max })
+    })
+  }
 
   function handleExport() {
     const params = new URLSearchParams()
@@ -69,12 +164,18 @@ export default function IngresosList({
     setShowExport(false)
   }
 
-  const filtered = ingresos.filter(
-    (i) =>
-      i.hrRemito.toLowerCase().includes(search.toLowerCase()) ||
-      i.origen.toLowerCase().includes(search.toLowerCase()) ||
-      i.producto1.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = ingresos.filter((i) => {
+    const q = search.toLowerCase()
+    // El estado del análisis entra en la búsqueda: escribir "fuera" trae los
+    // camiones que dieron fuera de especificación.
+    const estado = !i.analisis ? 'sin analizar' : hayDesvio(i.analisis) ? 'fuera de especificación' : 'conforme'
+    return (
+      i.hrRemito.toLowerCase().includes(q) ||
+      i.origen.toLowerCase().includes(q) ||
+      i.producto1.toLowerCase().includes(q) ||
+      estado.includes(q)
+    )
+  })
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
@@ -148,6 +249,40 @@ export default function IngresosList({
 
   return (
     <div>
+      {aviso && (
+        <div
+          className={`fixed bottom-6 right-6 z-[60] px-4 py-3 rounded-lg shadow-lg text-sm text-white ${
+            aviso.error ? 'bg-brand-red' : 'bg-brand-green'
+          }`}
+        >
+          {aviso.texto}
+        </div>
+      )}
+
+      {analizando && (
+        <AnalisisMateriaPrimaModal
+          ingreso={analizando}
+          parametros={parametros}
+          perfiles={perfiles}
+          especificaciones={especificaciones}
+          analistas={analistas}
+          config={config}
+          onCerrar={() => setAnalizando(null)}
+          onGuardado={() => router.refresh()}
+          onAviso={avisar}
+          onVerInforme={(datos, nombre) => setInforme({ datos, nombre })}
+        />
+      )}
+
+      {informe && (
+        <VisorInforme
+          informe={informe.datos}
+          nombreArchivo={informe.nombre}
+          onCerrar={() => setInforme(null)}
+          onAviso={avisar}
+        />
+      )}
+
       <div className="flex justify-between items-center mb-3">
         <input
           type="text"
@@ -289,6 +424,7 @@ export default function IngresosList({
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Precinto</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Observación</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Operador</th>
+              <th className="text-left px-3 py-2 font-semibold text-gray-600">Análisis</th>
               <th className="text-left px-3 py-2 font-semibold text-gray-600">Acciones</th>
             </tr>
           </thead>
@@ -303,6 +439,30 @@ export default function IngresosList({
                 <td className="px-3 py-2">{i.precinto || '—'}</td>
                 <td className="px-3 py-2 max-w-xs truncate text-gray-600" title={i.observacion || ''}>{i.observacion || '—'}</td>
                 <td className="px-3 py-2">{i.operador || '—'}</td>
+                {/* El análisis vive en su propia columna con sus dos acciones:
+                    en "Acciones" quedaban seis botones y no se leía ninguno. */}
+                <td className="px-3 py-2 whitespace-nowrap">
+                  {i.analisis ? (
+                    <div className="flex flex-col items-start gap-1">
+                      <Pastilla desvio={hayDesvio(i.analisis)} />
+                      <div className="flex items-center gap-2 text-sm">
+                        <button onClick={() => setInforme(informeDe(i))} className="text-brand-green-dark hover:text-brand-green font-medium">
+                          Ver informe
+                        </button>
+                        <button onClick={() => setAnalizando(i)} className="text-gray-500 hover:text-gray-700">
+                          Editar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setAnalizando(i)}
+                      className="text-sm border border-brand-green text-brand-green-dark px-2.5 py-1 rounded-lg hover:bg-brand-green-light font-medium"
+                    >
+                      Cargar análisis
+                    </button>
+                  )}
+                </td>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2 text-sm">
                     <button onClick={() => openEdit(i)} className="text-brand-green-dark hover:text-brand-green font-medium">Editar</button>
@@ -327,7 +487,7 @@ export default function IngresosList({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-3 py-6 text-center text-gray-400 text-base">
+                <td colSpan={10} className="px-3 py-6 text-center text-gray-400 text-base">
                   Sin registros
                 </td>
               </tr>
@@ -361,5 +521,20 @@ export default function IngresosList({
         </div>
       )}
     </div>
+  )
+}
+
+function Pastilla({ desvio }: { desvio: boolean }) {
+  if (desvio) {
+    return (
+      <span className="inline-block text-xs font-bold px-2 py-1 rounded-full bg-brand-red text-white whitespace-nowrap">
+        ⚠ Fuera de spec
+      </span>
+    )
+  }
+  return (
+    <span className="inline-block text-xs font-medium px-2 py-1 rounded-full bg-brand-green-light text-brand-green-dark border border-brand-green whitespace-nowrap">
+      Conforme
+    </span>
   )
 }

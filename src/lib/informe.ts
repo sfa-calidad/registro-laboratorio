@@ -25,6 +25,10 @@ export type InformeTanque = {
   resultados: FilaResultado[]
   comentario: string
   pie: string
+  // Desvíos, uno por parámetro fuera de especificación. Van en una banda roja
+  // arriba de todo: el informe de materia prima se manda como foto al
+  // proveedor y el desvío tiene que leerse sin buscarlo en la tabla.
+  desvios?: string[]
 }
 
 const COLOR_TEXTO = '#2b332a'
@@ -48,6 +52,12 @@ export function buildInformeHTML(informe: InformeTanque): string {
     )
     .join('')
 
+  const desvios = (informe.desvios ?? []).length
+    ? `<div class="desvios"><div class="t">&#9888; Fuera de especificaci\u00f3n</div><ul>${informe
+        .desvios!.map((d) => `<li>${escaparXml(d)}</li>`)
+        .join('')}</ul></div>`
+    : ''
+
   return `<!DOCTYPE html>
 <html lang="es" style="color-scheme: light;">
 <head>
@@ -66,6 +76,9 @@ export function buildInformeHTML(informe: InformeTanque): string {
     /* Con logo cargado, el nombre de la empresa no se repite en texto: el
        título queda como encabezado principal. */
     .titulo.solo { font-size: 17px; font-weight: bold; color: ${COLOR_TEXTO}; margin-top: 0; }
+    .desvios { background: ${COLOR_ROJO}; color: #fff; border-radius: 6px; padding: 11px 14px; margin-bottom: 16px; }
+    .desvios .t { font-size: 14px; font-weight: bold; }
+    .desvios ul { margin: 5px 0 0; padding-left: 18px; font-size: 13px; }
     .ident { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin-bottom: 20px; }
     .campo { display: flex; gap: 6px; font-size: 13px; border-bottom: 1px solid #f3f4f6; padding-bottom: 4px; }
     .lbl { color: ${COLOR_SUAVE}; min-width: 110px; }
@@ -97,6 +110,7 @@ export function buildInformeHTML(informe: InformeTanque): string {
         <div class="titulo">${escaparXml(informe.titulo)}</div>
       </div>`}
     </header>
+    ${desvios}
     <div class="ident">${ident}</div>
     <h2>Resultados</h2>
     <table>
@@ -133,6 +147,20 @@ export function buildInformeSVG(informe: InformeTanque): { svg: string; ancho: n
   y += 60
   partes.push(`<rect x="${margen}" y="${y}" width="${anchoUtil}" height="3" fill="${COLOR_VERDE}"/>`)
   y += 26
+
+  // Banda de desvíos. Va antes de la identificación para que sea lo primero
+  // que se ve en la foto que se manda al proveedor.
+  const desvios = informe.desvios ?? []
+  if (desvios.length) {
+    const lineas = desvios.flatMap((d) => quebrarTexto(d, 78))
+    const alto = 26 + lineas.length * 17 + 10
+    partes.push(`<rect x="${margen}" y="${y}" width="${anchoUtil}" height="${alto}" rx="6" fill="${COLOR_ROJO}"/>`)
+    partes.push(`<text x="${margen + 14}" y="${y + 20}" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ffffff">Fuera de especificación</text>`)
+    lineas.forEach((l, i) => {
+      partes.push(`<text x="${margen + 14}" y="${y + 39 + i * 17}" font-family="Arial, sans-serif" font-size="13" fill="#ffffff">${escaparXml(l)}</text>`)
+    })
+    y += alto + 18
+  }
 
   // Identificación en dos columnas
   const colAncho = anchoUtil / 2

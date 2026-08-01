@@ -12,7 +12,7 @@ export default async function TanquesPage() {
     prisma.producto.findMany({ orderBy: { nombre: 'asc' } }),
     prisma.analista.findMany({ where: { activo: true }, orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }] }),
     prisma.parametro.findMany({ where: { activo: true }, orderBy: [{ orden: 'asc' }, { nombre: 'asc' }] }),
-    prisma.perfilProducto.findMany({ orderBy: { orden: 'asc' } }),
+    prisma.perfilProducto.findMany({ where: { contexto: 'TANQUE' }, orderBy: { orden: 'asc' } }),
     prisma.especificacion.findMany(),
   ])
 

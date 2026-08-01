@@ -24,7 +24,17 @@ Resumen para trabajar en el código:
   Tanques: `AnalisisTanque` + `ResultadoTanque`, con `PerfilProducto` (qué
   parámetros mostrar) y `Especificacion` (rangos). Muestras: `Muestra` +
   `MuestraEnsayo`, con `Laboratorio` y `LugarMuestreo`. El informe descargable
-  (PDF vía `window.print()`, PNG vía SVG→canvas) vive en `src/lib/informe.ts`.
+  (PDF vía `window.print()`, PNG vía SVG→canvas) vive en `src/lib/informe.ts` y
+  lo muestra `VisorInforme` (pantalla + copiar/compartir/descargar), compartido
+  por tanques y materia prima.
+- **Análisis de materia prima**: el camión que entra se analiza y se informa en
+  el momento. `AnalisisMateriaPrima` + `ResultadoMateriaPrima` cuelgan del
+  `Ingreso` ya cargado (uno por ingreso), así que origen, HR/remito y producto no
+  se retipean. Reusa `Parametro` y `Especificacion`; el perfil no: el mismo
+  producto lleva más ensayos en el camión que en el tanque, por eso
+  `PerfilProducto.contexto` es `TANQUE` o `MATERIA_PRIMA`. Los desvíos van en una
+  banda roja arriba del informe (`InformeTanque.desvios`), porque el informe se
+  manda como foto y tiene que leerse sin buscar en la tabla.
 
 ## Interfaz
 
@@ -61,6 +71,10 @@ copiar de ahí en vez de inventar una variante.
 - **Datos base** (productos, columnas, contactos/razones sociales, parámetros,
   perfiles, laboratorios, lugares de muestreo): se cargan en `prisma/seed.ts`,
   que corre en cada deploy de forma idempotente.
+- **La materia grasa no se mide, se calcula**: `100 − mayor(insolubles) −
+  humedad`, la fórmula que está anotada en el Excel del laboratorio. Está en
+  `src/lib/calculos.ts` con los siete bloques reales de la planilla como test.
+  Si hay dos humedades cargadas (KF y termobalanza) se usa la mayor.
 - **Numeración de muestras**: `proximoNumero()` en `src/lib/muestras.ts` arma
   `AA` + secuencia de 3 dígitos. `PRIMERA_SECUENCIA` fija el piso de los años
   que ya venían numerados en la planilla de Excel (2026 arranca en `26300`);

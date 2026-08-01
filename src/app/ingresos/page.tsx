@@ -4,15 +4,34 @@ import IngresosList from '@/components/IngresosList'
 export const dynamic = 'force-dynamic'
 
 export default async function IngresosPage() {
-  // fecha desc con id desc como desempate estable: los más nuevos arriba y,
-  // ante misma fecha, un orden fijo para que editar un registro no lo reordene.
-  const ingresos = await prisma.ingreso.findMany({ orderBy: [{ fecha: 'desc' }, { id: 'desc' }] })
-  const productos = await prisma.producto.findMany({ orderBy: { nombre: 'asc' } })
+  const [ingresos, productos, parametros, perfiles, especificaciones, analistas] = await Promise.all([
+    // fecha desc con id desc como desempate estable: los más nuevos arriba y,
+    // ante misma fecha, un orden fijo para que editar un registro no lo reordene.
+    prisma.ingreso.findMany({
+      orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
+      include: { analisis: { include: { resultados: true } } },
+    }),
+    prisma.producto.findMany({ orderBy: { nombre: 'asc' } }),
+    // El catálogo de ensayos y los rangos son los mismos que usa el análisis de
+    // tanque; los perfiles no: el camión que entra lleva más ensayos que el
+    // control de tanque, por eso el perfil va por contexto.
+    prisma.parametro.findMany({ where: { activo: true }, orderBy: [{ orden: 'asc' }, { nombre: 'asc' }] }),
+    prisma.perfilProducto.findMany({ where: { contexto: 'MATERIA_PRIMA' }, orderBy: { orden: 'asc' } }),
+    prisma.especificacion.findMany(),
+    prisma.analista.findMany({ where: { activo: true }, orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }] }),
+  ])
 
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Ingresos</h2>
-      <IngresosList ingresos={ingresos} productos={productos} />
+      <IngresosList
+        ingresos={ingresos}
+        productos={productos}
+        parametros={parametros}
+        perfiles={perfiles}
+        especificaciones={especificaciones}
+        analistas={analistas}
+      />
     </div>
   )
 }
