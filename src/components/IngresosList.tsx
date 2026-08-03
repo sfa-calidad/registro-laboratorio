@@ -7,7 +7,7 @@ import type { InformeTanque } from '@/lib/informe'
 import VisorInforme from './VisorInforme'
 import AnalisisMateriaPrimaModal, {
   construirInforme,
-  type Especificacion,
+  rangoDe,
   type FilaInforme,
   type Parametro,
   type Perfil,
@@ -21,7 +21,13 @@ type AnalisisGuardado = {
   ordenCompra: string | null
   analista: string | null
   comentario: string | null
-  resultados: { parametroId: number; valor: number | null; valorTexto: string | null }[]
+  resultados: {
+    parametroId: number
+    valor: number | null
+    valorTexto: string | null
+    specMin: number | null
+    specMax: number | null
+  }[]
 }
 
 type Ingreso = {
@@ -60,14 +66,12 @@ export default function IngresosList({
   productos,
   parametros,
   perfiles,
-  especificaciones,
   analistas,
 }: {
   ingresos: Ingreso[]
   productos: Producto[]
   parametros: Parametro[]
   perfiles: Perfil[]
-  especificaciones: Especificacion[]
   analistas: Analista[]
 }) {
   const router = useRouter()
@@ -114,7 +118,8 @@ export default function IngresosList({
     return a.resultados
       .map((r) => {
         const parametro = paramPorId.get(r.parametroId)
-        return parametro ? { parametro, valor: r.valor, texto: r.valorTexto } : null
+        if (!parametro) return null
+        return { parametro, valor: r.valor, texto: r.valorTexto, rango: rangoDe(r.specMin, r.specMax) }
       })
       .filter((f): f is FilaInforme => f !== null)
       .sort(
@@ -140,7 +145,6 @@ export default function IngresosList({
         analista: a.analista,
         comentario: a.comentario,
         filas: filasDe(a),
-        especificaciones,
       }),
       nombre: `analisis-${fecha}-${i.hrRemito}`.replace(/[^\w.-]+/g, '-'),
     }
@@ -149,10 +153,7 @@ export default function IngresosList({
   // Pastilla del listado: para poder buscar después "los camiones fuera de
   // spec del mes" sin abrir uno por uno.
   function hayDesvio(a: AnalisisGuardado): boolean {
-    return a.resultados.some((r) => {
-      const e = especificaciones.find((x) => x.producto === a.producto && x.parametroId === r.parametroId)
-      return !!e && fueraDeRango(r.valor, { min: e.min, max: e.max })
-    })
+    return a.resultados.some((r) => fueraDeRango(r.valor, rangoDe(r.specMin, r.specMax)))
   }
 
   function handleExport() {
@@ -264,7 +265,6 @@ export default function IngresosList({
           ingreso={analizando}
           parametros={parametros}
           perfiles={perfiles}
-          especificaciones={especificaciones}
           analistas={analistas}
           config={config}
           onCerrar={() => setAnalizando(null)}

@@ -305,6 +305,12 @@ model ResultadoMateriaPrima {
   parametro   Parametro            @relation(fields: [parametroId], references: [id])
   valor       Float?
   valorTexto  String? // para lo que no es numérico ("OK", "18 °C")
+  // El límite se escribe al cargar el análisis, no sale del catálogo: cada
+  // camión trae el suyo en la planilla de coordinación de esa orden de compra.
+  // Se guarda con el resultado para que el informe reabierto muestre el que se
+  // usó ese día, aunque después cambien las condiciones de compra.
+  specMin     Float?
+  specMax     Float?
 
   @@unique([analisisId, parametroId])
   @@index([analisisId])
