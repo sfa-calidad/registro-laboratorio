@@ -1,7 +1,15 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { formatDateOnly, todayISO } from '@/lib/utils'
-import { fueraDeRango, materiaGrasa, parseNumero, textoDesvio, type Rango } from '@/lib/calculos'
+import {
+  fueraDeRango,
+  materiaGrasa,
+  parseNumero,
+  rangoDe,
+  textoDesvio,
+  textoSpec,
+  type Rango,
+} from '@/lib/calculos'
 import type { InformeTanque } from '@/lib/informe'
 
 // Análisis del camión que entra a planta. Cuelga del ingreso ya cargado, así que
@@ -61,20 +69,7 @@ function nombreLargo(p: Parametro): string {
   return p.metodo ? `${p.nombre} · ${p.metodo}` : p.nombre
 }
 
-export function textoSpec(r: Rango | undefined, decimales: number): string {
-  if (!r) return '—'
-  const n = (v: number) => v.toFixed(decimales).replace('.', ',')
-  if (r.min !== null && r.max !== null) return `${n(r.min)} a ${n(r.max)}`
-  if (r.max !== null) return `máx. ${n(r.max)}`
-  if (r.min !== null) return `mín. ${n(r.min)}`
-  return '—'
-}
-
-// Un rango solo cuenta si tiene al menos un extremo cargado. Sin esto, las dos
-// casillas vacías se leerían como "rango sin límites" y nada daría fuera.
-export function rangoDe(min: number | null, max: number | null): Rango | undefined {
-  return min === null && max === null ? undefined : { min, max }
-}
+export { rangoDe, textoSpec }
 
 // Una sola función arma el informe, la use el formulario (con lo que se está
 // tipeando) o el listado (con lo ya guardado). Si hubiera dos, la banda de

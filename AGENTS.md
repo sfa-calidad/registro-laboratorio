@@ -107,8 +107,10 @@ copiar de ahí en vez de inventar una variante.
 - **Los informes se leen en el celular**: la imagen se manda por WhatsApp, así
   que lo que decide si se lee sin zoom es el tamaño de la letra **relativo al
   ancho** de la imagen (`fuente × 390 / ancho`). Por eso el SVG mide 560 px de
-  ancho con cuerpo de 18 y piso de 16. `tests/informe.test.ts` fija eso y el
-  contraste; ver `docs/ESTILOS.md`.
+  ancho con cuerpo de 18 y piso de 16, y sale en 4:5 (lo más alto que WhatsApp
+  muestra entero) rellenando con blanco cuando el contenido no llega; si lo pasa
+  se deja crecer, porque ensancharlo para forzar la proporción achicaría la
+  letra. `tests/informe.test.ts` fija eso y el contraste; ver `docs/ESTILOS.md`.
 - **Tests**: `npm test` corre el runner incorporado de Node sobre `tests/`, sin
   dependencias extra. Cubre las funciones puras donde aparecieron bugs (firma de
   la sesión, estado de las muestras, fechas del laboratorio, rótulos). Si tocás

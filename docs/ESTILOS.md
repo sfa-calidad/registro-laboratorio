@@ -358,6 +358,13 @@ export type InformeTanque = {
 }
 ```
 
+### La especificación se escribe con `textoSpec`
+
+`textoSpec(rango, decimales)` de `src/lib/calculos.ts`, no a mano. Un límite con
+un solo extremo se escribe `máx. 3,00` / `mín. 90,00`, no `— a 3`. La usan el
+informe de tanque y el de materia prima; cuando cada uno tenía la suya, la de
+tanques imprimía el rango roto.
+
 ### Los cinco colores
 
 El informe no usa Tailwind: se imprime y se convierte a imagen, así que los
@@ -404,6 +411,12 @@ const COLOR_ROJO  = '#b6394a'   // fuera de especificación
   un teléfono común). Con 820 px de ancho y cuerpo de 13, daba 6 pt y había que
   hacer zoom; con 560 y cuerpo de 18 da 12,5 pt, que es lectura normal.
 - **Piso de 16 px** para cualquier texto, incluido el pie.
+- **Proporción 4:5** (`alto = ancho × 1,25`): es la más alta que WhatsApp e
+  Instagram muestran entera en la vista previa. Un informe corto se rellena con
+  blanco hasta llegar y el pie se ancla abajo, así el relleno queda entre el
+  contenido y el pie. Uno largo **se deja crecer**: ensancharlo para forzar el
+  4:5 achicaría la letra respecto del ancho, que es justo lo que obliga a hacer
+  zoom. La letra nunca se toca para que entre.
 - Los resultados van en dos columnas —parámetro a la izquierda, valor pegado al
   margen derecho con `text-anchor="end"`, especificación debajo en chico—. Tres
   columnas no entran en ese ancho sin cortar los nombres largos de los ensayos.

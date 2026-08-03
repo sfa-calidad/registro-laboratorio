@@ -133,6 +133,64 @@ test('nada del informe se sale del ancho de la imagen', () => {
   }
 })
 
+// --- Proporción 4:5 --------------------------------------------------------
+
+// 4:5 es la proporción más alta que WhatsApp muestra entera en la vista previa.
+const PROPORCION = 1.25
+
+function informeDe(ensayos: number, conDesvio = false): InformeTanque {
+  return {
+    ...INFORME,
+    desvios: conDesvio ? INFORME.desvios : [],
+    resultados: Array.from({ length: ensayos }, (_, i) => ({
+      etiqueta: `Insolubles en acetona ${i + 1}`,
+      valor: '12,34',
+      unidad: '%',
+      spec: 'máx. 20,00',
+      fueraDeSpec: false,
+    })),
+  }
+}
+
+test('un informe corto sale exactamente en 4:5', () => {
+  const { ancho, alto } = buildInformeSVG(informeDe(3))
+  assert.equal(alto, Math.round(ancho * PROPORCION), `salió ${ancho}×${alto}`)
+})
+
+test('la imagen nunca queda más chata que 4:5', () => {
+  // Aunque el informe no tenga casi contenido, se rellena con blanco hasta
+  // llegar: si no, una imagen apaisada se ve rarísima en el chat.
+  for (const ensayos of [0, 1, 2, 3, 5]) {
+    const { ancho, alto } = buildInformeSVG(informeDe(ensayos))
+    assert.ok(alto >= ancho * PROPORCION, `con ${ensayos} ensayos quedó ${ancho}×${alto}`)
+  }
+})
+
+test('un informe largo se alarga, pero no se ensancha ni achica la letra', () => {
+  const corto = buildInformeSVG(informeDe(3))
+  const largo = buildInformeSVG(informeDe(15, true))
+
+  assert.equal(largo.ancho, corto.ancho, 'ensancharlo achicaría la letra respecto del ancho')
+  assert.ok(largo.alto > corto.alto, 'con más ensayos tiene que crecer a lo alto')
+  // La letra tiene que ser la misma, no una versión reducida para que entre.
+  assert.equal(
+    Math.min(...tamanosDeTexto(largo.svg)),
+    Math.min(...tamanosDeTexto(corto.svg)),
+    'la letra no se toca cuando el informe es largo'
+  )
+})
+
+test('el pie entra en la imagen, con relleno o sin él', () => {
+  for (const ensayos of [1, 3, 8, 15]) {
+    const { svg, alto } = buildInformeSVG(informeDe(ensayos))
+    const baselines = [...svg.matchAll(/<text x="[\d.]+" y="([\d.]+)"/g)].map((m) => Number(m[1]))
+    const ultima = Math.max(...baselines)
+    assert.ok(ultima <= alto, `con ${ensayos} ensayos el pie cae en ${ultima} y la imagen mide ${alto}`)
+    // Y no se superpone con el contenido: el separador del pie va después.
+    assert.ok(svg.includes('Generado el'), 'el pie tiene que estar')
+  }
+})
+
 test('el HTML para imprimir se adapta al celular y no pierde el aviso de desvío', () => {
   const html = buildInformeHTML(INFORME)
   assert.ok(html.includes('name="viewport"'), 'sin viewport el celular achica toda la página')

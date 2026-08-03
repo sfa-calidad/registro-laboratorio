@@ -175,6 +175,13 @@ export function buildInformeHTML(informe: InformeTanque): string {
 const ANCHO_SVG = 560
 const MARGEN_SVG = 26
 
+// Proporción 4:5 (alto = ancho × 1,25). Es la más alta que WhatsApp e Instagram
+// muestran entera en la vista previa: más que eso y la miniatura sale recortada.
+// Un informe corto se rellena con blanco hasta llegar; uno largo se deja crecer.
+// Ensancharlo para forzar el 4:5 achicaría la letra respecto del ancho, que es
+// justamente lo que hace que haya que hacer zoom.
+const PROPORCION_OBJETIVO = 1.25
+
 // Arial no tiene ancho fijo; 0,52 del cuerpo es el promedio para texto en
 // castellano y alcanza para decidir dónde cortar una línea.
 const RELACION_ANCHO_CARACTER = 0.52
@@ -260,7 +267,7 @@ export function buildInformeSVG(informe: InformeTanque): { svg: string; ancho: n
     y += 26
     partes.push(`<rect x="${margen}" y="${y - 6}" width="${anchoUtil}" height="1" fill="#e5e7eb"/>`)
   }
-  y += 18
+  y += 28
 
   // Resultados: parámetro a la izquierda y valor pegado al margen derecho, con
   // la especificación debajo en chico. Tres columnas no entran en un ancho de
@@ -318,17 +325,20 @@ export function buildInformeSVG(informe: InformeTanque): { svg: string; ancho: n
     y += altoCaja
   }
 
-  // Pie. En una sola línea no entran empresa y fecha en 560 px, así que van
-  // una debajo de la otra.
-  y += 26
-  partes.push(`<rect x="${margen}" y="${y}" width="${anchoUtil}" height="1" fill="${COLOR_LINEA}"/>`)
-  y += 22
-  partes.push(texto(informe.empresa, margen, y, { fuente: 16, color: COLOR_SUAVE }))
-  y += 20
-  partes.push(texto(informe.pie, margen, y, { fuente: 16, color: COLOR_SUAVE }))
-  y += margen
+  // El pie ocupa: separación + línea + empresa + fecha + margen inferior.
+  const ALTO_PIE = 26 + 42 + margen
+  const altoNatural = Math.ceil(y + ALTO_PIE)
+  // Si el contenido no llega al 4:5, la imagen se completa con blanco. Si lo
+  // pasa, se deja crecer: la letra no se toca.
+  const alto = Math.max(altoNatural, Math.round(ancho * PROPORCION_OBJETIVO))
 
-  const alto = Math.ceil(y)
+  // Pie anclado abajo, para que el blanco de relleno quede entre el contenido y
+  // el pie y no colgando al final. En una sola línea no entran empresa y fecha
+  // en 560 px, así que van una debajo de la otra.
+  const yLinea = Math.max(y + 26, alto - margen - 42)
+  partes.push(`<rect x="${margen}" y="${yLinea}" width="${anchoUtil}" height="1" fill="${COLOR_LINEA}"/>`)
+  partes.push(texto(informe.empresa, margen, yLinea + 22, { fuente: 16, color: COLOR_SUAVE }))
+  partes.push(texto(informe.pie, margen, yLinea + 42, { fuente: 16, color: COLOR_SUAVE }))
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${ancho}" height="${alto}" viewBox="0 0 ${ancho} ${alto}">
   <rect width="${ancho}" height="${alto}" fill="#ffffff"/>
   ${partes.join('\n  ')}

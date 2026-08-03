@@ -4,6 +4,7 @@ import { formatDate, formatDateOnly, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { type InformeTanque } from '@/lib/informe'
 import VisorInforme from './VisorInforme'
+import { rangoDe, textoSpec } from '@/lib/calculos'
 
 type Producto = { id: number; nombre: string }
 type Analista = { id: number; nombre: string; apellido: string }
@@ -222,7 +223,9 @@ export default function AnalisisTanqueList({
           etiqueta: `${p.nombre}${p.metodo ? ` · ${p.metodo}` : ''}`,
           valor: r.valorTexto ?? (r.valor !== null ? String(r.valor).replace('.', ',') : '—'),
           unidad: p.unidad || '',
-          spec: espec ? `${espec.min ?? '—'} a ${espec.max ?? '—'}` : '',
+          // Un límite que solo tiene máximo se escribía "— a 3": lo formatea
+          // textoSpec, el mismo que usa materia prima.
+          spec: textoSpec(rangoDe(espec?.min ?? null, espec?.max ?? null), p.decimales),
           fueraDeSpec: fuera,
         }
       })
