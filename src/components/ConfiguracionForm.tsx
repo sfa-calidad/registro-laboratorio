@@ -297,14 +297,12 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
 
   return (
     <div className="max-w-2xl space-y-6">
-      {/* La configuración general es global (nombre, logo, tamaño de etiqueta)
-          y la API la reserva al supervisor: sin este aviso el analista veía el
-          formulario, guardaba y recibía un error sin entender por qué. */}
-      {!esSupervisor && (
-        <div className="rounded-lg bg-brand-mustard/10 border border-brand-mustard/40 px-3 py-2 text-sm text-brand-mustard-dark">
-          La configuración general la cambia el supervisor. Podés verla, pero no guardar cambios.
-        </div>
-      )}
+      {/* La configuración general es global (nombre, logo, tamaño de etiqueta) y
+          la API la reserva al supervisor. Al analista no se le muestra: un
+          formulario que no puede guardar es ruido, y es lo mismo que ya hacen el
+          tablero, el historial de tareas y el dashboard. Lo que sigue más abajo
+          (productos, parámetros, perfiles...) sí lo puede editar. */}
+      {esSupervisor && (
       <form onSubmit={handleSaveSettings} className="space-y-6">
         <div className="bg-white rounded-xl shadow p-5 space-y-4">
           <h3 className="font-semibold text-gray-700 border-b pb-2">General</h3>
@@ -364,13 +362,14 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
         </div>
 
         <div className="flex items-center gap-3">
-          <button type="submit" disabled={loading || !esSupervisor}
+          <button type="submit" disabled={loading}
             className="bg-brand-green text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-brand-green-dark disabled:opacity-50 disabled:cursor-not-allowed">
             {loading ? 'Guardando...' : 'Guardar cambios'}
           </button>
           {saved && <span className="text-green-600 text-sm font-medium">✓ Guardado</span>}
         </div>
       </form>
+      )}
 
       <div className="bg-white rounded-xl shadow p-5 space-y-3">
         <h3 className="font-semibold text-gray-700 border-b pb-2">Productos</h3>

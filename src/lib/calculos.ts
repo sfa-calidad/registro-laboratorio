@@ -13,6 +13,25 @@ export function fueraDeRango(valor: number | null, rango: Rango | undefined): bo
 }
 
 // Texto del desvío para el cartel del informe: "Acidez 5,40 % — máximo 3,00 %".
+// Cómo se escribe una especificación en el informe y en los formularios. Vive
+// acá porque la usan el análisis de tanque y el de materia prima: cuando cada
+// uno tenía la suya, la de tanques imprimía "— a 3" para un límite que solo
+// tiene máximo.
+export function textoSpec(rango: Rango | undefined, decimales = 2): string {
+  if (!rango) return '—'
+  const n = (v: number) => v.toFixed(decimales).replace('.', ',')
+  if (rango.min !== null && rango.max !== null) return `${n(rango.min)} a ${n(rango.max)}`
+  if (rango.max !== null) return `máx. ${n(rango.max)}`
+  if (rango.min !== null) return `mín. ${n(rango.min)}`
+  return '—'
+}
+
+// Un rango solo cuenta si tiene al menos un extremo cargado: dos casillas
+// vacías no son "un rango sin límites", son la ausencia de especificación.
+export function rangoDe(min: number | null, max: number | null): Rango | undefined {
+  return min === null && max === null ? undefined : { min, max }
+}
+
 export function textoDesvio(
   etiqueta: string,
   valor: number,

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import {
   corteRapido,
   fueraDeRango,
+  rangoDe,
+  textoSpec,
   materiaGrasa,
   parseNumero,
   porGravimetria,
@@ -94,4 +96,30 @@ test('parseNumero acepta la coma decimal que se usa en el laboratorio', () => {
   assert.equal(parseNumero(''), null)
   assert.equal(parseNumero('OK'), null)
   assert.equal(parseNumero('1,2,3'), null)
+})
+
+
+// --- Cómo se escribe una especificación ------------------------------------
+
+test('una especificación con un solo límite no se escribe como rango', () => {
+  // El informe de tanques imprimía "— a 3" cuando solo había máximo.
+  assert.equal(textoSpec({ min: null, max: 3 }), 'máx. 3,00')
+  assert.equal(textoSpec({ min: 90, max: null }), 'mín. 90,00')
+  assert.equal(textoSpec({ min: 1, max: 5 }), '1,00 a 5,00')
+  assert.equal(textoSpec(undefined), '—')
+  assert.equal(textoSpec({ min: null, max: null }), '—')
+})
+
+test('la especificación respeta los decimales del parámetro', () => {
+  assert.equal(textoSpec({ min: null, max: 20 }, 0), 'máx. 20')
+  assert.equal(textoSpec({ min: null, max: 0.5 }, 3), 'máx. 0,500')
+})
+
+test('dos casillas vacías no son un rango sin límites', () => {
+  // Si lo fueran, cualquier valor daría "dentro de especificación" y la app
+  // diría que está conforme sin haber comparado contra nada.
+  assert.equal(rangoDe(null, null), undefined)
+  assert.deepEqual(rangoDe(null, 3), { min: null, max: 3 })
+  assert.deepEqual(rangoDe(90, null), { min: 90, max: null })
+  assert.equal(fueraDeRango(999, rangoDe(null, null)), false)
 })

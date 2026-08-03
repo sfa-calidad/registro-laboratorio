@@ -109,17 +109,17 @@ export default function VisorInforme({
   const desvios = informe.desvios ?? []
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onCerrar}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4" onClick={onCerrar}>
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[95vh] sm:max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6 overflow-y-auto">
+        <div className="p-4 sm:p-6 overflow-y-auto">
           <div className="flex items-center gap-3 border-b-4 border-brand-green pb-3 mb-4">
             {informe.logo && <img src={informe.logo} alt={informe.empresa} className="h-12 max-w-32 object-contain" />}
             <div>
               {!informe.logo && <div className="text-lg font-bold text-brand-dark">{informe.empresa}</div>}
-              <div className={informe.logo ? 'text-base font-bold text-brand-dark' : 'text-sm text-gray-500'}>
+              <div className={informe.logo ? 'text-lg font-bold text-brand-dark' : 'text-base text-gray-600'}>
                 {informe.titulo}
               </div>
             </div>
@@ -129,8 +129,8 @@ export default function VisorInforme({
               que leerse sin buscarlo en la tabla. */}
           {desvios.length > 0 && (
             <div className="bg-brand-red text-white rounded-lg px-4 py-3 mb-4">
-              <div className="font-bold text-sm">⚠ Fuera de especificación</div>
-              <ul className="mt-1 text-sm list-disc list-inside space-y-0.5">
+              <div className="font-bold text-base">⚠ Fuera de especificación</div>
+              <ul className="mt-1 text-base list-disc list-inside space-y-0.5">
                 {desvios.map((d) => (
                   <li key={d}>{d}</li>
                 ))}
@@ -138,67 +138,77 @@ export default function VisorInforme({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mb-5">
             {informe.identificacion.map(([k, v]) => (
-              <div key={k} className="flex gap-2 text-sm border-b border-gray-100 pb-1">
-                <span className="text-gray-500 min-w-28">{k}</span>
+              <div key={k} className="flex gap-2 text-base border-b border-gray-200 pb-1.5">
+                <span className="text-gray-600 min-w-28 shrink-0">{k}</span>
                 <span className="font-semibold text-brand-dark">{v}</span>
               </div>
             ))}
           </div>
 
-          <h4 className="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-2">Resultados</h4>
-          <table className="w-full text-sm">
+          <h4 className="text-sm uppercase tracking-wide text-gray-600 font-semibold mb-2">Resultados</h4>
+          {/* La columna de especificación se esconde en el celular y el dato
+              pasa debajo del parámetro: tres columnas no entran a lo ancho de
+              un teléfono sin cortar los nombres de los ensayos. */}
+          <table className="w-full text-base">
             <thead>
-              <tr className="bg-gray-50 border-b-2 border-gray-300">
-                <th className="text-left px-2 py-1.5 text-gray-500">Parámetro</th>
-                <th className="text-left px-2 py-1.5 text-gray-500">Resultado</th>
-                <th className="text-left px-2 py-1.5 text-gray-500">Especificación</th>
+              <tr className="bg-gray-100 border-b-2 border-gray-300">
+                <th className="text-left px-2 py-2 text-gray-600 text-sm">Parámetro</th>
+                <th className="text-right sm:text-left px-2 py-2 text-gray-600 text-sm">Resultado</th>
+                <th className="hidden sm:table-cell text-left px-2 py-2 text-gray-600 text-sm">Especificación</th>
               </tr>
             </thead>
             <tbody>
               {informe.resultados.map((r, i) => (
-                <tr key={i} className={`border-b border-gray-100 ${r.fueraDeSpec ? 'text-brand-red' : ''}`}>
-                  <td className="px-2 py-1.5">{r.etiqueta}{r.fueraDeSpec && ' ⚠'}</td>
-                  <td className="px-2 py-1.5 font-semibold whitespace-nowrap">
-                    {r.valor}{r.unidad && <span className="font-normal text-gray-500 text-xs"> {r.unidad}</span>}
+                <tr key={i} className={`border-b border-gray-200 ${r.fueraDeSpec ? 'text-brand-red' : ''}`}>
+                  <td className="px-2 py-2 align-top">
+                    {r.etiqueta}{r.fueraDeSpec && ' ⚠'}
+                    {r.spec && r.spec !== '—' && (
+                      <span className={`sm:hidden block text-sm mt-0.5 ${r.fueraDeSpec ? 'text-brand-red' : 'text-gray-600'}`}>
+                        Especificación: {r.spec}
+                      </span>
+                    )}
                   </td>
-                  <td className="px-2 py-1.5 text-xs text-gray-500">{r.spec || '—'}</td>
+                  <td className="px-2 py-2 font-semibold whitespace-nowrap text-right sm:text-left align-top">
+                    {r.valor}{r.unidad && <span className="font-normal text-gray-600 text-sm"> {r.unidad}</span>}
+                  </td>
+                  <td className="hidden sm:table-cell px-2 py-2 text-sm text-gray-600">{r.spec || '—'}</td>
                 </tr>
               ))}
               {informe.resultados.length === 0 && (
-                <tr><td colSpan={3} className="px-2 py-3 text-gray-400">Sin resultados cargados</td></tr>
+                <tr><td colSpan={3} className="px-2 py-3 text-gray-500">Sin resultados cargados</td></tr>
               )}
             </tbody>
           </table>
 
           {informe.comentario && (
-            <div className="mt-4 text-sm">
-              <span className="text-gray-500 block mb-1">Comentario</span>
+            <div className="mt-4 text-base">
+              <span className="text-gray-600 block mb-1">Comentario</span>
               <p className="bg-gray-50 border-l-4 border-gray-300 px-3 py-2 whitespace-pre-wrap">{informe.comentario}</p>
             </div>
           )}
-          <p className="mt-4 pt-2 border-t text-xs text-gray-400">{informe.pie}</p>
+          <p className="mt-4 pt-2 border-t text-sm text-gray-600">{informe.pie}</p>
         </div>
 
-        <div className="p-4 border-t flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
-          <button onClick={onCerrar} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg mr-auto">
+        <div className="p-3 sm:p-4 border-t flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
+          <button onClick={onCerrar} className="px-4 py-2 text-base sm:text-sm text-gray-600 hover:bg-gray-100 rounded-lg mr-auto">
             Cerrar
           </button>
           {puedeCopiar && (
-            <button onClick={copiarImagen} className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
+            <button onClick={copiarImagen} className="px-4 py-2 text-base sm:text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
               Copiar imagen
             </button>
           )}
           {puedeCompartir && (
-            <button onClick={compartirImagen} className="px-4 py-2 text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
+            <button onClick={compartirImagen} className="px-4 py-2 text-base sm:text-sm bg-brand-green text-white rounded-lg hover:bg-brand-green-dark">
               Compartir
             </button>
           )}
-          <button onClick={descargarImagen} className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light">
+          <button onClick={descargarImagen} className="px-4 py-2 text-base sm:text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light">
             Descargar imagen
           </button>
-          <button onClick={descargarPDF} className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light">
+          <button onClick={descargarPDF} className="px-4 py-2 text-base sm:text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light">
             Descargar PDF
           </button>
         </div>
