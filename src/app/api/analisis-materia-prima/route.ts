@@ -8,6 +8,10 @@ const resultadoSchema = z.object({
   parametroId: z.number().int(),
   valor: z.number().nullable().optional(),
   valorTexto: z.string().max(120).nullable().optional(),
+  // El límite lo escribe quien carga el análisis: viene de la planilla de
+  // coordinación de esa orden de compra, no del catálogo.
+  specMin: z.number().nullable().optional(),
+  specMax: z.number().nullable().optional(),
 })
 
 const schema = z.object({
@@ -59,8 +63,14 @@ export async function POST(req: NextRequest) {
         comentario: datos.comentario || null,
         resultados: {
           create: (resultados ?? [])
-            .filter((r) => r.valor != null || r.valorTexto)
-            .map((r) => ({ parametroId: r.parametroId, valor: r.valor ?? null, valorTexto: r.valorTexto || null })),
+            .filter((r) => r.valor != null || r.valorTexto || r.specMin != null || r.specMax != null)
+            .map((r) => ({
+              parametroId: r.parametroId,
+              valor: r.valor ?? null,
+              valorTexto: r.valorTexto || null,
+              specMin: r.specMin ?? null,
+              specMax: r.specMax ?? null,
+            })),
         },
       },
       include: incluir,

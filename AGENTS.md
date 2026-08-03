@@ -30,9 +30,12 @@ Resumen para trabajar en el código:
 - **Análisis de materia prima**: el camión que entra se analiza y se informa en
   el momento. `AnalisisMateriaPrima` + `ResultadoMateriaPrima` cuelgan del
   `Ingreso` ya cargado (uno por ingreso), así que origen, HR/remito y producto no
-  se retipean. Reusa `Parametro` y `Especificacion`; el perfil no: el mismo
-  producto lleva más ensayos en el camión que en el tanque, por eso
-  `PerfilProducto.contexto` es `TANQUE` o `MATERIA_PRIMA`. Los desvíos van en una
+  se retipean. Reusa `Parametro`; el perfil no (el mismo producto lleva más
+  ensayos en el camión que en el tanque, por eso `PerfilProducto.contexto` es
+  `TANQUE` o `MATERIA_PRIMA`) y la especificación tampoco: los límites se
+  escriben al cargar el análisis y se guardan en `ResultadoMateriaPrima.specMin`
+  / `specMax`, porque cada orden de compra trae los suyos en la planilla de
+  coordinación. `Especificacion` quedó solo para tanques. Los desvíos van en una
   banda roja arriba del informe (`InformeTanque.desvios`), porque el informe se
   manda como foto y tiene que leerse sin buscar en la tabla.
 
@@ -91,14 +94,16 @@ copiar de ahí en vez de inventar una variante.
 - **Instalador de escritorio**: el `.exe` solo hay que regenerarlo cuando cambia
   algo dentro de `desktop/`. Todo lo demás es web y le llega al usuario con el
   deploy, sin reinstalar.
-- **Borrar una columna o tabla con datos**: `prisma db push` aborta con "data
-  loss" y el deploy falla. Esa protección es deseable (evita que un cambio de
-  esquema se lleve puestos datos reales), así que la salida no es
+- **Cambios de esquema que `prisma db push` no aplica solo**: borrar una columna
+  o tabla con datos, y también **cambiar un índice único** sobre una tabla que ya
+  tiene filas (no puede saber si hay duplicados). En los dos casos el push aborta
+  con "data loss" y el deploy falla. Esa protección es deseable (evita que un
+  cambio de esquema se lleve puestos datos reales), así que la salida no es
   `--accept-data-loss`: hay que agregar un paso previo al build que ejecute el
-  `DROP`/`ALTER ... DROP COLUMN` explícito con `IF EXISTS`, y sacarlo una vez que
-  corrió en todos los entornos. Se hizo así para `Motivo` y `punto`; el script
-  ya cumplió y se eliminó. Por eso `Ingreso.fechaAnalisis` sigue en el esquema
-  aunque no se use: sacarlo requiere ese paso.
+  `DROP`/`ALTER`/`CREATE INDEX` explícito con `IF EXISTS` / `IF NOT EXISTS`, y
+  sacarlo una vez que corrió en todos los entornos. Se hizo así para `Motivo` y
+  `punto` (ese script ya cumplió y se eliminó) y para `PerfilProducto.contexto`
+  (`scripts/migrar-perfil-contexto.ts`, todavía en el build).
 - **Tests**: `npm test` corre el runner incorporado de Node sobre `tests/`, sin
   dependencias extra. Cubre las funciones puras donde aparecieron bugs (firma de
   la sesión, estado de las muestras, fechas del laboratorio, rótulos). Si tocás

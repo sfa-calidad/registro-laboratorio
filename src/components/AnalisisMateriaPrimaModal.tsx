@@ -18,7 +18,6 @@ export type Parametro = {
   orden: number
 }
 export type Perfil = { producto: string; parametroId: number; orden: number }
-export type Especificacion = { producto: string; parametroId: number; min: number | null; max: number | null }
 export type Analista = { id: number; nombre: string; apellido: string }
 
 export type IngresoParaAnalisis = {
@@ -36,7 +35,13 @@ export type IngresoParaAnalisis = {
     ordenCompra: string | null
     analista: string | null
     comentario: string | null
-    resultados: { parametroId: number; valor: number | null; valorTexto: string | null }[]
+    resultados: {
+      parametroId: number
+      valor: number | null
+      valorTexto: string | null
+      specMin: number | null
+      specMax: number | null
+    }[]
   } | null
 }
 
@@ -56,19 +61,30 @@ function nombreLargo(p: Parametro): string {
   return p.metodo ? `${p.nombre} · ${p.metodo}` : p.nombre
 }
 
-export function textoSpec(e: Especificacion | undefined, decimales: number): string {
-  if (!e) return '—'
+export function textoSpec(r: Rango | undefined, decimales: number): string {
+  if (!r) return '—'
   const n = (v: number) => v.toFixed(decimales).replace('.', ',')
-  if (e.min !== null && e.max !== null) return `${n(e.min)} a ${n(e.max)}`
-  if (e.max !== null) return `máx. ${n(e.max)}`
-  if (e.min !== null) return `mín. ${n(e.min)}`
+  if (r.min !== null && r.max !== null) return `${n(r.min)} a ${n(r.max)}`
+  if (r.max !== null) return `máx. ${n(r.max)}`
+  if (r.min !== null) return `mín. ${n(r.min)}`
   return '—'
+}
+
+// Un rango solo cuenta si tiene al menos un extremo cargado. Sin esto, las dos
+// casillas vacías se leerían como "rango sin límites" y nada daría fuera.
+export function rangoDe(min: number | null, max: number | null): Rango | undefined {
+  return min === null && max === null ? undefined : { min, max }
 }
 
 // Una sola función arma el informe, la use el formulario (con lo que se está
 // tipeando) o el listado (con lo ya guardado). Si hubiera dos, la banda de
 // desvío terminaría diciendo una cosa al guardar y otra al reabrir.
-export type FilaInforme = { parametro: Parametro; valor: number | null; texto: string | null }
+export type FilaInforme = {
+  parametro: Parametro
+  valor: number | null
+  texto: string | null
+  rango: Rango | undefined
+}
 
 export function construirInforme(args: {
   config: { empresa: string; logo: string }
@@ -81,15 +97,7 @@ export function construirInforme(args: {
   analista?: string | null
   comentario?: string | null
   filas: FilaInforme[]
-  especificaciones: Especificacion[]
 }): InformeTanque {
-  const espec = (parametroId: number) =>
-    args.especificaciones.find((e) => e.producto === args.producto && e.parametroId === parametroId)
-  const rango = (parametroId: number): Rango | undefined => {
-    const e = espec(parametroId)
-    return e ? { min: e.min, max: e.max } : undefined
-  }
-
   const identificacion: [string, string][] = [
     ['Fecha', formatDateOnly(args.fecha)],
     ['Producto', args.producto],
@@ -101,10 +109,9 @@ export function construirInforme(args: {
   if (args.analista) identificacion.push(['Analista', args.analista])
 
   const desvios = args.filas
-    .map(({ parametro, valor }) => {
-      const r = rango(parametro.id)
-      if (valor === null || !r || !fueraDeRango(valor, r)) return null
-      return textoDesvio(nombreLargo(parametro), valor, r, parametro.unidad, parametro.decimales)
+    .map(({ parametro, valor, rango }) => {
+      if (valor === null || !rango || !fueraDeRango(valor, rango)) return null
+      return textoDesvio(nombreLargo(parametro), valor, rango, parametro.unidad, parametro.decimales)
     })
     .filter((d): d is string => d !== null)
 
@@ -115,7 +122,7 @@ export function construirInforme(args: {
     titulo: 'Informe de análisis de materia prima',
     identificacion,
     resultados: args.filas
-      .map(({ parametro, valor, texto }) => {
+      .map(({ parametro, valor, texto, rango }) => {
         // Hay ensayos que no dan número: "27/3" se informa OK o no OK. Van
         // igual al informe, sin comparar contra rango.
         if (valor === null) {
@@ -126,8 +133,8 @@ export function construirInforme(args: {
           etiqueta: nombreLargo(parametro),
           valor: valor.toFixed(parametro.decimales).replace('.', ','),
           unidad: parametro.unidad ?? '',
-          spec: textoSpec(espec(parametro.id), parametro.decimales),
-          fueraDeSpec: fueraDeRango(valor, rango(parametro.id)),
+          spec: textoSpec(rango, parametro.decimales),
+          fueraDeSpec: fueraDeRango(valor, rango),
         }
       })
       .filter((r): r is NonNullable<typeof r> => r !== null),
@@ -141,7 +148,6 @@ export default function AnalisisMateriaPrimaModal({
   ingreso,
   parametros,
   perfiles,
-  especificaciones,
   analistas,
   config,
   onCerrar,
@@ -152,7 +158,6 @@ export default function AnalisisMateriaPrimaModal({
   ingreso: IngresoParaAnalisis
   parametros: Parametro[]
   perfiles: Perfil[]
-  especificaciones: Especificacion[]
   analistas: Analista[]
   config: { empresa: string; logo: string }
   onCerrar: () => void
@@ -175,6 +180,19 @@ export default function AnalisisMateriaPrimaModal({
     }
     return v
   })
+  // Los límites se escriben acá, no salen del catálogo: cada camión trae los
+  // suyos en la planilla de coordinación de su orden de compra. Arrancan
+  // vacíos salvo que se esté editando un análisis ya cargado.
+  const [limites, setLimites] = useState<Record<number, { min: string; max: string }>>(() => {
+    const l: Record<number, { min: string; max: string }> = {}
+    for (const r of previo?.resultados ?? []) {
+      l[r.parametroId] = {
+        min: r.specMin !== null ? String(r.specMin).replace('.', ',') : '',
+        max: r.specMax !== null ? String(r.specMax).replace('.', ',') : '',
+      }
+    }
+    return l
+  })
   const [guardando, setGuardando] = useState(false)
 
   const producto = previo?.producto ?? ingreso.producto1
@@ -195,12 +213,16 @@ export default function AnalisisMateriaPrimaModal({
     return [...delPerfil, ...extras]
   }, [parametros, perfiles, producto, valores])
 
-  const especDe = (parametroId: number): Especificacion | undefined =>
-    especificaciones.find((e) => e.producto === producto && e.parametroId === parametroId)
+  function rangoTipeado(parametroId: number): Rango | undefined {
+    const l = limites[parametroId]
+    return l ? rangoDe(parseNumero(l.min), parseNumero(l.max)) : undefined
+  }
 
-  const rangoDe = (parametroId: number): Rango | undefined => {
-    const e = especDe(parametroId)
-    return e ? { min: e.min, max: e.max } : undefined
+  function setLimite(parametroId: number, extremo: 'min' | 'max', texto: string) {
+    setLimites((ls) => {
+      const actual = ls[parametroId] ?? { min: '', max: '' }
+      return { ...ls, [parametroId]: { ...actual, [extremo]: texto } }
+    })
   }
 
   // La materia grasa no se carga: sale de 100 − mayor(insolubles) − humedad,
@@ -224,6 +246,7 @@ export default function AnalisisMateriaPrimaModal({
     parametro: p,
     valor: valorDe(p),
     texto: (valores[p.id] ?? '').trim() || null,
+    rango: rangoTipeado(p.id),
   }))
 
   function armarInforme(): InformeTanque {
@@ -238,7 +261,6 @@ export default function AnalisisMateriaPrimaModal({
       analista: form.analista,
       comentario: form.comentario,
       filas,
-      especificaciones,
     })
   }
 
@@ -255,10 +277,15 @@ export default function AnalisisMateriaPrimaModal({
       .map((p) => {
         const v = valorDe(p)
         const texto = (valores[p.id] ?? '').trim()
-        if (v !== null) return { parametroId: p.id, valor: v, valorTexto: null }
+        const r = rangoTipeado(p.id)
+        const spec = { specMin: r?.min ?? null, specMax: r?.max ?? null }
+        if (v !== null) return { parametroId: p.id, valor: v, valorTexto: null, ...spec }
         // Lo que no es numérico se guarda como texto: el ensayo "27/3" se
         // informa OK o no OK, no con un número.
-        if (texto) return { parametroId: p.id, valor: null, valorTexto: texto }
+        if (texto) return { parametroId: p.id, valor: null, valorTexto: texto, ...spec }
+        // Sin resultado pero con límite escrito: se guarda igual, para no
+        // perder lo tipeado si el análisis se retoma después.
+        if (r) return { parametroId: p.id, valor: null, valorTexto: null, ...spec }
         return null
       })
       .filter((r): r is NonNullable<typeof r> => r !== null)
@@ -350,14 +377,18 @@ export default function AnalisisMateriaPrimaModal({
                 <tr>
                   <th className="text-left px-3 py-2 font-medium text-gray-600">Parámetro</th>
                   <th className="text-right px-3 py-2 font-medium text-gray-600">Resultado</th>
-                  <th className="text-left px-3 py-2 font-medium text-gray-600">Especificación</th>
+                  <th className="text-left px-3 py-2 font-medium text-gray-600">
+                    Especificación
+                    <span className="block text-xs font-normal text-gray-400">de la planilla de coordinación</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {visibles.map((p) => {
                   const esCalculado = !!paramMateriaGrasa && p.id === paramMateriaGrasa.id
                   const v = valorDe(p)
-                  const malo = fueraDeRango(v, rangoDe(p.id))
+                  const limite = limites[p.id] ?? { min: '', max: '' }
+                  const malo = fueraDeRango(v, rangoTipeado(p.id))
                   return (
                     <tr key={p.id} className={`border-b last:border-0 ${esCalculado ? 'bg-gray-50' : ''}`}>
                       <td className="px-3 py-2">
@@ -385,7 +416,28 @@ export default function AnalisisMateriaPrimaModal({
                         )}
                         {p.unidad && <span className="text-sm text-gray-500 ml-1.5">{p.unidad}</span>}
                       </td>
-                      <td className="px-3 py-2 text-sm text-gray-500">{textoSpec(especDe(p.id), p.decimales)}</td>
+                      {/* El límite se escribe acá: cada orden de compra trae
+                          el suyo. Con llenar una sola casilla alcanza. */}
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5 text-sm">
+                          <label className="text-gray-400">mín</label>
+                          <input
+                            value={limite.min}
+                            onChange={(e) => setLimite(p.id, 'min', e.target.value)}
+                            inputMode="decimal"
+                            aria-label={`Mínimo de ${nombreLargo(p)}`}
+                            className="w-16 border rounded-lg px-2 py-1 text-sm text-right"
+                          />
+                          <label className="text-gray-400 ml-1">máx</label>
+                          <input
+                            value={limite.max}
+                            onChange={(e) => setLimite(p.id, 'max', e.target.value)}
+                            inputMode="decimal"
+                            aria-label={`Máximo de ${nombreLargo(p)}`}
+                            className="w-16 border rounded-lg px-2 py-1 text-sm text-right"
+                          />
+                        </div>
+                      </td>
                     </tr>
                   )
                 })}
@@ -420,7 +472,7 @@ export default function AnalisisMateriaPrimaModal({
 
         <div className="p-5 border-t flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
           <span className="mr-auto text-sm text-gray-500">
-            {form.ordenCompra ? `Especificación del producto ${producto}` : 'Especificación general del producto'}
+            Los límites se escriben acá: son los de la planilla de coordinación de esta compra.
           </span>
           <button onClick={onCerrar} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
           <button onClick={() => guardar(false)} disabled={guardando}
