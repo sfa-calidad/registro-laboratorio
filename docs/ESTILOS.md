@@ -365,7 +365,7 @@ colores van literales en constantes al principio del archivo.
 
 ```ts
 const COLOR_TEXTO = '#2b332a'   // brand-dark
-const COLOR_SUAVE = '#6b7280'   // etiquetas, unidades, pie
+const COLOR_SUAVE = '#4b5563'   // etiquetas, unidades, pie (7,5:1 sobre blanco)
 const COLOR_LINEA = '#d1d5db'   // separadores
 const COLOR_VERDE = '#8bc53f'   // la regla de 3px bajo el encabezado
 const COLOR_ROJO  = '#b6394a'   // fuera de especificación
@@ -382,21 +382,44 @@ const COLOR_ROJO  = '#b6394a'   // fuera de especificación
 - La identificación es una grilla de dos columnas de pares etiqueta/valor:
   etiqueta en gris, valor en negrita.
 - Una fila fuera de especificación se pinta entera de rojo y le suma `⚠` por
-  CSS, para que se note también impresa en blanco y negro.
+  CSS. El `::after` cuelga de `.param`, **no del `<td>`**: en pantalla chica la
+  especificación pasa a ser un bloque dentro de la misma celda y el `⚠` caía
+  debajo, en una línea suelta.
 - `print-color-adjust: exact`, si no el navegador descarta los fondos al
   imprimir.
+- Lleva `<meta name="viewport">` y un bloque `@media screen and (max-width:
+  620px)`: sin viewport el celular renderiza a 980 px y achica todo. En pantalla
+  chica la identificación pasa a una columna, el cuerpo sube a 16 px y la
+  columna de especificación se esconde: el dato aparece bajo el parámetro
+  (`.spec-movil`). La hoja impresa no cambia — todo eso es `@media screen`.
 
 ### Reglas de la versión SVG
 
-- Ancho fijo de 820 px, margen de 40. El alto se calcula al final, según cuánto
-  haya crecido el contenido.
+- **Ancho fijo de 560 px**, margen de 26. El alto se calcula al final, según
+  cuánto haya crecido el contenido.
+- El ancho es angosto a propósito. Esta imagen se manda por WhatsApp y se lee en
+  un celular, que la achica para que entre en la pantalla: lo que decide si se
+  lee no es el tamaño de la letra en píxeles sino **su tamaño relativo al ancho
+  de la imagen**. La cuenta es `fuente × 390 / ancho` (390 pt es el viewport de
+  un teléfono común). Con 820 px de ancho y cuerpo de 13, daba 6 pt y había que
+  hacer zoom; con 560 y cuerpo de 18 da 12,5 pt, que es lectura normal.
+- **Piso de 16 px** para cualquier texto, incluido el pie.
+- Los resultados van en dos columnas —parámetro a la izquierda, valor pegado al
+  margen derecho con `text-anchor="end"`, especificación debajo en chico—. Tres
+  columnas no entran en ese ancho sin cortar los nombres largos de los ensayos.
+- El valor **tiene que ir con `fin: true`** (`text-anchor="end"`). Sin eso se
+  dibuja hacia la derecha desde el margen y queda cortado fuera de la imagen.
 - Se lleva un cursor `y` que va bajando: cada bloque dibuja y suma su alto. No
   hay layout automático.
 - **Solo texto y formas: nada de `foreignObject`.** Si se mete HTML dentro del
   SVG, el canvas queda bloqueado y `toBlob()` no puede exportar la imagen.
-- El SVG no reajusta el texto solo: el comentario se parte en líneas con
-  `quebrarTexto(texto, 92)`.
+- El SVG no reajusta el texto solo: se corta con `quebrarPorAncho(texto,
+  anchoDisponible, fuente)`, que estima el ancho en 0,52 del cuerpo por carácter
+  (el promedio de Arial para castellano).
 - Se exporta al doble de escala para que se lea al ampliar.
+- `tests/informe.test.ts` fija todo esto: el tamaño efectivo en el celular, el
+  contraste de cada color y que nada quede cortado en el borde. Si tocás el
+  informe, esos tests tienen que fallar antes de que lo arregles.
 
 ```ts
 let y = margen

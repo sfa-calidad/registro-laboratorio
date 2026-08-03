@@ -104,6 +104,11 @@ copiar de ahí en vez de inventar una variante.
   sacarlo una vez que corrió en todos los entornos. Se hizo así para `Motivo` y
   `punto` (ese script ya cumplió y se eliminó) y para `PerfilProducto.contexto`
   (`scripts/migrar-perfil-contexto.ts`, todavía en el build).
+- **Los informes se leen en el celular**: la imagen se manda por WhatsApp, así
+  que lo que decide si se lee sin zoom es el tamaño de la letra **relativo al
+  ancho** de la imagen (`fuente × 390 / ancho`). Por eso el SVG mide 560 px de
+  ancho con cuerpo de 18 y piso de 16. `tests/informe.test.ts` fija eso y el
+  contraste; ver `docs/ESTILOS.md`.
 - **Tests**: `npm test` corre el runner incorporado de Node sobre `tests/`, sin
   dependencias extra. Cubre las funciones puras donde aparecieron bugs (firma de
   la sesión, estado de las muestras, fechas del laboratorio, rótulos). Si tocás
