@@ -20,7 +20,7 @@ model Ingreso {
   fechaAnalisis DateTime?
   createdAt     DateTime              @default(now())
   rotulos       Rotulo[]
-  analisis      AnalisisMateriaPrima?
+  analisis      AnalisisMateriaPrima[]
 
   @@index([fecha, id])
 }
@@ -279,8 +279,10 @@ model MuestraEnsayo {
 // como en la planilla de Excel, donde un camión con varias cisternas es un solo
 // bloque de resultados.
 model AnalisisMateriaPrima {
-  id          Int      @id @default(autoincrement())
-  ingresoId   Int      @unique
+  id          Int     @id @default(autoincrement())
+  // Un análisis por producto del ingreso: un camión de borra con sobrenadante
+  // de aceite se carga con producto1 y producto2, y cada uno se informa aparte.
+  ingresoId   Int
   ingreso     Ingreso  @relation(fields: [ingresoId], references: [id], onDelete: Cascade)
   fecha       DateTime // fecha del análisis, no la del ingreso
   // El producto se copia del ingreso al analizar: si después se corrige el
@@ -294,7 +296,9 @@ model AnalisisMateriaPrima {
 
   resultados ResultadoMateriaPrima[]
 
+  @@unique([ingresoId, producto])
   @@index([fecha, id])
+  @@index([ingresoId])
 }
 
 model ResultadoMateriaPrima {

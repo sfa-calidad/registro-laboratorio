@@ -23,14 +23,19 @@ Resumen para trabajar en el código:
   ensayo: "Humedad · Termobalanza" y "Humedad · Karl Fischer" nunca se fusionan).
   Tanques: `AnalisisTanque` + `ResultadoTanque`, con `PerfilProducto` (qué
   parámetros mostrar) y `Especificacion` (rangos). Muestras: `Muestra` +
-  `MuestraEnsayo`, con `Laboratorio` y `LugarMuestreo`. El informe descargable
+  `MuestraEnsayo`, con `Laboratorio` (`lugarMuestreo` y `remito` salieron del
+  formulario por no usarse; las columnas siguen para no perder lo ya cargado). El informe descargable
   (PDF vía `window.print()`, PNG vía SVG→canvas) vive en `src/lib/informe.ts` y
   lo muestra `VisorInforme` (pantalla + copiar/compartir/descargar), compartido
   por tanques y materia prima.
 - **Análisis de materia prima**: el camión que entra se analiza y se informa en
   el momento. `AnalisisMateriaPrima` + `ResultadoMateriaPrima` cuelgan del
-  `Ingreso` ya cargado (uno por ingreso), así que origen, HR/remito y producto no
-  se retipean. Reusa `Parametro`; el perfil no (el mismo producto lleva más
+  `Ingreso` ya cargado, así que origen y HR/remito no se retipean. Va **uno por
+  producto del ingreso** (`@@unique([ingresoId, producto])`): una borra con
+  sobrenadante de aceite se carga con `producto1` y `producto2` y se informa por
+  separado; `productosDelIngreso()` en `src/lib/materiaPrima.ts` es la única
+  fuente de qué se puede analizar. Reusa `Parametro` (y se le puede sumar
+  cualquier ensayo suelto, como en tanques); el perfil no (el mismo producto lleva más
   ensayos en el camión que en el tanque, por eso `PerfilProducto.contexto` es
   `TANQUE` o `MATERIA_PRIMA`) y la especificación tampoco: los límites se
   escriben al cargar el análisis y se guardan en `ResultadoMateriaPrima.specMin`
@@ -74,10 +79,14 @@ copiar de ahí en vez de inventar una variante.
 - **Datos base** (productos, columnas, contactos/razones sociales, parámetros,
   perfiles, laboratorios, lugares de muestreo): se cargan en `prisma/seed.ts`,
   que corre en cada deploy de forma idempotente.
-- **La materia grasa no se mide, se calcula**: `100 − mayor(insolubles) −
+- **La materia grasa casi siempre se calcula**: `100 − mayor(insolubles) −
   humedad`, la fórmula que está anotada en el Excel del laboratorio. Está en
   `src/lib/calculos.ts` con los siete bloques reales de la planilla como test.
-  Si hay dos humedades cargadas (KF y termobalanza) se usa la mayor.
+  Si hay dos humedades cargadas (KF y termobalanza) se usa la mayor. **Pero en
+  borras muchas veces se hace un corte o una extracción directa**: ahí no hay
+  humedad ni insolubles y el valor se mide. `materiaGrasa()` devuelve `null`
+  cuando le faltan datos y el formulario usa ese `null` para liberar el campo, no
+  para mostrar un cero.
 - **Numeración de muestras**: `proximoNumero()` en `src/lib/muestras.ts` arma
   `AA` + secuencia de 3 dígitos. `PRIMERA_SECUENCIA` fija el piso de los años
   que ya venían numerados en la planilla de Excel (2026 arranca en `26300`);
@@ -102,8 +111,11 @@ copiar de ahí en vez de inventar una variante.
   `--accept-data-loss`: hay que agregar un paso previo al build que ejecute el
   `DROP`/`ALTER`/`CREATE INDEX` explícito con `IF EXISTS` / `IF NOT EXISTS`, y
   sacarlo una vez que corrió en todos los entornos. Se hizo así para `Motivo` y
-  `punto` (ese script ya cumplió y se eliminó) y para `PerfilProducto.contexto`
-  (`scripts/migrar-perfil-contexto.ts`, todavía en el build).
+  `punto` (ese script ya cumplió y se eliminó) y para `PerfilProducto.contexto` y
+  el único de `AnalisisMateriaPrima` (`scripts/migrar-esquema.ts`, todavía en el
+  build). Ojo: ese script corre **antes** del push, así que en una base nueva
+  todavía no hay tablas — los `CREATE INDEX` van envueltos en un chequeo de que
+  la tabla exista, si no el build falla en cualquier entorno recién creado.
 - **Los informes se leen en el celular**: la imagen se manda por WhatsApp, así
   que lo que decide si se lee sin zoom es el tamaño de la letra **relativo al
   ancho** de la imagen (`fuente × 390 / ancho`). Por eso el SVG mide 560 px de

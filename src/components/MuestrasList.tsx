@@ -7,7 +7,6 @@ import { buildLabelHTML } from '@/lib/etiqueta'
 
 type Producto = { id: number; nombre: string }
 type Laboratorio = { id: number; nombre: string; esExterno: boolean; delExterior: boolean }
-type Lugar = { id: number; nombre: string }
 type Parametro = { id: number; nombre: string; metodo: string | null; abreviatura: string | null; unidad: string | null }
 type Contacto = { id: number; nombre: string }
 type Analista = { id: number; nombre: string; apellido: string }
@@ -20,6 +19,8 @@ type Muestra = {
   detalle: string | null
   tipoOrigen: string | null
   identificacionOrigen: string | null
+  // Lugar de muestreo y remito se sacaron del formulario porque no se
+  // completaban. Siguen en el tipo y en la base: las muestras viejas los traen.
   lugarMuestreo: string | null
   contacto: string | null
   solicitadoPor: string | null
@@ -57,10 +58,8 @@ const emptyForm = {
   detalle: '',
   tipoOrigen: '',
   identificacionOrigen: '',
-  lugarMuestreo: '',
   contacto: '',
   solicitadoPor: '',
-  remito: '',
   envase: '',
   laboratorio: '',
   fechaEnvio: '',
@@ -96,7 +95,6 @@ export default function MuestrasList({
   muestras,
   productos,
   laboratorios,
-  lugares,
   parametros,
   contactos,
   analistas,
@@ -104,7 +102,6 @@ export default function MuestrasList({
   muestras: Muestra[]
   productos: Producto[]
   laboratorios: Laboratorio[]
-  lugares: Lugar[]
   parametros: Parametro[]
   contactos: Contacto[]
   analistas: Analista[]
@@ -182,10 +179,8 @@ export default function MuestrasList({
       detalle: m.detalle || '',
       tipoOrigen: m.tipoOrigen || '',
       identificacionOrigen: m.identificacionOrigen || '',
-      lugarMuestreo: m.lugarMuestreo || '',
       contacto: m.contacto || '',
       solicitadoPor: m.solicitadoPor || '',
-      remito: m.remito || '',
       envase: m.envase || '',
       laboratorio: m.laboratorio || '',
       fechaEnvio: m.fechaEnvio ? new Date(m.fechaEnvio).toISOString().split('T')[0] : '',
@@ -247,10 +242,8 @@ export default function MuestrasList({
       detalle: form.detalle || undefined,
       tipoOrigen: form.tipoOrigen || undefined,
       identificacionOrigen: form.identificacionOrigen || undefined,
-      lugarMuestreo: form.lugarMuestreo || undefined,
       contacto: form.contacto || undefined,
       solicitadoPor: form.solicitadoPor || undefined,
-      remito: form.remito || undefined,
       envase: form.envase || undefined,
       laboratorio: form.laboratorio || undefined,
       // ANULADA es la única transición que se marca a mano; el resto de los
@@ -478,14 +471,6 @@ export default function MuestrasList({
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Lugar de muestreo</label>
-                <select value={form.lugarMuestreo} onChange={(e) => setForm({ ...form, lugarMuestreo: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base">
-                  <option value="">— Sin lugar —</option>
-                  {lugares.map((l) => <option key={l.id} value={l.nombre}>{l.nombre}</option>)}
-                </select>
-              </div>
-              <div>
                 <label className="text-sm font-medium text-gray-700">Cliente / Proveedor</label>
                 <input value={form.contacto} onChange={(e) => setForm({ ...form, contacto: e.target.value })}
                   list="contactos-muestra" className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
@@ -496,11 +481,6 @@ export default function MuestrasList({
               <div>
                 <label className="text-sm font-medium text-gray-700">Solicitado por</label>
                 <input value={form.solicitadoPor} onChange={(e) => setForm({ ...form, solicitadoPor: e.target.value })}
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Remito</label>
-                <input value={form.remito} onChange={(e) => setForm({ ...form, remito: e.target.value })}
                   className="mt-1 w-full border rounded-lg px-3 py-2 text-base" />
               </div>
               <div>

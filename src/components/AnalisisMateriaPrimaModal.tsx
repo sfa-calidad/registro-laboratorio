@@ -34,23 +34,26 @@ export type IngresoParaAnalisis = {
   fecha: Date | string
   origen: string
   producto1: string
+  producto2: string | null
   operador: string | null
-  analisis: {
-    id: number
-    fecha: Date | string
-    producto: string
-    cisternas: string | null
-    ordenCompra: string | null
-    analista: string | null
-    comentario: string | null
-    resultados: {
-      parametroId: number
-      valor: number | null
-      valorTexto: string | null
-      specMin: number | null
-      specMax: number | null
-    }[]
-  } | null
+}
+
+// El análisis ya cargado de ESE producto, cuando se está editando.
+export type AnalisisPrevio = {
+  id: number
+  fecha: Date | string
+  producto: string
+  cisternas: string | null
+  ordenCompra: string | null
+  analista: string | null
+  comentario: string | null
+  resultados: {
+    parametroId: number
+    valor: number | null
+    valorTexto: string | null
+    specMin: number | null
+    specMax: number | null
+  }[]
 }
 
 // El nombre de la materia grasa en el catálogo. Es el único parámetro que la
@@ -141,6 +144,8 @@ export function construirInforme(args: {
 
 export default function AnalisisMateriaPrimaModal({
   ingreso,
+  producto,
+  previo,
   parametros,
   perfiles,
   analistas,
@@ -151,6 +156,10 @@ export default function AnalisisMateriaPrimaModal({
   onVerInforme,
 }: {
   ingreso: IngresoParaAnalisis
+  // Cuál de los productos del ingreso se está analizando. Lo elige quien abre
+  // el modal, porque un mismo camión puede traer dos.
+  producto: string
+  previo: AnalisisPrevio | null
   parametros: Parametro[]
   perfiles: Perfil[]
   analistas: Analista[]
@@ -160,7 +169,6 @@ export default function AnalisisMateriaPrimaModal({
   onAviso: (texto: string, error?: boolean) => void
   onVerInforme: (informe: InformeTanque, nombre: string) => void
 }) {
-  const previo = ingreso.analisis
   const [form, setForm] = useState({
     fecha: previo ? new Date(previo.fecha).toISOString().split('T')[0] : todayISO(),
     cisternas: previo?.cisternas ?? '',
@@ -188,13 +196,15 @@ export default function AnalisisMateriaPrimaModal({
     }
     return l
   })
+  // Ensayos que no están en el perfil y se suman para esta carga puntual, igual
+  // que en el análisis de tanque.
+  const [extraParamIds, setExtraParamIds] = useState<number[]>([])
+  const [agregarParamId, setAgregarParamId] = useState('')
   const [guardando, setGuardando] = useState(false)
 
-  const producto = previo?.producto ?? ingreso.producto1
-
   // Los parámetros que se muestran salen del perfil del producto, igual que en
-  // análisis de tanque. Si el producto no tiene perfil, se muestran los que ya
-  // tengan valor cargado para no esconder nada.
+  // análisis de tanque, más los que ya tengan valor cargado (para no esconder
+  // nada al reabrir) y los que se sumaron a mano en esta carga.
   const visibles = useMemo(() => {
     const porId = new Map(parametros.map((p) => [p.id, p]))
     const delPerfil = perfiles
@@ -202,11 +212,12 @@ export default function AnalisisMateriaPrimaModal({
       .sort((a, b) => a.orden - b.orden)
       .map((pf) => porId.get(pf.parametroId))
       .filter((p): p is Parametro => !!p)
-    const extras = Object.keys(valores)
-      .map((id) => porId.get(Number(id)))
+    const idsExtra = [...Object.keys(valores).map(Number), ...Object.keys(limites).map(Number), ...extraParamIds]
+    const extras = [...new Set(idsExtra)]
+      .map((id) => porId.get(id))
       .filter((p): p is Parametro => !!p && !delPerfil.some((d) => d.id === p.id))
     return [...delPerfil, ...extras]
-  }, [parametros, perfiles, producto, valores])
+  }, [parametros, perfiles, producto, valores, limites, extraParamIds])
 
   function rangoTipeado(parametroId: number): Rango | undefined {
     const l = limites[parametroId]
@@ -220,8 +231,10 @@ export default function AnalisisMateriaPrimaModal({
     })
   }
 
-  // La materia grasa no se carga: sale de 100 − mayor(insolubles) − humedad,
-  // como en la planilla.
+  // La materia grasa sale de 100 − mayor(insolubles) − humedad cuando hay con
+  // qué calcularla. En borras muchas veces se hace un corte o una extracción
+  // directa: ahí no hay humedad ni insolubles y el valor se mide, así que la
+  // fila se vuelve un campo normal y lo escribe el analista.
   const paramMateriaGrasa = visibles.find((p) => MATERIA_GRASA.test(p.nombre))
   const grasaCalculada = useMemo(() => {
     const humedades = visibles.filter((p) => HUMEDAD.test(p.nombre)).map((p) => parseNumero(valores[p.id] ?? ''))
@@ -232,8 +245,12 @@ export default function AnalisisMateriaPrimaModal({
     return materiaGrasa(humedad.length ? Math.max(...humedad) : null, insolubles)
   }, [visibles, valores])
 
+  // `materiaGrasa()` devuelve null cuando le faltan datos: esa es justo la
+  // señal de que hay que dejar escribir el valor.
+  const grasaSeCalcula = !!paramMateriaGrasa && grasaCalculada !== null
+
   function valorDe(p: Parametro): number | null {
-    if (paramMateriaGrasa && p.id === paramMateriaGrasa.id) return grasaCalculada
+    if (grasaSeCalcula && p.id === paramMateriaGrasa!.id) return grasaCalculada
     return parseNumero(valores[p.id] ?? '')
   }
 
@@ -322,8 +339,12 @@ export default function AnalisisMateriaPrimaModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b flex-shrink-0">
-          <h3 className="text-lg font-bold text-gray-800">Análisis de materia prima</h3>
-          <p className="text-sm text-gray-500 mt-0.5">Ingreso #{ingreso.id} · se informa al proveedor apenas se cierra</p>
+          <h3 className="text-lg font-bold text-gray-800">Análisis de <span className="text-brand-green-dark">{producto}</span></h3>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Ingreso #{ingreso.id}
+            {ingreso.producto2 && ` · el camión también trae ${producto === ingreso.producto1 ? ingreso.producto2 : ingreso.producto1}, que se analiza aparte`}
+            {' · '}se informa al proveedor apenas se cierra
+          </p>
         </div>
 
         <div className="p-5 overflow-y-auto">
@@ -331,7 +352,7 @@ export default function AnalisisMateriaPrimaModal({
           <div className="rounded-xl border border-brand-green bg-brand-green-light p-4 grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
             <Dato k="Origen" v={ingreso.origen} />
             <Dato k="HR / Remito" v={ingreso.hrRemito} />
-            <Dato k="Producto" v={producto} />
+            <Dato k="Producto analizado" v={producto} />
             <Dato k="Fecha de ingreso" v={formatDateOnly(ingreso.fecha)} />
             <p className="col-span-2 md:col-span-4 text-xs text-brand-green-dark border-t border-brand-green/30 pt-2">
               Estos datos vienen del ingreso ya cargado. No se retipean.
@@ -362,9 +383,41 @@ export default function AnalisisMateriaPrimaModal({
             </Campo>
           </div>
 
+          {/* Sumar un ensayo que no está en el perfil, para esta carga puntual.
+              Mismo patrón que el análisis de tanque. */}
+          <div className="flex items-center justify-end gap-1.5 mb-2">
+            <select
+              value={agregarParamId}
+              onChange={(e) => setAgregarParamId(e.target.value)}
+              aria-label="Parámetro para agregar"
+              className="border rounded-lg px-2 py-1 text-sm"
+            >
+              <option value="">Elegir parámetro...</option>
+              {parametros
+                .filter((p) => !visibles.some((v) => v.id === p.id))
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {nombreLargo(p)}{p.unidad ? ` (${p.unidad})` : ''}
+                  </option>
+                ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => {
+                if (!agregarParamId) return
+                setExtraParamIds((ids) => [...ids, Number(agregarParamId)])
+                setAgregarParamId('')
+              }}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg"
+            >
+              + Agregar parámetro
+            </button>
+          </div>
+
           {visibles.length === 0 ? (
             <p className="text-sm text-gray-400 py-6 text-center">
-              El producto <b>{producto}</b> no tiene parámetros configurados. Se cargan en Configuración → Perfiles.
+              El producto <b>{producto}</b> no tiene parámetros configurados: cargalos en Configuración → Perfiles,
+              o sumá los que necesites con el selector de arriba.
             </p>
           ) : (
             <table className="w-full text-base">
@@ -380,7 +433,8 @@ export default function AnalisisMateriaPrimaModal({
               </thead>
               <tbody>
                 {visibles.map((p) => {
-                  const esCalculado = !!paramMateriaGrasa && p.id === paramMateriaGrasa.id
+                  const esMateriaGrasa = !!paramMateriaGrasa && p.id === paramMateriaGrasa.id
+                  const esCalculado = esMateriaGrasa && grasaSeCalcula
                   const v = valorDe(p)
                   const limite = limites[p.id] ?? { min: '', max: '' }
                   const malo = fueraDeRango(v, rangoTipeado(p.id))
@@ -391,6 +445,11 @@ export default function AnalisisMateriaPrimaModal({
                         {esCalculado && (
                           <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-brand-green-light text-brand-green-dark border border-brand-green">
                             la calcula la app
+                          </span>
+                        )}
+                        {esMateriaGrasa && !grasaSeCalcula && (
+                          <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-300">
+                            se carga a mano
                           </span>
                         )}
                       </td>
@@ -440,9 +499,16 @@ export default function AnalisisMateriaPrimaModal({
             </table>
           )}
 
-          {paramMateriaGrasa && grasaCalculada !== null && (
-            <p className="text-xs text-gray-400 mt-2 px-3 font-mono">
-              materia grasa = 100 − mayor(insolubles) − humedad = {grasaCalculada.toFixed(2).replace('.', ',')}
+          {paramMateriaGrasa && (
+            <p className="text-xs text-gray-400 mt-2 px-3">
+              {grasaSeCalcula ? (
+                <span className="font-mono">
+                  materia grasa = 100 − mayor(insolubles) − humedad ={' '}
+                  {grasaCalculada!.toFixed(2).replace('.', ',')}
+                </span>
+              ) : (
+                'Sin humedad ni insolubles no hay con qué calcular la materia grasa: escribí el resultado del corte o de la extracción directa.'
+              )}
             </p>
           )}
 

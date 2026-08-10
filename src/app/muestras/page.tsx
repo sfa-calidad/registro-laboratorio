@@ -4,14 +4,13 @@ import MuestrasList from '@/components/MuestrasList'
 export const dynamic = 'force-dynamic'
 
 export default async function MuestrasPage() {
-  const [muestras, productos, laboratorios, lugares, parametros, contactos, analistas] = await Promise.all([
+  const [muestras, productos, laboratorios, parametros, contactos, analistas] = await Promise.all([
     prisma.muestra.findMany({
       include: { ensayos: { include: { parametro: true } } },
       orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
     }),
     prisma.producto.findMany({ orderBy: { nombre: 'asc' } }),
     prisma.laboratorio.findMany({ where: { activo: true }, orderBy: { nombre: 'asc' } }),
-    prisma.lugarMuestreo.findMany({ where: { activo: true }, orderBy: { nombre: 'asc' } }),
     prisma.parametro.findMany({ where: { activo: true }, orderBy: [{ orden: 'asc' }, { nombre: 'asc' }] }),
     prisma.contacto.findMany({ orderBy: { nombre: 'asc' } }),
     prisma.analista.findMany({ where: { activo: true }, orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }] }),
@@ -24,7 +23,6 @@ export default async function MuestrasPage() {
         muestras={muestras as Parameters<typeof MuestrasList>[0]['muestras']}
         productos={productos}
         laboratorios={laboratorios}
-        lugares={lugares}
         parametros={parametros}
         contactos={contactos}
         analistas={analistas}

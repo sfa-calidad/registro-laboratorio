@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
 
   const headers = [
     'Número', 'Fecha', 'Producto', 'Detalle', 'Tipo de origen',
-    'Identificación origen', 'Lugar de muestreo', 'Contacto', 'Solicitado por',
-    'Remito', 'Envase', 'Laboratorio', 'Estado', 'Fecha envío', 'AWB',
+    'Identificación origen', 'Contacto', 'Solicitado por',
+    'Envase', 'Laboratorio', 'Estado', 'Fecha envío', 'AWB',
     'Protocolo', 'Fecha resultado', 'Resultado', 'Ensayos', 'Observación',
     'Cargado por', 'Creado',
   ]
@@ -46,10 +46,8 @@ export async function GET(req: NextRequest) {
     m.detalle || '',
     m.tipoOrigen || '',
     m.identificacionOrigen || '',
-    m.lugarMuestreo || '',
     m.contacto || '',
     m.solicitadoPor || '',
-    m.remito || '',
     m.envase || '',
     m.laboratorio || '',
     m.estado,

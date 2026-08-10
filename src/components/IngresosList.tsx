@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { formatDateOnly, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { fueraDeRango } from '@/lib/calculos'
+import { productosDelIngreso } from '@/lib/materiaPrima'
 import type { InformeTanque } from '@/lib/informe'
 import VisorInforme from './VisorInforme'
 import AnalisisMateriaPrimaModal, {
@@ -15,8 +16,8 @@ import AnalisisMateriaPrimaModal, {
 
 type AnalisisGuardado = {
   id: number
-  fecha: Date | string
   producto: string
+  fecha: Date | string
   cisternas: string | null
   ordenCompra: string | null
   analista: string | null
@@ -40,7 +41,8 @@ type Ingreso = {
   observacion: string | null
   precinto: string | null
   operador: string | null
-  analisis: AnalisisGuardado | null
+  // Un análisis por producto del ingreso.
+  analisis: AnalisisGuardado[]
 }
 
 type Producto = { id: number; nombre: string }
@@ -89,7 +91,7 @@ export default function IngresosList({
   const PAGE_SIZE = 15
   // Análisis de materia prima: el ingreso que se está analizando y el informe
   // que se está mirando.
-  const [analizando, setAnalizando] = useState<Ingreso | null>(null)
+  const [analizando, setAnalizando] = useState<{ ingreso: Ingreso; producto: string } | null>(null)
   const [informe, setInforme] = useState<{ datos: InformeTanque; nombre: string } | null>(null)
   const [config, setConfig] = useState({ empresa: 'Laboratorio SFA', logo: '' })
   const [aviso, setAviso] = useState<{ texto: string; error: boolean } | null>(null)
@@ -129,9 +131,7 @@ export default function IngresosList({
       )
   }
 
-  function informeDe(i: Ingreso): { datos: InformeTanque; nombre: string } | null {
-    const a = i.analisis
-    if (!a) return null
+  function informeDe(i: Ingreso, a: AnalisisGuardado): { datos: InformeTanque; nombre: string } {
     const fecha = new Date(a.fecha).toISOString().split('T')[0]
     return {
       datos: construirInforme({
@@ -146,9 +146,13 @@ export default function IngresosList({
         comentario: a.comentario,
         filas: filasDe(a),
       }),
-      nombre: `analisis-${fecha}-${i.hrRemito}`.replace(/[^\w.-]+/g, '-'),
+      // El producto entra en el nombre: un mismo ingreso puede tener dos.
+      nombre: `analisis-${fecha}-${i.hrRemito}-${a.producto}`.replace(/[^\w.-]+/g, '-'),
     }
   }
+
+  const analisisDe = (i: Ingreso, producto: string) =>
+    i.analisis.find((a) => a.producto === producto) ?? null
 
   // Pastilla del listado: para poder buscar después "los camiones fuera de
   // spec del mes" sin abrir uno por uno.
@@ -169,7 +173,13 @@ export default function IngresosList({
     const q = search.toLowerCase()
     // El estado del análisis entra en la búsqueda: escribir "fuera" trae los
     // camiones que dieron fuera de especificación.
-    const estado = !i.analisis ? 'sin analizar' : hayDesvio(i.analisis) ? 'fuera de especificación' : 'conforme'
+    // Con dos productos alcanza con que uno se vaya de rango para que el camión
+    // aparezca al buscar "fuera".
+    const estado = !i.analisis.length
+      ? 'sin analizar'
+      : i.analisis.some(hayDesvio)
+        ? 'fuera de especificación'
+        : 'conforme'
     return (
       i.hrRemito.toLowerCase().includes(q) ||
       i.origen.toLowerCase().includes(q) ||
@@ -262,7 +272,9 @@ export default function IngresosList({
 
       {analizando && (
         <AnalisisMateriaPrimaModal
-          ingreso={analizando}
+          ingreso={analizando.ingreso}
+          producto={analizando.producto}
+          previo={analisisDe(analizando.ingreso, analizando.producto)}
           parametros={parametros}
           perfiles={perfiles}
           analistas={analistas}
@@ -439,29 +451,48 @@ export default function IngresosList({
                 <td className="px-3 py-2">{i.precinto || '—'}</td>
                 <td className="px-3 py-2 max-w-xs truncate text-gray-600" title={i.observacion || ''}>{i.observacion || '—'}</td>
                 <td className="px-3 py-2">{i.operador || '—'}</td>
-                {/* El análisis vive en su propia columna con sus dos acciones:
-                    en "Acciones" quedaban seis botones y no se leía ninguno. */}
+                {/* El análisis vive en su propia columna con sus acciones: en
+                    "Acciones" quedaban seis botones y no se leía ninguno. Va una
+                    línea por producto del camión, porque cada uno se analiza y
+                    se informa aparte. */}
                 <td className="px-3 py-2 whitespace-nowrap">
-                  {i.analisis ? (
-                    <div className="flex flex-col items-start gap-1">
-                      <Pastilla desvio={hayDesvio(i.analisis)} />
-                      <div className="flex items-center gap-2 text-sm">
-                        <button onClick={() => setInforme(informeDe(i))} className="text-brand-green-dark hover:text-brand-green font-medium">
-                          Ver informe
-                        </button>
-                        <button onClick={() => setAnalizando(i)} className="text-gray-500 hover:text-gray-700">
-                          Editar
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setAnalizando(i)}
-                      className="text-sm border border-brand-green text-brand-green-dark px-2.5 py-1 rounded-lg hover:bg-brand-green-light font-medium"
-                    >
-                      Cargar análisis
-                    </button>
-                  )}
+                  <div className="flex flex-col items-start gap-2">
+                    {productosDelIngreso(i).map((prod) => {
+                      const a = analisisDe(i, prod)
+                      const variosProductos = productosDelIngreso(i).length > 1
+                      return (
+                        <div key={prod} className="flex flex-col items-start gap-0.5">
+                          {variosProductos && <span className="text-xs text-gray-500">{prod}</span>}
+                          {a ? (
+                            <>
+                              <Pastilla desvio={hayDesvio(a)} />
+                              <div className="flex items-center gap-2 text-sm">
+                                <button
+                                  onClick={() => setInforme(informeDe(i, a))}
+                                  className="text-brand-green-dark hover:text-brand-green font-medium"
+                                >
+                                  Ver informe
+                                </button>
+                                <button
+                                  onClick={() => setAnalizando({ ingreso: i, producto: prod })}
+                                  className="text-gray-500 hover:text-gray-700"
+                                >
+                                  Editar
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setAnalizando({ ingreso: i, producto: prod })}
+                              className="text-sm border border-brand-green text-brand-green-dark px-2.5 py-1 rounded-lg hover:bg-brand-green-light font-medium"
+                            >
+                              Cargar análisis
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2 text-sm">

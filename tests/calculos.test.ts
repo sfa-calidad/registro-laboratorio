@@ -44,6 +44,17 @@ test('sin humedad o sin insolubles no hay materia grasa, y no es cero', () => {
   assert.equal(materiaGrasa(42.55, [null, 19.45]), 38.0)
 })
 
+test('el null es la señal de que la materia grasa se carga a mano', () => {
+  // En borras muchas veces se hace un corte o una extracción directa: no hay
+  // humedad ni insolubles y el valor se mide, no se deduce. El formulario usa
+  // ese null para liberar el campo, así que tiene que seguir siendo null y no
+  // 100 ni 0.
+  assert.equal(materiaGrasa(null, []), null, 'sin nada cargado no se inventa un 100')
+  assert.equal(materiaGrasa(null, [null]), null)
+  // Y en cuanto están los dos datos, vuelve a calcularse sola.
+  assert.equal(materiaGrasa(42.55, [19.45]), 38.0)
+})
+
 test('el corte rápido de borras da los números de la hoja "Materia Prima"', () => {
   // Aceite 7,5 · sedimento 20 · agua 22,5
   const r = corteRapido(7.5, 20, 22.5)
