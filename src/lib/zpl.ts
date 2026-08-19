@@ -4,6 +4,29 @@
 
 export type LabelData = Record<string, string>
 
+// Muchas muestras de tanque no se sacan a una altura medida sino en un punto
+// fijo. Al elegir uno de estos, la palabra ES la altura del rótulo
+// ("Superficie") en vez de una medida ("2 m DS"), y los metros no aplican.
+export const PUNTOS_FIJOS = ['Superficie', 'Fondo', 'Cono']
+
+export function esPuntoFijo(referencia: string): boolean {
+  return PUNTOS_FIJOS.includes(referencia)
+}
+
+// La altura nunca se muestra sin su referencia: 2 m AF y 2 m DS son puntos
+// distintos del tanque. El conjunto va como "HA" y no con la flecha ↑, porque
+// las fuentes de la Zebra no tienen ese símbolo.
+export function alturaDeRotulo(alturaM: string, referencia: string, conjuntoHaciaArriba: boolean): string {
+  if (esPuntoFijo(referencia)) return referencia
+
+  const partes: string[] = []
+  if (alturaM.trim()) {
+    partes.push(`${alturaM.trim().replace('.', ',')} m${referencia ? ` ${referencia}` : ''}`)
+  }
+  if (conjuntoHaciaArriba) partes.push('HA')
+  return partes.join(' ')
+}
+
 export function labelRows(tipo: string, data: LabelData): [string, string][] {
   // Rótulo de muestra a laboratorio: identifica el envase físico.
   if (tipo === 'MUESTRAS') {
