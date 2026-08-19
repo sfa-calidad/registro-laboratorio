@@ -9,7 +9,9 @@ export default async function IngresosPage() {
     // ante misma fecha, un orden fijo para que editar un registro no lo reordene.
     prisma.ingreso.findMany({
       orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
-      include: { analisis: { include: { resultados: true } } },
+      // Un ingreso puede tener un análisis por producto: la borra y el
+      // sobrenadante de aceite se informan por separado.
+      include: { analisis: { include: { resultados: true }, orderBy: { producto: 'asc' } } },
     }),
     prisma.producto.findMany({ orderBy: { nombre: 'asc' } }),
     // El catálogo de ensayos es el mismo que usa el análisis de tanque; los

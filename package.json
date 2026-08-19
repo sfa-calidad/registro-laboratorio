@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && npm run migrar-perfil-contexto && prisma db push --skip-generate && prisma db seed && next build",
-    "migrar-perfil-contexto": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/migrar-perfil-contexto.ts",
+    "build": "prisma generate && npm run migrar-esquema && prisma db push --skip-generate && prisma db seed && next build",
+    "migrar-esquema": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/migrar-esquema.ts",
     "build:local": "next build",
     "postinstall": "prisma generate",
     "start": "next start",

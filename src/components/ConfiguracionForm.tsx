@@ -20,8 +20,6 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
   const [newParam, setNewParam] = useState({ nombre: '', metodo: '', abreviatura: '', unidad: '', decimales: '2' })
   const [labs, setLabs] = useState<{id:number,nombre:string,esExterno:boolean,delExterior:boolean}[]>([])
   const [newLab, setNewLab] = useState({ nombre: '', esExterno: true, delExterior: false })
-  const [lugares, setLugares] = useState<{id:number,nombre:string}[]>([])
-  const [newLugar, setNewLugar] = useState('')
   const [perfiles, setPerfiles] = useState<{id:number,producto:string,parametroId:number,orden:number,contexto:string,parametro:{nombre:string,metodo:string|null,abreviatura:string|null}}[]>([])
   const [newPerfil, setNewPerfil] = useState({ producto: '', parametroId: '', contexto: 'TANQUE' })
   const [especs, setEspecs] = useState<{id:number,producto:string,parametroId:number,min:number|null,max:number|null,parametro:{nombre:string,metodo:string|null,abreviatura:string|null}}[]>([])
@@ -32,7 +30,6 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
     fetch('/api/columnas').then(r => r.json()).then(setColumnas)
     fetch('/api/parametros').then(r => r.json()).then(setParametrosCfg)
     fetch('/api/laboratorios').then(r => r.json()).then(setLabs)
-    fetch('/api/lugares-muestreo').then(r => r.json()).then(setLugares)
     fetch('/api/perfiles-producto').then(r => r.json()).then(setPerfiles)
     fetch('/api/especificaciones').then(r => r.json()).then(setEspecs)
     if (esSupervisor) {
@@ -227,25 +224,6 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
   async function deleteLab(id: number) {
     await fetch(`/api/laboratorios/${id}`, { method: 'DELETE' })
     setLabs(ls => ls.filter(l => l.id !== id))
-  }
-
-  async function addLugar() {
-    if (!newLugar.trim()) return
-    const res = await fetch('/api/lugares-muestreo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre: newLugar.trim() }),
-    })
-    if (res.ok) {
-      const l = await res.json()
-      setLugares(ls => ls.some(x => x.id === l.id) ? ls : [...ls, l].sort((a, b) => a.nombre.localeCompare(b.nombre)))
-      setNewLugar('')
-    }
-  }
-
-  async function deleteLugar(id: number) {
-    await fetch(`/api/lugares-muestreo/${id}`, { method: 'DELETE' })
-    setLugares(ls => ls.filter(l => l.id !== id))
   }
 
   async function addPerfil() {
@@ -534,26 +512,6 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
             </li>
           ))}
           {labs.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin laboratorios</li>}
-        </ul>
-      </div>
-
-      <div className="bg-white rounded-xl shadow p-5 space-y-3">
-        <h3 className="font-semibold text-gray-700 border-b pb-2">Lugares de muestreo</h3>
-        <div className="flex gap-2">
-          <input value={newLugar} onChange={(e) => setNewLugar(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addLugar())}
-            placeholder="Nombre del lugar" className="flex-1 border rounded-lg px-3 py-2 text-base" />
-          <button type="button" onClick={addLugar}
-            className="bg-brand-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-green-dark">Agregar</button>
-        </div>
-        <ul className="space-y-1 max-h-48 overflow-y-auto">
-          {lugares.map(l => (
-            <li key={l.id} className="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50 text-base">
-              <span>{l.nombre}</span>
-              <button onClick={() => deleteLugar(l.id)} className="text-red-400 hover:text-red-600 text-sm">Desactivar</button>
-            </li>
-          ))}
-          {lugares.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin lugares registrados</li>}
         </ul>
       </div>
 

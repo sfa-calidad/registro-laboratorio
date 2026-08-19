@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { getRoleFromRequest } from '@/lib/auth'
+import { esProductoDelIngreso, productosDelIngreso } from '@/lib/materiaPrima'
 
 const resultadoSchema = z.object({
   parametroId: z.number().int(),
@@ -26,6 +27,16 @@ const schema = z.object({
 })
 
 export const dynamic = 'force-dynamic'
+
+// El ingreso queda marcado con la fecha del análisis más reciente que tenga: con
+// dos productos hay dos análisis y puede haberse cargado uno mucho después.
+export async function marcarFechaAnalisis(ingresoId: number) {
+  const ultimo = await prisma.analisisMateriaPrima.aggregate({
+    where: { ingresoId },
+    _max: { fecha: true },
+  })
+  await prisma.ingreso.update({ where: { id: ingresoId }, data: { fechaAnalisis: ultimo._max.fecha } })
+}
 
 const incluir = { resultados: { include: { parametro: true } }, ingreso: true }
 
@@ -51,6 +62,19 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
 
   const { resultados, ingresoId, ...datos } = parsed.data
+
+  // El producto tiene que ser uno de los del ingreso: el análisis se informa a
+  // nombre del camión, no de un producto suelto. Un camión de borra con
+  // sobrenadante de aceite lleva los dos, uno en cada campo.
+  const ingreso = await prisma.ingreso.findUnique({ where: { id: ingresoId } })
+  if (!ingreso) return NextResponse.json({ error: 'No se encontró el ingreso' }, { status: 404 })
+  if (!esProductoDelIngreso(datos.producto, ingreso)) {
+    return NextResponse.json(
+      { error: `El ingreso no trae ${datos.producto}: sus productos son ${productosDelIngreso(ingreso).join(' y ')}` },
+      { status: 400 }
+    )
+  }
+
   try {
     const analisis = await prisma.analisisMateriaPrima.create({
       data: {
@@ -75,15 +99,16 @@ export async function POST(req: NextRequest) {
       },
       include: incluir,
     })
-    // El ingreso queda marcado con la fecha del análisis: el campo estaba en el
-    // esquema sin usarse desde el principio.
-    await prisma.ingreso.update({ where: { id: ingresoId }, data: { fechaAnalisis: new Date(datos.fecha) } })
+    await marcarFechaAnalisis(ingresoId)
     return NextResponse.json(analisis, { status: 201 })
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
-      // Un ingreso tiene un solo análisis: si ya existe hay que editarlo.
+      // Un análisis por producto del ingreso: si ya existe hay que editarlo.
       if (e.code === 'P2002') {
-        return NextResponse.json({ error: 'Este ingreso ya tiene un análisis cargado' }, { status: 409 })
+        return NextResponse.json(
+          { error: `Este ingreso ya tiene un análisis cargado de ${datos.producto}` },
+          { status: 409 }
+        )
       }
       if (e.code === 'P2003' || e.code === 'P2025') {
         return NextResponse.json({ error: 'No se encontró el ingreso' }, { status: 404 })

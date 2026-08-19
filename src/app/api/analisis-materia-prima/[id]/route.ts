@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { getRoleFromRequest } from '@/lib/auth'
 import { parseId } from '@/lib/utils'
 import { conManejoDeErrores } from '@/lib/api'
+import { marcarFechaAnalisis } from '../route'
 
 const resultadoSchema = z.object({
   parametroId: z.number().int(),
@@ -69,10 +70,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       },
       include: incluir,
     })
-    await prisma.ingreso.update({
-      where: { id: analisis.ingresoId },
-      data: { fechaAnalisis: new Date(datos.fecha) },
-    })
+    await marcarFechaAnalisis(analisis.ingresoId)
     return NextResponse.json(analisis)
   })
 }
@@ -84,8 +82,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (idNum === null) return NextResponse.json({ error: 'Id inválido' }, { status: 400 })
   return conManejoDeErrores(async () => {
     const analisis = await prisma.analisisMateriaPrima.delete({ where: { id: idNum } })
-    // Al borrar el análisis el ingreso vuelve a quedar sin analizar.
-    await prisma.ingreso.update({ where: { id: analisis.ingresoId }, data: { fechaAnalisis: null } })
+    // Con dos productos puede quedar el otro análisis: la fecha se recalcula
+    // sobre lo que sobrevive, y queda en null solo si no queda ninguno.
+    await marcarFechaAnalisis(analisis.ingresoId)
     return NextResponse.json({ ok: true })
   })
 }
