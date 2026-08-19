@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { labelRows, buildLabelZPL } from '@/lib/zpl'
+import { alturaDeRotulo, labelRows, buildLabelZPL } from '@/lib/zpl'
 import { buildLabelHTML } from '@/lib/etiqueta'
 import { escaparXml, logoSeguro } from '@/lib/texto'
 
@@ -97,4 +97,55 @@ test('los caracteres de control de ZPL no pasan a los datos', () => {
   const zpl = buildLabelZPL('SALIDAS', { destino: 'AB^XZ~CD' }, config)
   assert.ok(!zpl.includes('AB^XZ'), 'el ^ y el ~ se limpian')
   assert.equal((zpl.match(/\^XZ/g) || []).length, 1, 'sigue habiendo un solo fin de etiqueta')
+})
+
+// --- Rótulo de muestra a laboratorio ---------------------------------------
+
+test('la observación de la muestra sale impresa en el rótulo', () => {
+  // Salía siempre vacía: la pantalla de muestras no pasaba el campo.
+  const data = {
+    numero: '26301',
+    producto: 'Aceite',
+    fecha: '19/08/2026',
+    observacion: 'Contramuestra, guardar 90 días',
+  }
+  const html = buildLabelHTML('MUESTRAS', data, config)
+  assert.ok(html.includes('Contramuestra, guardar 90 días'), 'la observación tiene que estar en el HTML')
+  const zpl = buildLabelZPL('MUESTRAS', data, config)
+  assert.ok(zpl.includes('Contramuestra'), 'y también en el ZPL')
+})
+
+// --- Altura del rótulo de calado -------------------------------------------
+
+test('una altura medida se escribe con su referencia', () => {
+  // 2 m AF y 2 m DS son puntos distintos del tanque: el número solo no alcanza.
+  assert.equal(alturaDeRotulo('2', 'AF', false), '2 m AF')
+  assert.equal(alturaDeRotulo('0.5', 'DS', false), '0,5 m DS')
+  assert.equal(alturaDeRotulo('2', 'AF', true), '2 m AF HA')
+  assert.equal(alturaDeRotulo('', '', false), '')
+})
+
+test('en un punto fijo la palabra ocupa el lugar de la altura', () => {
+  // Muchas muestras no se sacan a una altura medida sino en la superficie, el
+  // fondo o el cono: ahí el rótulo dice la palabra, no los metros.
+  assert.equal(alturaDeRotulo('', 'Superficie', false), 'Superficie')
+  assert.equal(alturaDeRotulo('', 'Fondo', false), 'Fondo')
+  assert.equal(alturaDeRotulo('', 'Cono', false), 'Cono')
+})
+
+test('el punto fijo manda sobre unos metros que hayan quedado escritos', () => {
+  // Si se tipeó una altura y después se eligió el punto fijo, el rótulo no
+  // puede salir con las dos cosas.
+  assert.equal(alturaDeRotulo('2', 'Superficie', false), 'Superficie')
+  assert.equal(alturaDeRotulo('2', 'Fondo', true), 'Fondo')
+})
+
+test('la altura del punto fijo llega al rótulo impreso', () => {
+  const filas = labelRows('CALADO', {
+    tanque: '26',
+    producto: 'Aceite',
+    altura: alturaDeRotulo('', 'Superficie', false),
+    fecha: '19/08/2026',
+  })
+  assert.deepEqual(filas.find(([k]) => k === 'Altura'), ['Altura', 'Superficie'])
 })

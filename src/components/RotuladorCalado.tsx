@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { formatDateOnly, todayISO } from '@/lib/utils'
 import { buildLabelHTML, type EtiquetaConfig } from '@/lib/etiqueta'
 import { imprimirEtiqueta, type ModoImpresion } from '@/lib/impresion'
+import { alturaDeRotulo, esPuntoFijo, PUNTOS_FIJOS } from '@/lib/zpl'
 
 // Rotulador para el calado: se completa en el momento de salir a calar y se
 // imprime. No se guarda nada en la base — es solo la etiqueta del envase.
@@ -29,17 +30,6 @@ const emptyForm = {
   analista1: '',
   analista2: '',
   observacion: '',
-}
-
-// Misma convención que en Análisis de tanques: la altura nunca se muestra sin
-// su referencia (2 m AF y 2 m DS son puntos distintos del tanque). En el rótulo
-// el conjunto va como "HA" y no con la flecha ↑, porque las fuentes de la Zebra
-// no tienen ese símbolo.
-function formatAlturaRotulo(alturaM: string, referencia: string, ha: boolean): string {
-  const partes: string[] = []
-  if (alturaM.trim()) partes.push(`${alturaM.trim().replace('.', ',')} m${referencia ? ` ${referencia}` : ''}`)
-  if (ha) partes.push('HA')
-  return partes.join(' ')
 }
 
 export default function RotuladorCalado({
@@ -89,7 +79,7 @@ export default function RotuladorCalado({
   const datos = {
     tanque: form.tanque.trim(),
     producto: form.producto,
-    altura: formatAlturaRotulo(form.alturaM, form.referencia, form.conjuntoHaciaArriba),
+    altura: alturaDeRotulo(form.alturaM, form.referencia, form.conjuntoHaciaArriba),
     fecha: form.fecha ? formatDateOnly(form.fecha) : '',
     analista1: form.analista1,
     analista2: form.analista2,
@@ -107,13 +97,14 @@ export default function RotuladorCalado({
       onMensaje(`No se pudo imprimir: ${res.mensaje}`, true)
       return
     }
+    // La ventana queda abierta con los datos cargados: al rotular varias
+    // muestras del mismo tanque solo cambia la altura, y cerrarla obligaba a
+    // reescribir todo.
     if (res.usoDialogo) {
       // En el navegador se abre el diálogo: el aviso sobra.
-      setAbierto(false)
       return
     }
     onMensaje(`Rótulo del tanque ${datos.tanque} enviado a la impresora`)
-    setAbierto(false)
   }
 
   const nombresAnalistas = analistas.map((a) => `${a.nombre} ${a.apellido}`)
@@ -176,10 +167,11 @@ export default function RotuladorCalado({
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={form.alturaM}
+                    value={esPuntoFijo(form.referencia) ? '' : form.alturaM}
                     onChange={(e) => setForm({ ...form, alturaM: e.target.value })}
-                    placeholder="0,5"
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
+                    disabled={esPuntoFijo(form.referencia)}
+                    placeholder={esPuntoFijo(form.referencia) ? form.referencia : '0,5'}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-base disabled:bg-gray-100 disabled:text-gray-400"
                   />
                 </div>
                 <div>
@@ -190,9 +182,16 @@ export default function RotuladorCalado({
                     className="mt-1 w-full border rounded-lg px-3 py-2 text-base"
                   >
                     <option value="">No aplica</option>
-                    {REFERENCIAS.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
+                    <optgroup label="Medida desde una referencia">
+                      {REFERENCIAS.map((r) => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Punto fijo (va como altura)">
+                      {PUNTOS_FIJOS.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
                 <div className="col-span-2">
@@ -307,7 +306,7 @@ export default function RotuladorCalado({
                 </div>
               )}
               <button onClick={() => setAbierto(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
-                Cancelar
+                Cerrar
               </button>
               <button
                 onClick={imprimir}

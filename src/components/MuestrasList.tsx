@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react'
 import { formatDateOnly, hoyEnLaboratorio, todayISO } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
-import { buildLabelZPL } from '@/lib/zpl'
-import { buildLabelHTML } from '@/lib/etiqueta'
+import { imprimirEtiqueta } from '@/lib/impresion'
 
 type Producto = { id: number; nombre: string }
 type Laboratorio = { id: number; nombre: string; esExterno: boolean; delExterior: boolean }
@@ -266,6 +265,9 @@ export default function MuestrasList({
     })
     if (res.ok) {
       const m = await res.json()
+      // El rótulo queda registrado al guardar, igual que el del ingreso: así
+      // está en "Rótulos Movimientos" aunque todavía no se haya impreso.
+      await guardarRotulo(datosRotulo(m))
       // El formulario queda abierto mostrando la muestra guardada, con el
       // botón de imprimir rótulo a mano (no se imprime solo al guardar).
       setGuardada(m)
@@ -279,37 +281,42 @@ export default function MuestrasList({
     setLoading(false)
   }
 
-  async function imprimirRotulo(m: { numero: string; producto: string; fecha: Date | string }) {
-    const data = {
+  type MuestraDelRotulo = {
+    numero: string
+    producto: string
+    fecha: Date | string
+    observacion?: string | null
+  }
+
+  // Lo que se imprime y lo que se guarda es lo mismo, así que se arma una sola
+  // vez. La observación va en la columna derecha del rótulo: sin este campo esa
+  // columna salía siempre vacía aunque la muestra la tuviera cargada.
+  function datosRotulo(m: MuestraDelRotulo) {
+    return {
       numero: m.numero,
       producto: m.producto,
       fecha: formatDateOnly(m.fecha),
+      observacion: m.observacion || '',
     }
-    // Queda registrado en la pantalla de Rótulos como tipo MUESTRAS.
-    fetch('/api/rotulos', {
+  }
+
+  // Queda en "Rótulos Movimientos" con todos los datos, así reimprimirlo desde
+  // ahí sale igual que la primera vez.
+  async function guardarRotulo(data: ReturnType<typeof datosRotulo>) {
+    await fetch('/api/rotulos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tipo: 'MUESTRAS', data }),
     }).catch(() => {})
+  }
 
-    const html = buildLabelHTML('MUESTRAS', data, config)
-    if (window.desktopPrinter) {
-      const res = await window.desktopPrinter.printLabel({
-        html,
-        zpl: buildLabelZPL('MUESTRAS', data, config),
-        deviceName: localStorage.getItem('rotulos_impresora') || undefined,
-        widthMm: Number(config.etiquetaAncho) || 100,
-        heightMm: Number(config.etiquetaAlto) || 45,
-      })
-      setPrintMsg(res.success ? `Rótulo de la muestra ${m.numero} enviado a la impresora` : `No se pudo imprimir: ${res.failureReason}`)
+  async function imprimirRotulo(m: MuestraDelRotulo) {
+    // Por el diálogo de impresión, no por la rápida: sale con logo y es el
+    // mismo camino que "Imprimir rótulo" de los rótulos de movimientos.
+    const res = await imprimirEtiqueta('MUESTRAS', datosRotulo(m), config, { modo: 'diseno' })
+    if (!res.ok) {
+      setPrintMsg(`No se pudo imprimir: ${res.mensaje}`)
       setTimeout(() => setPrintMsg(''), 4000)
-    } else {
-      const w = window.open('', '_blank')
-      if (!w) return
-      w.document.write(html)
-      w.document.close()
-      w.focus()
-      setTimeout(() => w.print(), 500)
     }
   }
 
