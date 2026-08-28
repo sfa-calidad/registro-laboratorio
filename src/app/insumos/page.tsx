@@ -37,6 +37,14 @@ export default async function InsumosPage() {
           </Link>
           {role === 'supervisor' && (
             <Link
+              href="/insumos/minimos"
+              className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light"
+            >
+              Stock mínimo
+            </Link>
+          )}
+          {role === 'supervisor' && (
+            <Link
               href="/insumos/precursores"
               className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light"
             >

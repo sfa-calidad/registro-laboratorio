@@ -1,8 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatDateOnly, todayISO } from '@/lib/utils'
 import { formatearNumero, redondear } from '@/lib/inventario'
+import { buildPlanillaHTML } from '@/lib/planillaRecuento'
 
 type Insumo = {
   id: number
@@ -21,6 +22,7 @@ type Resultado = {
   contados: number
   sinDiferencia: number
   diferencias: { nombre: string; esperado: number; contado: number }[]
+  avisos: string[]
 }
 
 export default function RecuentoInsumos({
@@ -42,6 +44,17 @@ export default function RecuentoInsumos({
   const [loading, setLoading] = useState(false)
   const [resultado, setResultado] = useState<Resultado | null>(null)
   const [error, setError] = useState('')
+  // La planilla en papel: a ciegas por defecto. Ver el numero del sistema
+  // hace que quien cuenta lo confirme en vez de contar.
+  const [aCiegas, setACiegas] = useState(true)
+  const [empresa, setEmpresa] = useState('Laboratorio SFA')
+
+  useEffect(() => {
+    fetch('/api/configuracion')
+      .then((r) => r.json())
+      .then((d) => setEmpresa(d.empresa || 'Laboratorio SFA'))
+      .catch(() => {})
+  }, [])
 
   const delLugar = ubicacion ? insumos.filter((i) => i.ubicacion === ubicacion) : []
 
@@ -68,6 +81,22 @@ export default function RecuentoInsumos({
     const n = Number(t.replace(',', '.'))
     return Number.isFinite(n) && redondear(n) !== redondear(i.stock)
   }).length
+
+  // Si hay una ubicación elegida se imprime esa; si no, todo el laboratorio,
+  // con una hoja por puerta para hacer la recorrida completa.
+  function imprimirPlanilla() {
+    const filas = ubicacion ? delLugar : insumos
+    if (filas.length === 0) return setError('No hay insumos para imprimir')
+
+    const w = window.open('', '_blank')
+    if (!w) return setError('El navegador bloqueó la ventana de impresión')
+    w.document.write(
+      buildPlanillaHTML(filas, { empresa, fecha: formatDateOnly(`${fecha}T00:00:00.000Z`), aCiegas }),
+    )
+    w.document.close()
+    w.focus()
+    setTimeout(() => w.print(), 400)
+  }
 
   async function guardar() {
     if (conteos.length === 0) return
@@ -128,7 +157,24 @@ export default function RecuentoInsumos({
             className="mt-1 border rounded-lg px-3 py-2 text-base"
           />
         </div>
+        <div className="flex items-center gap-3 ml-auto">
+          <label className="flex items-center gap-1.5 text-sm text-gray-600" title="Contar sin ver lo que dice el sistema">
+            <input type="checkbox" checked={aCiegas} onChange={(e) => setACiegas(e.target.checked)} />
+            A ciegas
+          </label>
+          <button
+            type="button"
+            onClick={imprimirPlanilla}
+            className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light"
+          >
+            {ubicacion ? 'Imprimir planilla' : 'Imprimir todo'}
+          </button>
+        </div>
       </div>
+      <p className="text-xs text-gray-400 -mt-2">
+        Sin elegir ubicación, la planilla sale con todo el laboratorio, una hoja por puerta. Con
+        &ldquo;a ciegas&rdquo; no se imprime el stock del sistema: quien cuenta no lo confirma, lo cuenta.
+      </p>
 
       {resultado && (
         <div className="rounded-xl border p-4 bg-brand-green-light border-brand-green text-brand-green-dark">
@@ -145,6 +191,12 @@ export default function RecuentoInsumos({
             </ul>
           ) : (
             <p className="text-sm mt-1">Todo coincidía.</p>
+          )}
+          {resultado.avisos.length > 0 && (
+            <p className="text-sm mt-2">
+              Quedaron bajo el mínimo, así que se crearon estas tareas de reposición:{' '}
+              {resultado.avisos.join(', ')}.
+            </p>
           )}
         </div>
       )}

@@ -10,6 +10,7 @@ import {
   fechaCalendario,
   registrarMovimiento,
 } from '@/lib/movimientosInsumo'
+import { avisarSiFaltaStock } from '@/lib/alertaStock'
 
 const schema = z.object({
   insumoId: z.number().int().positive(),
@@ -81,7 +82,11 @@ export async function POST(req: NextRequest) {
         // consumos simultáneos del mismo frasco leen lo mismo y uno se pierde.
         { isolationLevel: 'Serializable' },
       )
-      return NextResponse.json(movimiento, { status: 201 })
+      // Fuera de la transacción a propósito: el movimiento ya está guardado y
+      // un problema al crear la tarea no puede hacerlo volver atrás.
+      const aviso = await avisarSiFaltaStock(d.insumoId)
+
+      return NextResponse.json({ ...movimiento, aviso }, { status: 201 })
     } catch (e) {
       if (e instanceof StockInsuficiente) {
         return NextResponse.json({ error: e.message }, { status: 409 })

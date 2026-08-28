@@ -77,7 +77,10 @@ export default function DespachosList({
       d.hrContrato.toLowerCase().includes(search.toLowerCase()) ||
       d.destino.toLowerCase().includes(search.toLowerCase()) ||
       d.producto.toLowerCase().includes(search.toLowerCase()) ||
-      d.idTransporte.toLowerCase().includes(search.toLowerCase())
+      d.idTransporte.toLowerCase().includes(search.toLowerCase()) ||
+      // El depósito/tanque entra en la búsqueda: sin esto no se podía preguntar
+      // "qué salió del tanque 12", que es justo para lo que se anota.
+      (d.deposito || '').toLowerCase().includes(search.toLowerCase())
   )
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -159,7 +162,7 @@ export default function DespachosList({
       <div className="flex justify-between items-center mb-3">
         <input
           type="text"
-          placeholder="Buscar por HR, destino, producto o transporte..."
+          placeholder="Buscar por HR, destino, producto, tanque o transporte..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           className="border rounded-lg px-3 py-2 text-base w-80"
@@ -314,7 +317,15 @@ export default function DespachosList({
                 <td className="px-3 py-2 font-mono text-sm">{d.hrContrato}</td>
                 <td className="px-3 py-2">{formatDateOnly(d.fecha)}</td>
                 <td className="px-3 py-2">{d.destino}</td>
-                <td className="px-3 py-2">{d.producto}</td>
+                {/* El depósito/tanque va debajo del producto y no en una
+                    columna propia: la tabla ya tiene diez y "de dónde salió"
+                    se lee mejor pegado a qué salió. */}
+                <td className="px-3 py-2">
+                  {d.producto}
+                  {d.deposito && (
+                    <div className="text-xs text-gray-500">{d.deposito}</div>
+                  )}
+                </td>
                 <td className="px-3 py-2 font-mono text-sm">{d.idTransporte}</td>
                 <td className="px-3 py-2">{d.precintSFA || '—'}</td>
                 <td className="px-3 py-2">{d.precintAduana || '—'}</td>
