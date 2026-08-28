@@ -95,6 +95,17 @@ export function necesitaReposicion(insumo: {
   return estado === 'SIN_STOCK' || estado === 'BAJO_MINIMO'
 }
 
+// Un insumo medido en kilos no puede colgar de una sustancia que se declara en
+// litros: sin densidad esa conversión no existe, y el resultado iría a una
+// declaración jurada. Sin unidad cargada se deja pasar: ahí el insumo aparece
+// como incompleto en la declaración, que avisa en vez de sumar algo inventado.
+export function unidadCompatible(
+  unidadInsumo: string | null | undefined,
+  unidadSustancia: string,
+): boolean {
+  return !unidadInsumo || unidadInsumo === unidadSustancia
+}
+
 // --- Lectura de las planillas de Excel ---------------------------------------
 
 // Cuánto entra en un envase, normalizado a litros o kilos. Los gramos y los

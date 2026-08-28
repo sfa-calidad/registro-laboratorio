@@ -20,6 +20,7 @@ import {
 import EstadisticasView, { type FilaAnalista } from '@/components/EstadisticasView'
 import FlujoLaboratorio, { type SemanaFlujo, type TramoAtraso } from '@/components/FlujoLaboratorio'
 import NotasTablero from '@/components/NotasTablero'
+import { necesitaReposicion } from '@/lib/inventario'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,7 +59,7 @@ export default async function Dashboard({
   // archivaba una tarea que nunca se completó.
   const tareasActivas = { completadaAt: null, archivadaAt: null }
 
-  const [ingresosHoy, despachosHoy, ultIngresos, ultDespachos, tareasPendientes, tareasVencidas, analisisMes, muestrasPendientes] =
+  const [ingresosHoy, despachosHoy, ultIngresos, ultDespachos, tareasPendientes, tareasVencidas, analisisMes, muestrasPendientes, insumosControlados] =
     await Promise.all([
       // Con tope superior: sin él, cualquier registro con fecha futura contaba
       // como "hoy".
@@ -71,7 +72,16 @@ export default async function Dashboard({
       // También con tope: un análisis con fecha del mes que viene no es de este mes.
       prisma.analisisTanque.count({ where: { fecha: { gte: inicioMes, lt: inicioMesQueViene } } }),
       prisma.muestra.count({ where: { estado: ESTADOS_ABIERTOS } }),
+      // "Bajo el mínimo" compara dos columnas entre sí, que no se puede pedir en
+      // un where de Prisma. Son menos de doscientas filas y la regla ya está
+      // probada en necesitaReposicion, así que se cuenta acá y no se duplica.
+      prisma.insumo.findMany({
+        where: { activo: true, seControla: true },
+        select: { stock: true, stockMinimo: true, seControla: true },
+      }),
     ])
+
+  const insumosFaltantes = insumosControlados.filter(necesitaReposicion).length
 
   const analitica = role === 'supervisor' ? await calcularAnalitica(hoy, dias) : null
 
@@ -88,6 +98,7 @@ export default async function Dashboard({
             <StatCard label="Tareas vencidas" value={tareasVencidas} color="red" />
             <StatCard label="Análisis de tanque (mes)" value={analisisMes} color="green" />
             <StatCard label="Muestras sin resultado" value={muestrasPendientes} color="mustard" />
+            <StatCard label="Insumos bajo mínimo" value={insumosFaltantes} color={insumosFaltantes > 0 ? 'red' : 'dark'} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

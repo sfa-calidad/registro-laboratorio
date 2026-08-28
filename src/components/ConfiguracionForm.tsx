@@ -24,6 +24,11 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
   const [newPerfil, setNewPerfil] = useState({ producto: '', parametroId: '', contexto: 'TANQUE' })
   const [especs, setEspecs] = useState<{id:number,producto:string,parametroId:number,min:number|null,max:number|null,parametro:{nombre:string,metodo:string|null,abreviatura:string|null}}[]>([])
   const [newEspec, setNewEspec] = useState({ producto: '', parametroId: '', min: '', max: '' })
+  const [ubicaciones, setUbicaciones] = useState<{id:number,nombre:string}[]>([])
+  const [newUbicacion, setNewUbicacion] = useState('')
+  const [sustancias, setSustancias] = useState<{id:number,nombre:string,gtin:string,unidad:string}[]>([])
+  const [newSustancia, setNewSustancia] = useState({ nombre: '', gtin: '', unidad: 'L' })
+  const [errorSustancia, setErrorSustancia] = useState('')
 
   useEffect(() => {
     fetch('/api/productos').then(r => r.json()).then(setProductos)
@@ -32,6 +37,8 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
     fetch('/api/laboratorios').then(r => r.json()).then(setLabs)
     fetch('/api/perfiles-producto').then(r => r.json()).then(setPerfiles)
     fetch('/api/especificaciones').then(r => r.json()).then(setEspecs)
+    fetch('/api/ubicaciones-insumo').then(r => r.json()).then(setUbicaciones)
+    fetch('/api/sustancias').then(r => r.json()).then(setSustancias)
     if (esSupervisor) {
       fetch('/api/contactos').then(r => r.json()).then(setContactos)
       fetch('/api/analistas').then(r => r.json()).then(setAnalistas)
@@ -224,6 +231,56 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
   async function deleteLab(id: number) {
     await fetch(`/api/laboratorios/${id}`, { method: 'DELETE' })
     setLabs(ls => ls.filter(l => l.id !== id))
+  }
+
+  async function addUbicacion() {
+    if (!newUbicacion.trim()) return
+    const res = await fetch('/api/ubicaciones-insumo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: newUbicacion }),
+    })
+    if (res.ok) {
+      const u = await res.json()
+      setUbicaciones(us => us.some(x => x.id === u.id) ? us : [...us, u])
+      setNewUbicacion('')
+    }
+  }
+
+  async function deleteUbicacion(id: number) {
+    await fetch(`/api/ubicaciones-insumo/${id}`, { method: 'DELETE' })
+    setUbicaciones(us => us.filter(u => u.id !== id))
+  }
+
+  async function addSustancia() {
+    setErrorSustancia('')
+    if (!newSustancia.nombre.trim() || !newSustancia.gtin.trim()) return
+    const res = await fetch('/api/sustancias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSustancia),
+    })
+    const d = await res.json().catch(() => ({}))
+    if (!res.ok) return setErrorSustancia(d.error || 'No se pudo agregar')
+    setSustancias(ss => [...ss, d].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+    setNewSustancia({ nombre: '', gtin: '', unidad: 'L' })
+  }
+
+  async function cambiarUnidadSustancia(id: number, unidad: string) {
+    setErrorSustancia('')
+    const res = await fetch(`/api/sustancias/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unidad }),
+    })
+    const d = await res.json().catch(() => ({}))
+    if (!res.ok) return setErrorSustancia(d.error || 'No se pudo cambiar la unidad')
+    setSustancias(ss => ss.map(s => s.id === id ? { ...s, unidad } : s))
+  }
+
+  async function deleteSustancia(id: number) {
+    await fetch(`/api/sustancias/${id}`, { method: 'DELETE' })
+    setSustancias(ss => ss.filter(s => s.id !== id))
   }
 
   async function addPerfil() {
@@ -514,6 +571,78 @@ export default function ConfiguracionForm({ values, esSupervisor }: { values: Re
           {labs.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin laboratorios</li>}
         </ul>
       </div>
+
+      {esSupervisor && (
+        <div className="bg-white rounded-xl shadow p-5 space-y-3">
+          <h3 className="font-semibold text-gray-700 border-b pb-2">Ubicaciones de insumos</h3>
+          <p className="text-xs text-gray-400">
+            Dónde se guarda cada cosa. Es un catálogo y no texto libre porque en la planilla los
+            mismos dieciséis lugares estaban escritos de diecinueve formas.
+          </p>
+          <div className="flex gap-2 items-center">
+            <input value={newUbicacion} onChange={(e) => setNewUbicacion(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addUbicacion())}
+              placeholder="Laboratorio - Puerta 24" className="flex-1 border rounded-lg px-3 py-2 text-base" />
+            <button type="button" onClick={addUbicacion}
+              className="bg-brand-green text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-green-dark">Agregar</button>
+          </div>
+          <ul className="space-y-1 max-h-48 overflow-y-auto">
+            {ubicaciones.map(u => (
+              <li key={u.id} className="flex justify-between items-center py-1 px-2 rounded hover:bg-gray-50 text-base">
+                <span>{u.nombre}</span>
+                <button onClick={() => deleteUbicacion(u.id)} className="text-red-400 hover:text-red-600 text-sm">Desactivar</button>
+              </li>
+            ))}
+            {ubicaciones.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin ubicaciones</li>}
+          </ul>
+        </div>
+      )}
+
+      {esSupervisor && (
+        <div className="bg-white rounded-xl shadow p-5 space-y-3">
+          <h3 className="font-semibold text-gray-700 border-b pb-2">Sustancias controladas (RENPRE)</h3>
+          <p className="text-xs text-gray-400">
+            Los precursores que se declaran, con su GTIN y la unidad en la que se informan. La
+            planilla dejaba la unidad en blanco en diez de las catorce filas, así que la que figura
+            acá puede haberse deducido al importar: conviene revisarla.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            <input value={newSustancia.nombre} onChange={(e) => setNewSustancia({ ...newSustancia, nombre: e.target.value })}
+              placeholder="Nombre" className="flex-1 min-w-32 border rounded-lg px-2 py-1.5 text-sm" />
+            <input value={newSustancia.gtin} onChange={(e) => setNewSustancia({ ...newSustancia, gtin: e.target.value })}
+              placeholder="GTIN" inputMode="numeric" className="flex-1 min-w-32 border rounded-lg px-2 py-1.5 text-sm" />
+            <select value={newSustancia.unidad} onChange={(e) => setNewSustancia({ ...newSustancia, unidad: e.target.value })}
+              className="border rounded-lg px-2 py-1.5 text-sm">
+              <option value="L">L</option>
+              <option value="kg">kg</option>
+            </select>
+            <button type="button" onClick={addSustancia}
+              className="bg-brand-green text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-brand-green-dark">Agregar</button>
+          </div>
+          {errorSustancia && (
+            <div className="rounded-lg bg-brand-mustard/10 border border-brand-mustard/40 px-3 py-2 text-sm text-brand-mustard-dark">
+              {errorSustancia}
+            </div>
+          )}
+          <ul className="space-y-1 max-h-56 overflow-y-auto">
+            {sustancias.map(s => (
+              <li key={s.id} className="flex justify-between items-center gap-2 py-1 px-2 rounded hover:bg-gray-50 text-sm">
+                <span className="flex-1">
+                  <span className="font-medium text-gray-700">{s.nombre}</span>
+                  <span className="text-gray-400 font-mono text-xs"> · {s.gtin}</span>
+                </span>
+                <select value={s.unidad} onChange={(e) => cambiarUnidadSustancia(s.id, e.target.value)}
+                  className="border rounded-lg px-2 py-1 text-xs">
+                  <option value="L">L</option>
+                  <option value="kg">kg</option>
+                </select>
+                <button onClick={() => deleteSustancia(s.id)} className="text-red-400 hover:text-red-600 text-sm">Desactivar</button>
+              </li>
+            ))}
+            {sustancias.length === 0 && <li className="text-gray-400 text-sm py-1 px-2">Sin sustancias</li>}
+          </ul>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow p-5 space-y-3">
         <h3 className="font-semibold text-gray-700 border-b pb-2">Perfiles por producto</h3>

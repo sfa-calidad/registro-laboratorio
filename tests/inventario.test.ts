@@ -12,6 +12,7 @@ import {
   redondear,
   resumenPeriodo,
   sumarResumenes,
+  unidadCompatible,
   RESUMEN_VACIO,
 } from '@/lib/inventario'
 
@@ -78,6 +79,19 @@ test('lo que no se cuenta en el laboratorio nunca avisa de faltante', () => {
   // no significa que falten.
   assert.equal(estadoInsumo({ stock: 0, stockMinimo: null, seControla: false }), 'NO_CONTROLADO')
   assert.equal(estadoInsumo({ stock: 0, stockMinimo: 5, seControla: false }), 'NO_CONTROLADO')
+})
+
+test('no se puede declarar en litros algo que se mide en kilos', () => {
+  // Sin densidad esa conversión no existe, y el resultado iría a una
+  // declaración jurada.
+  assert.equal(unidadCompatible('kg', 'kg'), true)
+  assert.equal(unidadCompatible('L', 'L'), true)
+  assert.equal(unidadCompatible('kg', 'L'), false)
+  assert.equal(unidadCompatible('L', 'kg'), false)
+  // Sin unidad cargada se deja pasar: la declaración lo muestra como incompleto
+  // en vez de sumar algo inventado.
+  assert.equal(unidadCompatible(null, 'L'), true)
+  assert.equal(unidadCompatible(undefined, 'kg'), true)
 })
 
 // --- Lectura de la planilla --------------------------------------------------
