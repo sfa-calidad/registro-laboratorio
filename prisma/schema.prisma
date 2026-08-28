@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Ingreso {
-  id            Int                   @id @default(autoincrement())
+  id            Int                    @id @default(autoincrement())
   hrRemito      String
   fecha         DateTime
   origen        String
@@ -18,7 +18,7 @@ model Ingreso {
   precinto      String?
   operador      String?
   fechaAnalisis DateTime?
-  createdAt     DateTime              @default(now())
+  createdAt     DateTime               @default(now())
   rotulos       Rotulo[]
   analisis      AnalisisMateriaPrima[]
 
@@ -279,7 +279,7 @@ model MuestraEnsayo {
 // como en la planilla de Excel, donde un camión con varias cisternas es un solo
 // bloque de resultados.
 model AnalisisMateriaPrima {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   // Un análisis por producto del ingreso: un camión de borra con sobrenadante
   // de aceite se carga con producto1 y producto2, y cada uno se informa aparte.
   ingresoId   Int
@@ -318,4 +318,95 @@ model ResultadoMateriaPrima {
 
   @@unique([analisisId, parametroId])
   @@index([analisisId])
+}
+
+// --- Inventario de insumos --------------------------------------------------
+// Reemplaza las dos planillas de Excel (reactivos y material de vidrio). La
+// diferencia de fondo con la planilla: el stock no es un número que se pisa,
+// es el saldo de un registro de movimientos. Quién, cuándo y por qué quedan.
+
+// Dónde se guarda. Catálogo y no texto libre: en la planilla los ~16 lugares
+// reales estaban escritos de 19 formas ("Heladera" y "heladera", "Puerta " sin
+// número, "Pañol/Labo  - Armario" con doble espacio).
+model UbicacionInsumo {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique
+  orden  Int     @default(0)
+  activo Boolean @default(true)
+}
+
+// Sustancia controlada por RENPRE/SEDRONAR. Es una entidad propia y no una
+// marca sobre el insumo porque la relación no es uno a uno: "Metanol" se
+// declara una sola vez aunque en el laboratorio haya un frasco P.A. y otro
+// grado HPLC, y el NaOH 50% a granel (2435 L) se declara sin ser un insumo de
+// laboratorio.
+model SustanciaControlada {
+  id      Int      @id @default(autoincrement())
+  nombre  String   @unique
+  gtin    String   @unique
+  unidad  String // "L" | "kg" — la unidad en la que se declara
+  activo  Boolean  @default(true)
+  insumos Insumo[]
+}
+
+model Insumo {
+  id                 Int                  @id @default(autoincrement())
+  nombre             String
+  categoria          String // REACTIVO | VIDRIO
+  // Cómo viene el envase, tal como se lee ("1 L", "250 g"). Es cosmética: la
+  // que entra en las cuentas es contenidoPorEnvase. No es anulable porque
+  // forma parte del único, y en Postgres dos NULL nunca chocan entre sí: con
+  // una columna anulable se podrían cargar dos "Acetona" sin presentación.
+  presentacion       String               @default("")
+  ubicacion          String?
+  // Saldo en envases. NUNCA se escribe directo: solo lo mueve la API de
+  // movimientos, que en el mismo paso deja el asiento que lo explica.
+  stock              Float                @default(0)
+  stockMinimo        Float?
+  // Hay ítems que no se cuentan en el laboratorio: se piden a pañol (iban con
+  // "-" en la planilla) o nunca se contaron (celda vacía). Excel no distinguía
+  // ninguno de los dos casos de un cero. No avisan de faltante hasta que
+  // alguien los cuenta por primera vez.
+  seControla         Boolean              @default(true)
+  // Cuánto hay en un envase, en la unidad de la sustancia. Solo se usa para la
+  // declaración de precursores: 5 envases de "(x 500ml)" de una sustancia que
+  // se declara en litros son 5 × 0,5 = 2,5 L.
+  contenidoPorEnvase Float?
+  // "L" | "kg": en qué unidad está expresado el contenido. Va aparte para poder
+  // rechazar el enlace de un insumo medido en kg a una sustancia que se declara
+  // en litros — sin densidad, esa suma no existe.
+  unidadContenido    String?
+  sustanciaId        Int?
+  sustancia          SustanciaControlada? @relation(fields: [sustanciaId], references: [id])
+  observacion        String?
+  // Cuándo se contó por última vez, aunque no haya dado diferencia: "lo
+  // contamos y estaba bien" también es información, y un ajuste no la deja.
+  ultimoRecuento     DateTime?
+  activo             Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  movimientos        MovimientoInsumo[]
+
+  @@unique([nombre, presentacion])
+  @@index([categoria, nombre])
+}
+
+model MovimientoInsumo {
+  id          Int      @id @default(autoincrement())
+  insumoId    Int
+  insumo      Insumo   @relation(fields: [insumoId], references: [id], onDelete: Cascade)
+  tipo        String // ENTRADA | CONSUMO | BAJA | AJUSTE
+  // Siempre positiva; el signo lo pone el tipo. En un AJUSTE es lo contado.
+  cantidad    Float
+  // El saldo antes y después quedan grabados en el asiento: así el historial se
+  // lee sin recalcular, y la declaración de precursores puede reconstruir el
+  // stock de cualquier fecha sin depender del orden en que se cargó cada cosa.
+  stockPrevio Float
+  stockNuevo  Float
+  motivo      String?
+  analista    String?
+  fecha       DateTime // fecha-calendario: cuándo pasó, no cuándo se cargó
+  createdAt   DateTime @default(now())
+
+  @@index([insumoId, id])
+  @@index([fecha, id])
 }

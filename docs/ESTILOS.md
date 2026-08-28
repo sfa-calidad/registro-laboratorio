@@ -177,8 +177,10 @@ La grilla del formulario dentro del modal: `grid grid-cols-1 md:grid-cols-2 gap-
 ### Pastillas
 
 Redondas, 12 px, texto blanco sobre color. Las de estado se calculan en una sola
-función (`badgeEstado` en `MuestrasList.tsx`) para que ninguna pantalla invente
-una variante.
+función por módulo —`badgeEstado` en `MuestrasList.tsx`, `CLASE_ESTADO` en
+`InsumosList.tsx`— para que ninguna pantalla invente una variante. El estado del
+insumo sale de `estadoInsumo()` en `src/lib/inventario.ts`, así que la lista, el
+dashboard y la exportación no pueden discrepar sobre qué está faltando.
 
 ```tsx
 className="text-xs px-2 py-0.5 rounded-full bg-brand-green text-white"      // con resultado

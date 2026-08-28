@@ -95,6 +95,39 @@ copiar de ahí en vez de inventar una variante.
   fecha: es la dilución de 3 ml de Bio en 27 ml de metanol para detectar aceite
   (transparente = OK, precipita = no OK). No "corregir" ni parsear estos nombres.
 
+- **Inventario de insumos**: reemplaza las dos planillas de stock (reactivos y
+  material de vidrio, en `datos/`). **El stock no es un número que se pisa: es
+  el saldo de `MovimientoInsumo`.** Solo la API de movimientos escribe
+  `Insumo.stock`, y en la misma transacción deja el asiento con el saldo previo
+  y el nuevo — por eso el historial se lee sin recalcular y la declaración de
+  precursores puede reconstruir el stock de cualquier fecha. Las transacciones
+  van en `Serializable`: leer el saldo y escribirlo son dos pasos, y sin eso dos
+  analistas descontando el mismo frasco a la vez leen lo mismo y un consumo se
+  pierde (el error que comete la planilla compartida). Un CONSUMO o una BAJA no
+  pueden dejar el stock negativo; para corregir un número mal está el AJUSTE,
+  que fija el saldo en vez de sumar y **exige motivo**. Las reglas puras están
+  en `src/lib/inventario.ts` y la declaración en `src/lib/precursores.ts`.
+- **`seControla` no es lo mismo que stock cero**: la planilla mezclaba números,
+  `-` (se pide a pañol) y celdas vacías (nunca se contó). Los dos últimos entran
+  con `seControla: false` y no avisan de faltante; el primer recuento los pone
+  bajo control. El recuento graba `ultimoRecuento` aunque no haya diferencia:
+  "lo contamos y estaba bien" también es información.
+- **Precursores (RENPRE/SEDRONAR)**: `SustanciaControlada` es una entidad propia
+  y no una marca sobre el insumo, porque la relación no es uno a uno (un mismo
+  metanol con dos grados se declara una sola vez, y el NaOH a granel se declara
+  sin ser un insumo de laboratorio). El enlace insumo→sustancia **se elige a
+  mano**: los nombres y los números de las dos hojas del Excel no coinciden, y
+  un enlace adivinado terminaría en una declaración jurada.
+  `contenidoPorEnvase` va en la unidad de la sustancia, y la API rechaza enlazar
+  un insumo medido en kg a una sustancia que se declara en litros.
+- **La foto inicial del inventario** se genera con
+  `scripts/generar-insumos-seed.ts` (reusa `leerXlsx` de
+  `importar-planillas.ts`) y el resultado se commitea en
+  `prisma/datos/insumos.ts`. `prisma/seed.ts` lo carga **solo si la tabla está
+  vacía**: las ubicaciones y las sustancias sí son datos base y se reponen en
+  cada deploy, pero los insumos no, porque volver a cargarlos pisaría el stock
+  que contó el laboratorio.
+
 ## Notas de mantenimiento
 
 - **Deploy**: Vercel despliega solo al mergear a la rama por defecto

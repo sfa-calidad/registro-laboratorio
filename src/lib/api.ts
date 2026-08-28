@@ -15,6 +15,14 @@ export function respuestaDeErrorPrisma(e: unknown): NextResponse | null {
       return NextResponse.json({ error: 'Ya existe un registro con esos datos' }, { status: 409 })
     case 'P2003': // lo referencia otro registro
       return NextResponse.json({ error: 'No se puede eliminar: hay registros que dependen de este' }, { status: 409 })
+    case 'P2034': // dos transacciones tocaron lo mismo a la vez
+      // Pasa cuando dos personas registran un movimiento del mismo insumo en el
+      // mismo instante. Postgres aborta una: reintentarla es correcto, y es
+      // preferible a que una de las dos se pierda en silencio.
+      return NextResponse.json(
+        { error: 'Otra persona guardó un cambio sobre lo mismo al mismo tiempo. Probá de nuevo.' },
+        { status: 409 },
+      )
     default:
       return null
   }

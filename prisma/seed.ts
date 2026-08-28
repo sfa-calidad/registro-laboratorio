@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { INSUMOS, SUSTANCIAS, UBICACIONES } from './datos/insumos'
 
 const prisma = new PrismaClient()
 
@@ -418,6 +419,58 @@ async function main() {
   ]
   for (const nombre of lugaresMuestreo) {
     await prisma.lugarMuestreo.upsert({ where: { nombre }, update: {}, create: { nombre } })
+  }
+
+  // --- Inventario de insumos -------------------------------------------------
+  // Ubicaciones y sustancias son datos base: se reponen en cada deploy, como los
+  // productos o los laboratorios.
+  for (let i = 0; i < UBICACIONES.length; i++) {
+    await prisma.ubicacionInsumo.upsert({
+      where: { nombre: UBICACIONES[i] },
+      update: { orden: i },
+      create: { nombre: UBICACIONES[i], orden: i },
+    })
+  }
+  for (const s of SUSTANCIAS) {
+    // Por GTIN y no por nombre: el GTIN es el código con el que la sustancia se
+    // declara, y dos filas de la planilla se llaman igual siendo distintas.
+    // El nombre y la unidad no se pisan: si el supervisor los corrigió en
+    // Configuración, la corrección vale más que lo que decía la planilla.
+    await prisma.sustanciaControlada.upsert({
+      where: { gtin: s.gtin },
+      update: {},
+      create: { nombre: s.nombre, gtin: s.gtin, unidad: s.unidad },
+    })
+  }
+
+  // Los insumos son la foto inicial, no datos base: entran una sola vez. De ahí
+  // en adelante el stock lo mueven los movimientos, y volver a cargarlos en cada
+  // deploy pisaría lo que el laboratorio contó.
+  const insumosCargados = await prisma.insumo.count()
+  if (insumosCargados === 0) {
+    // En lotes y no de a uno: son 187 insumos más un asiento por cada uno con
+    // stock, y el seed corre en cada deploy contra Neon. De a uno serían más de
+    // trescientas idas y vueltas por red dentro del build.
+    await prisma.insumo.createMany({ data: INSUMOS })
+
+    const creados = await prisma.insumo.findMany({ select: { id: true, stock: true } })
+    // El stock inicial también deja su asiento: si no, el primer número del
+    // inventario sería el único que nadie podría explicar.
+    const fecha = new Date()
+    await prisma.movimientoInsumo.createMany({
+      data: creados
+        .filter((i) => i.stock !== 0)
+        .map((i) => ({
+          insumoId: i.id,
+          tipo: 'ENTRADA',
+          cantidad: i.stock,
+          stockPrevio: 0,
+          stockNuevo: i.stock,
+          motivo: 'Carga inicial desde la planilla de Excel',
+          fecha,
+        })),
+    })
+    console.log(`Inventario: ${INSUMOS.length} insumos cargados`)
   }
 
   console.log('Seed completado')
