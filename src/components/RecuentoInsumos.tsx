@@ -88,14 +88,28 @@ export default function RecuentoInsumos({
     const filas = ubicacion ? delLugar : insumos
     if (filas.length === 0) return setError('No hay insumos para imprimir')
 
-    const w = window.open('', '_blank')
+    // Con tamaño explícito: sin él, la app de escritorio abre la ventana hija
+    // con lo que le parece, y la hoja se arma sobre un ancho impredecible.
+    const w = window.open('', '_blank', 'width=1000,height=900')
     if (!w) return setError('El navegador bloqueó la ventana de impresión')
     w.document.write(
-      buildPlanillaHTML(filas, { empresa, fecha: formatDateOnly(`${fecha}T00:00:00.000Z`), aCiegas }),
+      buildPlanillaHTML(filas, {
+        empresa,
+        fecha: formatDateOnly(`${fecha}T00:00:00.000Z`),
+        aCiegas,
+        ordenUbicaciones: ubicaciones.map((u) => u.nombre),
+      }),
     )
     w.document.close()
     w.focus()
-    setTimeout(() => w.print(), 400)
+
+    // Se espera a que el documento esté armado en vez de contar 400 ms: la
+    // planilla completa son 18 hojas, y si el diálogo se abría antes de que el
+    // navegador terminara de aplicar el CSS, el `@page { size: A4 }` no estaba
+    // puesto todavía y salía en el tamaño de papel por defecto de la impresora.
+    const abrirDialogo = () => w.print()
+    if (w.document.readyState === 'complete') abrirDialogo()
+    else w.addEventListener('load', abrirDialogo, { once: true })
   }
 
   async function guardar() {

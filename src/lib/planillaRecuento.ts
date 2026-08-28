@@ -22,6 +22,11 @@ export type OpcionesPlanilla = {
   // confirmarlo en vez de contar: es el sesgo clásico del control de inventario.
   // Se decide al imprimir según sea un control de rutina o uno en serio.
   aCiegas: boolean
+  // En qué orden salen las hojas. Es el del catálogo de ubicaciones, que sigue
+  // el recorrido físico. Sin esto las hojas salían en el orden alfabético de
+  // los insumos, y la recorrida quedaba en zigzag: Armario, Pañol, Puerta 24,
+  // Pañol otra vez, Puerta 23...
+  ordenUbicaciones?: string[]
 }
 
 const COLOR_TEXTO = '#2b332a'
@@ -56,16 +61,27 @@ function seccion(ubicacion: string, filas: FilaPlanilla[], opciones: OpcionesPla
 }
 
 export function buildPlanillaHTML(filas: FilaPlanilla[], opciones: OpcionesPlanilla): string {
-  // Agrupado por ubicación, en el orden en que vienen las filas (el que fija el
-  // catálogo), y lo que no tiene ubicación al final.
+  const SIN_UBICACION = 'Sin ubicación'
+
   const porUbicacion = new Map<string, FilaPlanilla[]>()
   for (const f of filas) {
-    const clave = f.ubicacion || 'Sin ubicación'
+    const clave = f.ubicacion || SIN_UBICACION
     if (!porUbicacion.has(clave)) porUbicacion.set(clave, [])
     porUbicacion.get(clave)!.push(f)
   }
 
+  // Las hojas salen en el orden del catálogo, que es el del recorrido. Lo que no
+  // figure en el catálogo va después, y lo que no tiene ubicación al final de
+  // todo: es lo que hay que ir a buscar, no una parada del recorrido.
+  const orden = opciones.ordenUbicaciones ?? []
+  const posicion = (u: string) => {
+    if (u === SIN_UBICACION) return Number.MAX_SAFE_INTEGER
+    const i = orden.indexOf(u)
+    return i === -1 ? Number.MAX_SAFE_INTEGER - 1 : i
+  }
+
   const secciones = [...porUbicacion.entries()]
+    .sort(([a], [b]) => posicion(a) - posicion(b) || a.localeCompare(b, 'es'))
     .map(([ubicacion, suyas]) => seccion(ubicacion, suyas, opciones))
     .join('')
 
@@ -81,35 +97,51 @@ export function buildPlanillaHTML(filas: FilaPlanilla[], opciones: OpcionesPlani
   <meta name="color-scheme" content="light">
   <title>Recuento de insumos</title>
   <style>
-    @page { size: A4; margin: 12mm; }
+    /* Todo el papel se mide en milímetros y puntos, no en píxeles. Un píxel de
+       CSS depende del escalado de pantalla, y en la app de escritorio —una
+       ventana de Electron sobre Windows al 125 % o 150 %— la misma hoja salía
+       impresa gigante o diminuta. El milímetro no se mueve. */
+    @page { size: A4 portrait; margin: 12mm; }
     * { box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; color: ${COLOR_TEXTO}; background: #fff; margin: 0; padding: 20px; }
-    header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid ${COLOR_VERDE}; padding-bottom: 10px; margin-bottom: 6px; }
-    .empresa { font-size: 18px; font-weight: bold; }
-    .titulo { font-size: 12px; color: ${COLOR_SUAVE}; margin-top: 2px; }
-    .fecha { font-size: 12px; color: ${COLOR_SUAVE}; }
-    .nota { font-size: 11px; color: ${COLOR_SUAVE}; margin-bottom: 14px; }
+    html, body { width: 186mm; }
+    body { font-family: Arial, Helvetica, sans-serif; color: ${COLOR_TEXTO}; background: #fff; margin: 0 auto; padding: 0; font-size: 9pt; }
+    header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 0.8mm solid ${COLOR_VERDE}; padding-bottom: 2.5mm; margin-bottom: 1.5mm; }
+    .empresa { font-size: 13pt; font-weight: bold; }
+    .titulo { font-size: 9pt; color: ${COLOR_SUAVE}; margin-top: 0.5mm; }
+    .fecha { font-size: 9pt; color: ${COLOR_SUAVE}; }
+    .nota { font-size: 8pt; color: ${COLOR_SUAVE}; margin-bottom: 3.5mm; }
     /* Cada puerta empieza en su hoja: la recorrida se hace de a una. */
     section { break-before: page; page-break-before: always; }
     section:first-of-type { break-before: auto; page-break-before: auto; }
-    h2 { font-size: 14px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .05em; }
-    .cuenta { font-size: 11px; color: ${COLOR_SUAVE}; font-weight: normal; text-transform: none; letter-spacing: 0; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th { text-align: left; background: #f9fafb; color: ${COLOR_SUAVE}; font-weight: bold; padding: 6px 8px; border-bottom: 2px solid ${COLOR_LINEA}; }
-    td { padding: 0 8px; border-bottom: 1px solid ${COLOR_LINEA}; height: 26px; }
+    h2 { font-size: 11pt; margin: 0 0 2mm; text-transform: uppercase; letter-spacing: .05em; }
+    .cuenta { font-size: 8pt; color: ${COLOR_SUAVE}; font-weight: normal; text-transform: none; letter-spacing: 0; }
+    table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 9pt; }
+    th { text-align: left; background: #f9fafb; color: ${COLOR_SUAVE}; font-weight: bold; padding: 1.5mm 2mm; border-bottom: 0.5mm solid ${COLOR_LINEA}; }
+    td { padding: 0 2mm; border-bottom: 0.2mm solid ${COLOR_LINEA}; height: 7mm; overflow-wrap: anywhere; }
     /* Alto fijo y no un input: es para escribir a mano con birome. */
-    th.num, td.num { text-align: right; width: 70px; white-space: nowrap; }
-    th.cont, td.cont { width: 80px; background: #fcfcfc; }
-    th.obs, td.obs { width: 150px; }
+    th.num, td.num { text-align: right; width: 18mm; white-space: nowrap; }
+    th.cont, td.cont { width: 22mm; background: #fcfcfc; }
+    th.obs, td.obs { width: 40mm; }
     .pres { color: ${COLOR_SUAVE}; font-weight: normal; }
     tr { break-inside: avoid; page-break-inside: avoid; }
     thead { display: table-header-group; }
-    .firma { display: flex; gap: 40px; margin-top: 22px; font-size: 11px; color: ${COLOR_SUAVE}; }
-    .firma span { border-bottom: 1px solid ${COLOR_LINEA}; padding-bottom: 2px; min-width: 200px; }
-    @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    .firma { display: flex; gap: 10mm; margin-top: 6mm; font-size: 8pt; color: ${COLOR_SUAVE}; }
+    .firma span { border-bottom: 0.2mm solid ${COLOR_LINEA}; padding-bottom: 0.5mm; min-width: 55mm; }
+    /* Barra para revisar antes de gastar dieciocho hojas. No se imprime. */
+    .barra { position: sticky; top: 0; background: ${COLOR_TEXTO}; color: #fff; padding: 3mm; margin-bottom: 4mm; display: flex; justify-content: space-between; align-items: center; gap: 4mm; font-size: 9pt; }
+    .barra button { font: inherit; font-weight: bold; background: ${COLOR_VERDE}; color: #fff; border: 0; border-radius: 1.5mm; padding: 2mm 4mm; cursor: pointer; }
+    @media print {
+      .barra { display: none; }
+      html, body { width: auto; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
   </style>
 </head>
 <body>
+  <div class="barra">
+    <span>${porUbicacion.size} hoja(s), ${filas.length} ítems. Revisá antes de imprimir.</span>
+    <button type="button" onclick="window.print()">Imprimir</button>
+  </div>
   <header>
     <div>
       <div class="empresa">${escaparXml(opciones.empresa)}</div>
