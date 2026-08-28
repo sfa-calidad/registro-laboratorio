@@ -1,9 +1,12 @@
-// GENERADO por scripts/generar-insumos-seed.ts — no editar a mano.
+// Foto inicial del inventario. Extraída una sola vez de las dos planillas de
+// Excel que este módulo reemplaza ("Stock Reactivos Actual 30-07-2025.xlsx" y
+// "Stock Material de vidrio 21-08-2024.xlsx"), ya normalizada: el tamaño del
+// envase y el vencimiento venían escritos dentro del nombre, y la cantidad
+// mezclaba números con "-" (se pide a pañol) y celdas vacías (nunca se contó).
 //
-// Sale de las dos planillas de datos/: "Stock Reactivos Actual 30-07-2025.xlsx"
-// y "Stock Material de vidrio 21-08-2024.xlsx". Es la foto con la que arranca el
-// inventario; de ahí en adelante el stock lo mueven los movimientos y no este
-// archivo (prisma/seed.ts solo lo carga si la tabla está vacía).
+// De acá en adelante el stock lo mueven los movimientos, no este archivo:
+// prisma/seed.ts solo lo carga si la tabla está vacía. Editarlo a mano no
+// cambia nada en una base que ya tiene datos.
 
 export type InsumoSeed = {
   nombre: string

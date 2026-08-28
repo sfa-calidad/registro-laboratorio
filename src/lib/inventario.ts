@@ -106,70 +106,6 @@ export function unidadCompatible(
   return !unidadInsumo || unidadInsumo === unidadSustancia
 }
 
-// --- Lectura de las planillas de Excel ---------------------------------------
-
-// Cuánto entra en un envase, normalizado a litros o kilos. Los gramos y los
-// mililitros se convierten acá y no al usar el dato: así el número guardado ya
-// está en la unidad en la que se declara.
-const FACTOR_UNIDAD: Record<string, { base: 'L' | 'kg'; factor: number }> = {
-  lt: { base: 'L', factor: 1 },
-  l: { base: 'L', factor: 1 },
-  ml: { base: 'L', factor: 0.001 },
-  kg: { base: 'kg', factor: 1 },
-  g: { base: 'kg', factor: 0.001 },
-  mg: { base: 'kg', factor: 0.000001 },
-}
-
-// Cómo se escribe cada unidad al mostrarla (la planilla mezcla "lt", "Kg", "L").
-const UNIDAD_MOSTRADA: Record<string, string> = {
-  lt: 'L', l: 'L', ml: 'ml', kg: 'kg', g: 'g', mg: 'mg',
-}
-
-// El tamaño del envase viene metido en el nombre: "(x 1lt)", "(x 250g)",
-// "(unid. 0,05L)", "(5L)". El paréntesis tiene que empezar con el número (o con
-// "x"/"unid.") para no confundirlo con los otros paréntesis del nombre, que son
-// muchos: "(Pro Analisis)", "(Karl Fischer)", "(Cicarelli)", "(II)".
-const RE_PRESENTACION = /\(\s*(?:x\s*|unid\.?\s*)?(\d+(?:[.,]\d+)?)\s*(lt|ml|mg|kg|l|g)\s*\)/i
-
-// La planilla anota el vencimiento dentro del nombre, que es justamente lo que
-// hace que no se pueda ordenar ni filtrar por él.
-const RE_VENCIDO = /\s*\((vencidos?)\)/i
-
-export type NombreDePlanilla = {
-  nombre: string
-  presentacion: string
-  contenido: number | null
-  unidadContenido: 'L' | 'kg' | null
-  nota: string | null
-}
-
-export function parseNombreDePlanilla(raw: string): NombreDePlanilla {
-  let nombre = raw.replace(/\s+/g, ' ').trim()
-  let nota: string | null = null
-
-  if (RE_VENCIDO.test(nombre)) {
-    nombre = nombre.replace(RE_VENCIDO, '').trim()
-    nota = 'Marcado como vencido en la planilla original'
-  }
-
-  const m = nombre.match(RE_PRESENTACION)
-  if (!m) {
-    return { nombre, presentacion: '', contenido: null, unidadContenido: null, nota }
-  }
-
-  const numero = Number(m[1].replace(',', '.'))
-  const unidad = m[2].toLowerCase()
-  const { base, factor } = FACTOR_UNIDAD[unidad]
-
-  return {
-    nombre: nombre.replace(RE_PRESENTACION, '').replace(/\s+/g, ' ').trim(),
-    presentacion: `${formatearNumero(numero)} ${UNIDAD_MOSTRADA[unidad]}`,
-    contenido: redondear(numero * factor, 6),
-    unidadContenido: base,
-    nota,
-  }
-}
-
 // Coma decimal, sin ceros de más: 1 → "1", 0.05 → "0,05".
 export function formatearNumero(n: number): string {
   return String(redondear(n, 6)).replace('.', ',')
@@ -191,29 +127,6 @@ export function normalizarUbicacion(raw: string): string {
   return ALIAS_UBICACION[limpio.toLowerCase()] ?? limpio
 }
 
-// La columna Cantidad mezcla tres cosas que Excel no distingue: un número, un
-// "-" (se pide a pañol, no se cuenta en el laboratorio) y la celda vacía (nunca
-// se contó). Las dos últimas no son un cero.
-export type CantidadDePlanilla = {
-  stock: number
-  seControla: boolean
-  nota: string | null
-}
-
-export function parseCantidadPlanilla(raw: string): CantidadDePlanilla {
-  const v = (raw ?? '').trim()
-  if (v === '-' || v === '—') {
-    return { stock: 0, seControla: false, nota: 'Se pide a pañol; no se cuenta en el laboratorio' }
-  }
-  if (v === '') {
-    return { stock: 0, seControla: false, nota: 'Sin cantidad en la planilla original' }
-  }
-  const n = Number(v.replace(',', '.'))
-  if (!Number.isFinite(n)) {
-    return { stock: 0, seControla: false, nota: `Cantidad ilegible en la planilla: "${v}"` }
-  }
-  return { stock: redondear(n), seControla: true, nota: null }
-}
 
 // --- Resumen de un período (declaración de precursores) ----------------------
 
