@@ -107,6 +107,21 @@ copiar de ahí en vez de inventar una variante.
   pueden dejar el stock negativo; para corregir un número mal está el AJUSTE,
   que fija el saldo en vez de sumar y **exige motivo**. Las reglas puras están
   en `src/lib/inventario.ts` y la declaración en `src/lib/precursores.ts`.
+- **La alerta de stock bajo termina en el tablero**: cuando un movimiento, un
+  recuento o la carga de un mínimo dejan un insumo en el mínimo o por debajo,
+  `avisarSiFaltaStock` (`src/lib/alertaStock.ts`) crea sola una tarea "Reponer
+  ...". Va al Kanban y no a un cartel dentro de insumos porque el tablero es lo
+  que se mira todos los días, y un cartel en insumos solo lo ve quien ya entró a
+  mirar. Se llama **fuera** de la transacción del movimiento y se traga sus
+  errores: lo que no puede perderse es el consumo. La tarea se deduplica por
+  `Tarea.insumoId` —y no por el título, que se puede editar desde el tablero—,
+  así un mismo frasco no genera una tarea por cada consumo. **No se completa
+  sola** cuando el stock se repone: cerrar una tarea exige firma, y firmar por
+  alguien no es algo que deba hacer el sistema.
+- **La planilla de recuento** (`src/lib/planillaRecuento.ts`) sale en A4 con la
+  misma técnica que los informes, una hoja por ubicación. Por defecto va **a
+  ciegas**, sin el stock del sistema: si el número está impreso, quien cuenta
+  tiende a confirmarlo en vez de contar.
 - **`seControla` no es lo mismo que stock cero**: la planilla mezclaba números,
   `-` (se pide a pañol) y celdas vacías (nunca se contó). Los dos últimos entran
   con `seControla: false` y no avisan de faltante; el primer recuento los pone

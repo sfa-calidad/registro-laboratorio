@@ -114,6 +114,12 @@ model Tarea {
   archivadaAt      DateTime?
   checklist        String?
   mostrarChecklist Boolean       @default(false)
+  // De qué insumo salió, cuando la tarea la creó sola la alerta de stock bajo.
+  // Se guarda el id y no se compara por título porque el título se puede editar
+  // desde el tablero, y sin una referencia firme la alerta volvería a crear la
+  // misma tarea en cada consumo.
+  insumoId         Int?
+  insumo           Insumo?       @relation(fields: [insumoId], references: [id])
 
   @@index([columnaId, orden])
   @@index([archivadaAt])
@@ -385,6 +391,7 @@ model Insumo {
   activo             Boolean              @default(true)
   createdAt          DateTime             @default(now())
   movimientos        MovimientoInsumo[]
+  tareas             Tarea[]
 
   @@unique([nombre, presentacion])
   @@index([categoria, nombre])
