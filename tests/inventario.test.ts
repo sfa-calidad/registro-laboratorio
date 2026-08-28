@@ -7,8 +7,6 @@ import {
   escalarResumen,
   estadoInsumo,
   normalizarUbicacion,
-  parseCantidadPlanilla,
-  parseNombreDePlanilla,
   redondear,
   resumenPeriodo,
   sumarResumenes,
@@ -94,76 +92,7 @@ test('no se puede declarar en litros algo que se mide en kilos', () => {
   assert.equal(unidadCompatible(undefined, 'kg'), true)
 })
 
-// --- Lectura de la planilla --------------------------------------------------
-
-test('saca el tamaño del envase de adentro del nombre', () => {
-  assert.deepEqual(parseNombreDePlanilla('Acido Clorhidrico 37% (x 1lt)'), {
-    nombre: 'Acido Clorhidrico 37%',
-    presentacion: '1 L',
-    contenido: 1,
-    unidadContenido: 'L',
-    nota: null,
-  })
-})
-
-test('los gramos y los mililitros se guardan en kilos y litros', () => {
-  // El número guardado tiene que estar ya en la unidad en la que se declara: un
-  // pote de 250 g es 0,25 kg.
-  const potes = parseNombreDePlanilla('Ioduro de Potasio (x 250g)')
-  assert.equal(potes.contenido, 0.25)
-  assert.equal(potes.unidadContenido, 'kg')
-  assert.equal(potes.presentacion, '250 g', 'se muestra como está escrito en el envase')
-
-  const medioLitro = parseNombreDePlanilla('HYDRANAL COULOMAT OIL - FLUKA (x 500ml)')
-  assert.equal(medioLitro.contenido, 0.5)
-  assert.equal(medioLitro.unidadContenido, 'L')
-
-  const catolito = parseNombreDePlanilla('HYDRANAL (Karl Fischer) Catolito (unid. 0,05L)')
-  assert.equal(catolito.contenido, 0.05)
-  assert.equal(catolito.nombre, 'HYDRANAL (Karl Fischer) Catolito', 'el método no es una presentación')
-
-  assert.equal(parseNombreDePlanilla('Solución hidróxido de sodio 30-32% (5L)').contenido, 5)
-  assert.equal(parseNombreDePlanilla('Hidroxido de Sodio (Pro Analisis)(5Kg)').contenido, 5)
-  assert.equal(parseNombreDePlanilla('Almidon Soluble Pro Analisis (x100g)').contenido, 0.1)
-  assert.equal(parseNombreDePlanilla('Biftalato de potasio (x80g)').contenido, 0.08)
-})
-
-test('no confunde con una presentación los otros paréntesis del nombre', () => {
-  // Los nombres están llenos de paréntesis que no son tamaños: el grado, el
-  // método, la marca, el estado de oxidación.
-  for (const nombre of [
-    'Buffer 4 (Cicarelli)',
-    'Acido Perclorico 70%',
-    'Dichiloromethane (ampolla)',
-    'Tamis molecular 0,3mm (K.F)(Frasco)',
-    'Water standard 0,01% (Cajax10ampollas0,1mg)',
-  ]) {
-    const r = parseNombreDePlanilla(nombre)
-    assert.equal(r.presentacion, '', `${nombre}: no debería tener presentación`)
-    assert.equal(r.contenido, null)
-    assert.equal(r.nombre, nombre, 'el nombre queda entero')
-  }
-})
-
-test('el "(II)" del hierro no es un tamaño pero el "(x 1Kg)" sí', () => {
-  const r = parseNombreDePlanilla('Sulfato Heptahidrato Hierro (II) (x 1Kg)')
-  assert.equal(r.nombre, 'Sulfato Heptahidrato Hierro (II)')
-  assert.equal(r.contenido, 1)
-  assert.equal(r.unidadContenido, 'kg')
-})
-
-test('el vencimiento sale del nombre y queda como nota', () => {
-  // En la planilla el vencimiento está escrito adentro del nombre, que es
-  // justamente lo que impide ordenar o filtrar por él.
-  const metanol = parseNombreDePlanilla('Metanol  Pro Análisis (Vencido)(x 1lt)')
-  assert.equal(metanol.nombre, 'Metanol Pro Análisis')
-  assert.equal(metanol.presentacion, '1 L')
-  assert.equal(metanol.nota, 'Marcado como vencido en la planilla original')
-
-  const almidon = parseNombreDePlanilla('Almidon Soluble Pro Analisis (Vencidos) (x100g)')
-  assert.equal(almidon.nombre, 'Almidon Soluble Pro Analisis')
-  assert.equal(almidon.nota, 'Marcado como vencido en la planilla original')
-})
+// --- Ubicaciones --------------------------------------------------------------
 
 test('unifica las ubicaciones escritas de varias formas', () => {
   // ~16 lugares reales escritos de 19 maneras entre las dos planillas.
@@ -173,20 +102,6 @@ test('unifica las ubicaciones escritas de varias formas', () => {
   assert.equal(normalizarUbicacion('Laboratorio - Puerta 24 '), 'Laboratorio - Puerta 24')
   assert.equal(normalizarUbicacion('  Laboratorio  -  Puerta 2 '), 'Laboratorio - Puerta 2')
   assert.equal(normalizarUbicacion(''), '')
-})
-
-test('la cantidad distingue el cero del "no se cuenta acá"', () => {
-  // Excel escribe los tres igual de lejos de un número: 0, "-" y la celda vacía.
-  assert.deepEqual(parseCantidadPlanilla('5'), { stock: 5, seControla: true, nota: null })
-  assert.deepEqual(parseCantidadPlanilla('0'), { stock: 0, seControla: true, nota: null })
-
-  const panol = parseCantidadPlanilla('-')
-  assert.equal(panol.seControla, false)
-  assert.equal(panol.nota, 'Se pide a pañol; no se cuenta en el laboratorio')
-
-  const vacia = parseCantidadPlanilla('')
-  assert.equal(vacia.seControla, false)
-  assert.equal(vacia.nota, 'Sin cantidad en la planilla original')
 })
 
 // --- Resumen de un período (declaración de precursores) ----------------------

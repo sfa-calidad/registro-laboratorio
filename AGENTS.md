@@ -120,13 +120,18 @@ copiar de ahí en vez de inventar una variante.
   un enlace adivinado terminaría en una declaración jurada.
   `contenidoPorEnvase` va en la unidad de la sustancia, y la API rechaza enlazar
   un insumo medido en kg a una sustancia que se declara en litros.
-- **La foto inicial del inventario** se genera con
-  `scripts/generar-insumos-seed.ts` (reusa `leerXlsx` de
-  `importar-planillas.ts`) y el resultado se commitea en
-  `prisma/datos/insumos.ts`. `prisma/seed.ts` lo carga **solo si la tabla está
-  vacía**: las ubicaciones y las sustancias sí son datos base y se reponen en
-  cada deploy, pero los insumos no, porque volver a cargarlos pisaría el stock
-  que contó el laboratorio.
+- **La foto inicial del inventario** está en `prisma/datos/insumos.ts`: 187
+  insumos, 17 ubicaciones y 14 sustancias, extraídos una sola vez de las dos
+  planillas de Excel (el tamaño del envase y el vencimiento venían escritos
+  dentro del nombre, y la cantidad mezclaba números con `-` y celdas vacías).
+  El script que las leyó y las planillas se borraron después de generar el
+  archivo: la app es la fuente de verdad desde el primer deploy y no hay que
+  volver a importar nada. Si alguna vez hiciera falta, están en el historial de
+  git (commits `130c665` y `3cf3c52`).
+  `prisma/seed.ts` carga ese archivo **solo si la tabla está vacía**: las
+  ubicaciones y las sustancias sí son datos base y se reponen en cada deploy,
+  pero los insumos no, porque volver a cargarlos pisaría el stock que contó el
+  laboratorio.
 
 ## Notas de mantenimiento
 
