@@ -17,6 +17,9 @@ const eslintConfig = defineConfig([
     "desktop/**",
     // Lanzador de los tests: script de Node en CommonJS, no código de la app.
     "scripts/test.js",
+    // Generador del manual: script de Node en CommonJS que se corre a mano,
+    // tampoco es código de la app.
+    "docs/manual/generar.js",
   ]),
 ]);
 
