@@ -514,6 +514,33 @@ Cada una está acá porque ya falló una vez.
   Sin el `id`, editar un registro lo hacía saltar de lugar.
 - **Para la Zebra, ZPL o diálogo — nunca impresión silenciosa gráfica.** El
   driver la rechaza con "Invalid printer settings".
+- **Lo que va a papel se mide en milímetros y puntos, nunca en píxeles.** Un
+  píxel de CSS depende del escalado de pantalla: desde la app de escritorio, una
+  ventana de Electron sobre Windows al 125 % o 150 %, la misma hoja salía
+  impresa gigante o diminuta. Las tablas de esas hojas van con
+  `table-layout: fixed`, para que el ancho lo fijen las columnas y no el
+  contenido.
+- **El diálogo de impresión se abre cuando el documento terminó de cargar**, no
+  con un `setTimeout` fijo, y la ventana se abre con tamaño explícito
+  (`window.open('', '_blank', 'width=1000,height=900')`). Con dieciocho hojas, un
+  temporizador de 400 ms abría el diálogo antes de que el navegador aplicara el
+  `@page`, y salía en el papel por defecto de la impresora.
+
+```tsx
+const w = window.open('', '_blank', 'width=1000,height=900')
+if (!w) return avisar('El navegador bloqueó la ventana de impresión')
+w.document.write(html)
+w.document.close()
+w.focus()
+const abrirDialogo = () => w.print()
+if (w.document.readyState === 'complete') abrirDialogo()
+else w.addEventListener('load', abrirDialogo, { once: true })
+```
+
+Las hojas largas (`planillaRecuento.ts`, `informeFaltantes.ts`) además abren con
+una barra arriba que dice cuántas hojas son y tiene su propio botón de imprimir,
+oculta en `@media print`: dieciocho hojas son muchas para descubrir un problema
+después de mandarlas al papel.
 
 ---
 

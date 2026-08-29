@@ -95,8 +95,9 @@ copiar de ahí en vez de inventar una variante.
   fecha: es la dilución de 3 ml de Bio en 27 ml de metanol para detectar aceite
   (transparente = OK, precipita = no OK). No "corregir" ni parsear estos nombres.
 
-- **Inventario de insumos**: reemplaza las dos planillas de stock (reactivos y
-  material de vidrio, en `datos/`). **El stock no es un número que se pisa: es
+- **Inventario de insumos**: reemplaza las dos planillas de stock que se
+  llevaban en Excel (reactivos y material de vidrio). **El stock no es un número
+  que se pisa: es
   el saldo de `MovimientoInsumo`.** Solo la API de movimientos escribe
   `Insumo.stock`, y en la misma transacción deja el asiento con el saldo previo
   y el nuevo — por eso el historial se lee sin recalcular y la declaración de
@@ -123,9 +124,11 @@ copiar de ahí en vez de inventar una variante.
   las tareas que generó el automatismo lo tienen cargado, y borrar una columna
   con datos exige el paso previo de migración (ver más abajo).
 - **La planilla de recuento** (`src/lib/planillaRecuento.ts`) sale en A4 con la
-  misma técnica que los informes, una hoja por ubicación. Por defecto va **a
-  ciegas**, sin el stock del sistema: si el número está impreso, quien cuenta
-  tiende a confirmarlo en vez de contar.
+  misma técnica que los informes, una hoja por ubicación y en el orden del
+  catálogo, que es el del recorrido. Por defecto va **a ciegas**, sin el stock
+  del sistema: si el número está impreso, quien cuenta tiende a confirmarlo en
+  vez de contar. El mínimo de cada insumo se carga de a muchos en
+  `/insumos/minimos`; sin mínimo, un insumo recién aparece como faltante en cero.
 - **`seControla` no es lo mismo que stock cero**: la planilla mezclaba números,
   `-` (se pide a pañol) y celdas vacías (nunca se contó). Los dos últimos entran
   con `seControla: false` y no avisan de faltante; el primer recuento los pone
@@ -173,6 +176,19 @@ copiar de ahí en vez de inventar una variante.
   build). Ojo: ese script corre **antes** del push, así que en una base nueva
   todavía no hay tablas — los `CREATE INDEX` van envueltos en un chequeo de que
   la tabla exista, si no el build falla en cualquier entorno recién creado.
+- **Lo que se imprime en papel se mide en milímetros y puntos, nunca en
+  píxeles.** Un píxel de CSS depende del escalado de pantalla: desde la app de
+  escritorio —una ventana de Electron sobre Windows al 125 % o 150 %— la misma
+  hoja salía impresa gigante o diminuta. Aplica a `planillaRecuento.ts`,
+  `informeFaltantes.ts` y `docs/manual/manual.html`, y hay un test en cada uno
+  que falla si se cuela una medida en `px`. Dos cosas más del mismo episodio: la
+  ventana de impresión se abre con tamaño explícito (`window.open(..., 'width=…')`)
+  y el diálogo se dispara **al terminar de cargar el documento**, no con un
+  `setTimeout` fijo — con dieciocho hojas, el diálogo se abría antes de que el
+  navegador aplicara el `@page` y salía en el papel por defecto de la impresora.
+  `src/lib/informe.ts` todavía usa píxeles y temporizador fijo: no se tocó
+  porque ese HTML también se ve en pantalla y tiene tests de tamaño de letra y
+  contraste, así que el cambio necesita su propia verificación.
 - **Los informes se leen en el celular**: la imagen se manda por WhatsApp, así
   que lo que decide si se lee sin zoom es el tamaño de la letra **relativo al
   ancho** de la imagen (`fuente × 390 / ancho`). Por eso el SVG mide 560 px de
@@ -181,6 +197,10 @@ copiar de ahí en vez de inventar una variante.
   se deja crecer, porque ensancharlo para forzar la proporción achicaría la
   letra. `tests/informe.test.ts` fija eso y el contraste; ver `docs/ESTILOS.md`.
 - **Tests**: `npm test` corre el runner incorporado de Node sobre `tests/`, sin
-  dependencias extra. Cubre las funciones puras donde aparecieron bugs (firma de
-  la sesión, estado de las muestras, fechas del laboratorio, rótulos). Si tocás
-  una de esas, el test tiene que fallar antes de que lo arregles.
+  dependencias extra. Son 126 y cubren las funciones puras donde aparecieron
+  bugs: firma de la sesión, estado de las muestras, fechas del laboratorio,
+  rótulos, cálculos de materia grasa, movimientos de inventario, la declaración
+  de precursores, la lista de faltantes y las dos hojas imprimibles. **Si tocás
+  una de esas, el test tiene que fallar antes de que lo arregles**: la costumbre
+  acá es romper la regla a propósito, ver el test en rojo y recién entonces
+  escribir el arreglo.
