@@ -10,9 +10,15 @@ en la nube, así que todos ven la misma información en tiempo real.
 
 El acceso es por contraseña, con dos roles:
 
-- **Analista**: carga y edita ingresos, despachos, rótulos y tareas.
+- **Analista**: carga y edita ingresos, despachos, análisis, muestras, rótulos y
+  tareas; registra consumos y entradas de insumos, y hace recuentos.
 - **Supervisor**: además gestiona analistas, contactos (proveedores/clientes),
-  archiva tareas completadas y ve las estadísticas del dashboard.
+  productos y parámetros; da de alta insumos y fija sus mínimos; ve la
+  declaración de precursores; archiva tareas completadas y ve las estadísticas
+  del dashboard.
+
+Lo que un rol no puede hacer **no se le muestra**, en vez de mostrárselo
+deshabilitado.
 
 La sesión se guarda en una cookie `lab_session` **firmada con HMAC-SHA256** (rol
 y vencimiento van dentro de la firma, así que no se puede fabricar una sesión ni
@@ -33,6 +39,26 @@ contraseñas invalida las sesiones abiertas.
   etiquetas, notas, checklist y firmas. Las tarjetas se **arrastran para mover
   entre columnas y reordenar dentro de una columna** (se acomodan donde se
   sueltan). Pasar una tarea a "Completado" exige al menos una firma.
+- **Análisis de tanques**: control de lo que hay en los tanques de planta. Un
+  análisis puede cubrir varios tanques, y la altura siempre va con su referencia
+  (AF/DS/AC), porque 2 m desde el fondo y 2 m desde la superficie no son el
+  mismo punto. Lo que se va de especificación se marca, pero no bloquea.
+- **Análisis de materia prima**: el camión que entra se analiza desde su propio
+  ingreso, sin retipear origen ni remito, y se informa en el momento. Va uno por
+  producto del ingreso, y los límites se escriben al cargarlo porque cada orden
+  de compra trae los suyos.
+- **Muestras a laboratorio**: identificación y seguimiento de toda muestra que
+  entra, salga o no a un laboratorio externo. El número lo pone el sistema y el
+  estado se calcula solo a partir de lo que se va cargando.
+- **Informes**: se ven en pantalla y se bajan como PDF o como imagen. La imagen
+  está armada para leerse en un celular sin agrandar, porque se manda por
+  WhatsApp.
+- **Insumos**: inventario de reactivos y material de vidrio. **El stock es el
+  saldo de un registro de movimientos**, no un número que se pisa: cada
+  movimiento deja quién, cuándo, por qué y el saldo antes y después. Incluye
+  recuento físico por ubicación con planilla imprimible, stock mínimo, lista de
+  faltantes para compras y la declaración de precursores químicos
+  (RENPRE/SEDRONAR) calculada desde los movimientos.
 - **Rótulos**: se generan desde ingresos/despachos y se imprimen. En la **app de
   escritorio** hay impresión rápida directa a la impresora elegida (para Zebra
   se envía ZPL nativo al spooler, sin diálogo).
@@ -50,6 +76,13 @@ contraseñas invalida las sesiones abiertas.
 
 La paleta, la tipografía, las clases de cada componente y cómo se construyen los
 informes están documentados en [`docs/ESTILOS.md`](docs/ESTILOS.md).
+
+El manual de uso para analistas y supervisores está en
+[`docs/manual/manual.html`](docs/manual/manual.html); el PDF lo arma
+`node docs/manual/generar.js`, que toma las capturas de la carpeta que se le
+pase (por defecto `<Escritorio>/capturas-manual`) y usa el Edge o el Chrome ya
+instalados. Las convenciones y las decisiones de diseño del código están en
+[`AGENTS.md`](AGENTS.md).
 
 ## Variables de entorno
 
