@@ -47,8 +47,8 @@ export default function MinimosInsumos({
   const valorDe = (i: Insumo) =>
     valores[i.id] ?? (i.stockMinimo === null ? '' : String(i.stockMinimo))
 
-  // Solo se manda lo que efectivamente cambió: así guardar no pisa con un mismo
-  // valor los 187 y no ensucia el listado de avisos.
+  // Solo se manda lo que efectivamente cambió: así guardar no reescribe los 187
+  // con el mismo valor que ya tenían.
   const cambios = insumos
     .filter((i) => valores[i.id] !== undefined)
     .map((i) => {
@@ -76,12 +76,7 @@ export default function MinimosInsumos({
       return
     }
     setValores({})
-    setAviso({
-      texto: d.avisos?.length
-        ? `${d.guardados} mínimos guardados. Ya estaban en falta: se crearon ${d.avisos.length} tarea(s) de reposición.`
-        : `${d.guardados} mínimos guardados.`,
-      error: false,
-    })
+    setAviso({ texto: `${d.guardados} mínimos guardados.`, error: false })
     router.refresh()
   }
 

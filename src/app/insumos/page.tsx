@@ -30,6 +30,12 @@ export default async function InsumosPage() {
         <h2 className="text-2xl font-bold text-gray-800">Insumos</h2>
         <div className="flex gap-2">
           <Link
+            href="/insumos/faltantes"
+            className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light"
+          >
+            A reponer
+          </Link>
+          <Link
             href="/insumos/recuento"
             className="px-4 py-2 text-sm border border-brand-green text-brand-green-dark rounded-lg hover:bg-brand-green-light"
           >

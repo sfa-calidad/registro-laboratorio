@@ -107,17 +107,21 @@ copiar de ahí en vez de inventar una variante.
   pueden dejar el stock negativo; para corregir un número mal está el AJUSTE,
   que fija el saldo en vez de sumar y **exige motivo**. Las reglas puras están
   en `src/lib/inventario.ts` y la declaración en `src/lib/precursores.ts`.
-- **La alerta de stock bajo termina en el tablero**: cuando un movimiento, un
-  recuento o la carga de un mínimo dejan un insumo en el mínimo o por debajo,
-  `avisarSiFaltaStock` (`src/lib/alertaStock.ts`) crea sola una tarea "Reponer
-  ...". Va al Kanban y no a un cartel dentro de insumos porque el tablero es lo
-  que se mira todos los días, y un cartel en insumos solo lo ve quien ya entró a
-  mirar. Se llama **fuera** de la transacción del movimiento y se traga sus
-  errores: lo que no puede perderse es el consumo. La tarea se deduplica por
-  `Tarea.insumoId` —y no por el título, que se puede editar desde el tablero—,
-  así un mismo frasco no genera una tarea por cada consumo. **No se completa
-  sola** cuando el stock se repone: cerrar una tarea exige firma, y firmar por
-  alguien no es algo que deba hacer el sistema.
+- **Los faltantes se calculan, no se notifican solos.** `faltantes()`
+  (`src/lib/faltantes.ts`) arma la lista de lo que está en cero o bajo el mínimo
+  cada vez que se la pide, y la muestra `/insumos/faltantes`, que además imprime
+  en A4 y exporta. **Antes esto creaba sola una tarea por insumo en cada
+  movimiento**: en el goteo del día a día funcionaba, pero el primer inventario
+  completo generó cincuenta tarjetas de golpe y tapó el tablero. Llevar la lista
+  al Kanban pasó a ser un botón —una sola tarea con los faltantes como
+  checklist— que aprieta una persona cuando la lista ya está revisada. La API
+  rechaza crear una segunda si hay otra abierta con la etiqueta `Reposición`,
+  para no terminar con dos listas que divergen. La tarea **no se completa sola**
+  al reponer: cerrar una tarea exige firma, y firmar por alguien no es algo que
+  deba hacer el sistema.
+- `Tarea.insumoId` quedó de esa época y ya no lo escribe nadie: sigue ahí porque
+  las tareas que generó el automatismo lo tienen cargado, y borrar una columna
+  con datos exige el paso previo de migración (ver más abajo).
 - **La planilla de recuento** (`src/lib/planillaRecuento.ts`) sale en A4 con la
   misma técnica que los informes, una hoja por ubicación. Por defecto va **a
   ciegas**, sin el stock del sistema: si el número está impreso, quien cuenta

@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { getRoleFromRequest } from '@/lib/auth'
 import { conManejoDeErrores } from '@/lib/api'
-import { avisarSiFaltaStockDeVarios } from '@/lib/alertaStock'
 
 // De a muchos: cargar 187 mínimos de a uno, abriendo y cerrando el formulario,
 // no lo hace nadie — y sin mínimos la alerta solo puede saltar en cero.
@@ -40,10 +39,6 @@ export async function POST(req: NextRequest) {
       ),
     )
 
-    // Fijar un mínimo puede dejar en falta algo que ya estaba por debajo sin que
-    // nadie lo supiera: es el momento en que la alerta recién puede verlo.
-    const avisos = await avisarSiFaltaStockDeVarios(parsed.data.minimos.map((m) => m.insumoId))
-
-    return NextResponse.json({ guardados: parsed.data.minimos.length, avisos })
+    return NextResponse.json({ guardados: parsed.data.minimos.length })
   })
 }

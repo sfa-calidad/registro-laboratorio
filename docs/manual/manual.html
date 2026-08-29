@@ -446,8 +446,9 @@
   cuántas hojas son. Revisá ahí antes de mandarla al papel.</p>
 
   <h3>Stock mínimo <span class="rol">Solo supervisor</span></h3>
-  <p>Debajo del mínimo, el insumo aparece como faltante y <strong>se crea sola
-  una tarea «Reponer …» en el tablero</strong>.</p>
+  <p>Debajo del mínimo, el insumo aparece como faltante: con la pastilla en el
+  listado, en el botón <strong>Faltantes</strong>, en la tarjeta del inicio y en
+  la lista de <em>A reponer</em>.</p>
 
   <figure data-captura="18-minimos.png">
     <figcaption>Carga de mínimos, filtrada en reactivos.</figcaption>
@@ -460,9 +461,32 @@
   </div>
 
   <p>Mientras tipeás, el campo se marca en amarillo si ese mínimo deja el insumo
-  en falta ahora mismo. Al guardar, esos ya generan su tarea.</p>
+  en falta ahora mismo.</p>
+
+  <h3>A reponer</h3>
+  <p>La lista de todo lo que está en cero o bajo el mínimo, calculada en el
+  momento en que se abre. Primero lo que se agotó, que frena un ensayo hoy;
+  después lo que está bajo el mínimo, que lo va a frenar la semana que viene.</p>
+  <p>De cada uno se ve cuánto hay y cuánto es el mínimo. Se puede
+  <strong>imprimir</strong> en A4 para pasarle a compras —con lugar para firmar—,
+  <strong>exportar</strong> a planilla, o llevarla al tablero.</p>
+
+  <div class="nota">
+    <p><strong>«Crear tarea en el tablero» arma UNA sola tarea</strong> con todos
+    los faltantes adentro, como lista para ir tildando a medida que se compra.
+    No se crea sola: la creás vos cuando la lista ya está revisada.</p>
+    <p>Antes el sistema creaba una tarea por cada insumo que bajaba del mínimo.
+    Andaba bien en el día a día, pero el primer inventario completo generó
+    cincuenta tarjetas de golpe y tapó el tablero. Por eso ahora es un botón.</p>
+  </div>
+
+  <p>Si ya hay una tarea de reposición abierta, el sistema no crea otra y lo
+  avisa: cerrá o archivá la primera, así no quedan dos listas distintas dando
+  vueltas.</p>
   <p>La tarea <strong>no se cierra sola</strong> cuando reponés: la cierra quien
   compró, porque cerrar una tarea exige firma.</p>
+  <p>Lo que se pide a pañol no entra en esta lista aunque figure en cero: no lo
+  compra el laboratorio.</p>
 
   <h3>Precursores <span class="rol">Solo supervisor</span></h3>
   <p>La declaración de precursores químicos (RENPRE/SEDRONAR) de un período. Se
@@ -607,7 +631,9 @@
   <div class="problema">
     <p class="q">El aviso de stock bajo no salta nunca.</p>
     <p class="a">Probablemente ese insumo no tiene mínimo cargado, y entonces
-    recién avisa en cero. Cargalo en <em>Insumos → Stock mínimo</em>.</p>
+    recién aparece en cero. Cargalo en <em>Insumos → Stock mínimo</em>. Tené en
+    cuenta que el sistema no manda avisos solo: lo que falta se ve en la tarjeta
+    del inicio, en el botón «Faltantes» del listado y en <em>A reponer</em>.</p>
   </div>
 
   <div class="problema">
