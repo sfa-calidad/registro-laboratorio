@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual — Laboratorio SFA</title>
+<style>
+  /* Todo en milímetros y puntos, no en píxeles: un píxel de CSS depende del
+     escalado de pantalla y la hoja sale de otro tamaño según la PC. */
+  @page { size: A4 portrait; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #2b332a; font-size: 10.5pt; line-height: 1.5; margin: 0; }
+
+  h1 { font-size: 20pt; margin: 0 0 2mm; }
+  h2 { font-size: 14pt; margin: 0 0 3mm; padding-bottom: 1.5mm; border-bottom: 0.6mm solid #8bc53f; break-after: avoid; }
+  h3 { font-size: 11.5pt; margin: 6mm 0 2mm; color: #2b332a; break-after: avoid; }
+  h4 { font-size: 10.5pt; margin: 4mm 0 1.5mm; color: #4b5563; break-after: avoid; }
+  p, li { margin: 0 0 2.5mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  code { font-family: Consolas, monospace; font-size: 9.5pt; background: #f3f4f6; padding: 0.3mm 1mm; border-radius: 0.8mm; }
+
+  /* Cada capítulo empieza en hoja nueva. */
+  section { break-before: page; page-break-before: always; }
+  section.portada { break-before: auto; page-break-before: auto; }
+
+  .portada { height: 240mm; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+  .portada .marca { font-size: 28pt; font-weight: bold; }
+  .portada .sub { font-size: 13pt; color: #4b5563; margin-top: 3mm; }
+  .portada .pie { font-size: 9pt; color: #4b5563; margin-top: 20mm; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 0 0 4mm; break-inside: avoid; }
+  th { text-align: left; background: #f9fafb; color: #4b5563; font-weight: bold; padding: 1.8mm 2mm; border-bottom: 0.5mm solid #d1d5db; }
+  td { padding: 1.8mm 2mm; border-bottom: 0.2mm solid #d1d5db; vertical-align: top; }
+
+  figure { margin: 3mm 0 5mm; break-inside: avoid; }
+  figure img { width: 100%; border: 0.3mm solid #d1d5db; border-radius: 1mm; display: block; }
+  figcaption { font-size: 8.5pt; color: #4b5563; margin-top: 1.2mm; }
+
+  .nota { background: #eaf5da; border-left: 1mm solid #8bc53f; padding: 2.5mm 3mm; margin: 3mm 0; break-inside: avoid; }
+  .ojo { background: #fdf6e7; border-left: 1mm solid #e0a32a; padding: 2.5mm 3mm; margin: 3mm 0; break-inside: avoid; }
+  .rol { display: inline-block; background: #2b332a; color: #fff; font-size: 8pt; padding: 0.5mm 2mm; border-radius: 3mm; vertical-align: middle; }
+  .nota p:last-child, .ojo p:last-child { margin-bottom: 0; }
+
+  .indice ol { padding-left: 7mm; }
+  .indice li { margin-bottom: 1.5mm; }
+
+  .problema { break-inside: avoid; margin-bottom: 4mm; }
+  .problema .q { font-weight: bold; }
+  .problema .a { margin-top: 1mm; }
+
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+
+<section class="portada">
+  <div class="marca">Laboratorio SFA</div>
+  <div class="sub">Manual de uso del sistema de gestión</div>
+  <div class="sub" style="font-size:10pt">Para analistas y supervisores</div>
+  <div class="pie">Agosto de 2026</div>
+</section>
+
+<section class="indice">
+  <h2>Contenido</h2>
+  <ol>
+    <li>Antes de empezar: entrar, los dos roles y el menú</li>
+    <li>Inicio</li>
+    <li>Ingresos, y el análisis del camión</li>
+    <li>Despachos</li>
+    <li>Análisis de tanques</li>
+    <li>Muestras a laboratorio</li>
+    <li>Rótulos y el Rotulador</li>
+    <li>Insumos: stock, recuento y precursores</li>
+    <li>Tareas</li>
+    <li>Configuración</li>
+    <li>La app de escritorio</li>
+    <li>Si algo no anda</li>
+    <li>Glosario: los nombres que confunden</li>
+  </ol>
+</section>
+
+<!-- ============================================================ 1 -->
+<section>
+  <h2>1. Antes de empezar</h2>
+
+  <h3>Qué es</h3>
+  <p>Un sistema web donde el laboratorio registra lo que entra y lo que sale de
+  planta, los análisis, las muestras, las tareas y el inventario de insumos. Los
+  datos viven en una base en la nube: todos ven lo mismo al mismo tiempo, desde
+  cualquier PC o celular, sin instalar nada.</p>
+
+  <h3>Cómo se entra</h3>
+  <p>Se elige el rol y se escribe la contraseña de ese rol. No hay usuario
+  personal: la contraseña es del rol, no de la persona.</p>
+
+  <figure data-captura="01-login.png">
+    <figcaption>La pantalla de ingreso. Primero se elige el rol, después la contraseña.</figcaption>
+  </figure>
+
+  <div class="ojo">
+    <p><strong>La sesión se cierra sola a las 3 horas.</strong> No es un error ni
+    te desconectó otro: es a propósito, para que una PC de planta que quedó
+    abierta no siga con la sesión activa. Si te saca en medio de algo, volvés a
+    entrar y seguís; lo que ya guardaste está guardado.</p>
+  </div>
+
+  <h3>Los dos roles</h3>
+  <p>Lo que un analista no puede hacer, directamente <strong>no se le
+  muestra</strong>. Si no ves un botón que alguien más sí ve, no está roto: estás
+  entrado como analista.</p>
+
+  <table>
+    <thead><tr><th>Puede</th><th>Analista</th><th>Supervisor</th></tr></thead>
+    <tbody>
+      <tr><td>Cargar y editar ingresos, despachos, muestras y análisis</td><td>Sí</td><td>Sí</td></tr>
+      <tr><td>Imprimir rótulos</td><td>Sí</td><td>Sí</td></tr>
+      <tr><td>Usar el tablero de tareas</td><td>Sí</td><td>Sí</td></tr>
+      <tr><td>Registrar consumos y entradas de insumos, y hacer recuentos</td><td>Sí</td><td>Sí</td></tr>
+      <tr><td>Ver las estadísticas del inicio</td><td>No</td><td>Sí</td></tr>
+      <tr><td>Dar de alta y editar insumos, y fijar los mínimos</td><td>No</td><td>Sí</td></tr>
+      <tr><td>Ajustar el stock a mano, fuera de un recuento</td><td>No</td><td>Sí</td></tr>
+      <tr><td>La pantalla de precursores</td><td>No</td><td>Sí</td></tr>
+      <tr><td>Archivar tareas completadas y ver el historial</td><td>No</td><td>Sí</td></tr>
+      <tr><td>Configuración: productos, analistas, contactos, parámetros, ubicaciones</td><td>No</td><td>Sí</td></tr>
+    </tbody>
+  </table>
+
+  <figure data-captura="22-insumos-analista.png">
+    <figcaption>La pantalla de insumos vista por un <strong>analista</strong>. Comparala con
+    la misma pantalla del capítulo 8, vista por un supervisor: acá no están
+    «Stock mínimo», «Precursores» ni «Nuevo insumo» arriba, y en cada fila falta
+    «Editar». No están apagados: no están.</figcaption>
+  </figure>
+
+  <h3>El menú</h3>
+  <p>Está a la izquierda y se puede contraer al ancho de los iconos con el botón
+  de abajo, para ganar pantalla en las tablas anchas. En el celular pasa a ser
+  una barra arriba con el botón de las tres rayas.</p>
+
+  <figure data-captura="03-menu-contraido.png">
+    <figcaption>El menú contraído. Se recuerda la preferencia en esa PC.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================================================ 2 -->
+<section>
+  <h2>2. Inicio</h2>
+  <p>La primera pantalla resume el día: cuántos ingresos y despachos hubo hoy,
+  las tareas pendientes y vencidas, los análisis del mes, las muestras sin
+  resultado y los insumos bajo el mínimo. Cada tarjeta es un número para mirar de
+  reojo, no un informe.</p>
+
+  <figure data-captura="02-dashboard.png">
+    <figcaption>El inicio visto por un supervisor.</figcaption>
+  </figure>
+
+  <p><span class="rol">Solo supervisor</span> Más abajo hay un análisis del
+  laboratorio: cuántas muestras entran y se resuelven por semana, cuánto se
+  demoran (separando el laboratorio propio del externo), qué hay atrasado y el
+  trabajo por analista. El período se elige con los botones de 7 días, 30, 90 o
+  un año.</p>
+
+  <p>A la derecha están las notas del tablero: un pizarrón para dejar avisos a
+  quien entre después.</p>
+</section>
+
+<!-- ============================================================ 3 -->
+<section>
+  <h2>3. Ingresos</h2>
+  <p>Cada camión o contenedor que entra a planta se registra acá: HR o remito,
+  fecha, origen, producto (o dos, si trae dos), precinto y quién lo recibió.</p>
+
+  <figure data-captura="04-ingresos.png">
+    <figcaption>El listado de ingresos. Los más nuevos arriba.</figcaption>
+  </figure>
+
+  <h3>Cargar uno</h3>
+  <p>Con <strong>+ Nuevo Ingreso</strong>. La fecha viene puesta en la de hoy.</p>
+
+  <figure data-captura="05-ingreso-form.png">
+    <figcaption>El formulario de un ingreso.</figcaption>
+  </figure>
+
+  <div class="nota">
+    <p><strong>El rótulo se genera al guardar</strong>, sin que haya que pedirlo.
+    Queda en «Rótulos Movimientos» y desde ahí se imprime las veces que haga
+    falta.</p>
+  </div>
+
+  <h3>Duplicar</h3>
+  <p><strong>Duplicar</strong> abre un ingreso nuevo con los mismos datos y la
+  fecha de hoy, para cuando entran varios camiones iguales seguidos. Los datos
+  propios de cada viaje (el transporte, el precinto) vienen en blanco a
+  propósito.</p>
+
+  <h3>Buscar y exportar</h3>
+  <p>El buscador filtra sobre todos los ingresos, no solo sobre la página que
+  estás viendo. <strong>Exportar CSV</strong> baja un archivo que se abre en
+  Excel; si dejás las fechas vacías, sale todo.</p>
+
+  <h3>El análisis del camión (materia prima)</h3>
+  <p>Desde el ingreso ya cargado se analiza el camión, sin volver a escribir el
+  origen ni el remito.</p>
+
+  <figure data-captura="06-analisis-mp.png">
+    <figcaption>El análisis de materia prima, abierto desde un ingreso.</figcaption>
+  </figure>
+
+  <ul>
+    <li><strong>Va uno por producto.</strong> Una borra con sobrenadante de
+    aceite se carga con dos productos y se informa por separado: dos análisis,
+    dos informes.</li>
+    <li><strong>Los límites se escriben en el momento</strong>, en las casillas
+    de mín. y máx. No salen de una tabla fija, porque cada orden de compra trae
+    los suyos en la planilla de coordinación. Quedan guardados con el resultado:
+    si mañana cambian las condiciones, el informe viejo sigue mostrando los que
+    se usaron ese día.</li>
+    <li><strong>Se puede sumar cualquier ensayo</strong>, aunque no esté en el
+    perfil del producto.</li>
+    <li><strong>La materia grasa se calcula sola</strong>: 100 menos el mayor de
+    los insolubles menos la humedad. Si hay dos humedades cargadas se usa la
+    mayor. Cuando faltan esos datos —en una borra por corte o extracción
+    directa— el campo se libera y se escribe el valor medido.</li>
+  </ul>
+
+  <p>Lo que se va de los límites sale en rojo y además en una banda arriba del
+  informe, porque el informe se manda como foto y tiene que leerse sin buscar en
+  la tabla.</p>
+
+  <figure data-captura="07-informe.png">
+    <figcaption>El informe en pantalla. Desde acá se copia, se comparte o se descarga.</figcaption>
+  </figure>
+
+  <p>El informe se puede descargar como PDF o como imagen. <strong>La imagen es
+  la que conviene mandar por WhatsApp</strong>: está armada para leerse en un
+  celular sin agrandar.</p>
+</section>
+
+<!-- ============================================================ 4 -->
+<section>
+  <h2>4. Despachos</h2>
+  <p>Funciona igual que ingresos: cargar, editar, duplicar, buscar y exportar, y
+  el rótulo se genera al guardar.</p>
+
+  <figure data-captura="08-despachos.png">
+    <figcaption>El listado de despachos. Debajo del producto aparece de qué tanque salió.</figcaption>
+  </figure>
+
+  <p>Lo propio del despacho: el <strong>depósito o tanque</strong> de donde
+  salió, que se muestra en gris debajo del producto, y los dos precintos (el de
+  SFA y el de Aduana). <strong>El buscador encuentra el tanque</strong>: si
+  escribís el número, te lista todos los despachos que salieron de ahí.</p>
+</section>
+
+<!-- ============================================================ 5 -->
+<section>
+  <h2>5. Análisis de tanques</h2>
+  <p>El control de lo que hay en los tanques de planta. Se elige el producto y el
+  o los tanques, y se cargan los ensayos que correspondan.</p>
+
+  <figure data-captura="09-tanques.png">
+    <figcaption>Análisis de tanques.</figcaption>
+  </figure>
+
+  <ul>
+    <li><strong>Un análisis puede cubrir varios tanques</strong>: se escriben
+    juntos, como <code>26 + 27</code> o <code>114/118/119</code>.</li>
+    <li><strong>La altura no va sola</strong>: siempre con su referencia, porque
+    2 m AF y 2 m DS son puntos distintos del tanque. Ver el glosario.</li>
+    <li>Los parámetros que aparecen por defecto salen del perfil del producto,
+    que se configura una vez. Igual se puede sumar cualquier otro ensayo.</li>
+    <li>Los valores fuera de especificación se marcan en rojo. <strong>Avisa, no
+    bloquea</strong>: se guarda igual.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 6 -->
+<section>
+  <h2>6. Muestras a laboratorio</h2>
+  <p>El registro con el que se identifica y se sigue cualquier muestra que entra
+  al laboratorio, salga o no a un laboratorio externo.</p>
+
+  <figure data-captura="10-muestras.png">
+    <figcaption>El listado de muestras, con el estado de cada una.</figcaption>
+  </figure>
+
+  <h3>El número</h3>
+  <p>Lo pone el sistema: dos dígitos del año más tres de secuencia. La primera de
+  2026 es la <code>26300</code>, porque en la planilla de Excel ya se habían
+  usado los anteriores. <strong>El número nunca se repite ni se reutiliza.</strong></p>
+
+  <h3>El estado se calcula solo</h3>
+  <p>No hay que elegirlo: sale de lo que se va cargando.</p>
+  <table>
+    <thead><tr><th>Estado</th><th>Cuándo</th></tr></thead>
+    <tbody>
+      <tr><td>Identificada</td><td>Recién cargada, sin laboratorio asignado.</td></tr>
+      <tr><td>En análisis</td><td>Asignada a un laboratorio interno.</td></tr>
+      <tr><td>Enviada</td><td>Con fecha de envío a un laboratorio externo.</td></tr>
+      <tr><td>Con resultado</td><td>Al cargar el resultado, la fecha de resultado o el protocolo.</td></tr>
+      <tr><td>Anulada</td><td>Se marca a mano.</td></tr>
+    </tbody>
+  </table>
+
+  <figure data-captura="11-muestra-form.png">
+    <figcaption>El formulario de una muestra.</figcaption>
+  </figure>
+
+  <div class="nota">
+    <p><strong>El rótulo de la muestra se genera al guardarla</strong>, igual que
+    el del ingreso, y queda en «Rótulos Movimientos» aunque todavía no lo hayas
+    impreso. La observación que escribas sale impresa en el rótulo.</p>
+  </div>
+
+  <p>Las muestras también se pueden duplicar, buscar y exportar a CSV.</p>
+</section>
+
+<!-- ============================================================ 7 -->
+<section>
+  <h2>7. Rótulos y el Rotulador</h2>
+
+  <h3>Rótulos Movimientos</h3>
+  <p>Guarda todos los rótulos que se fueron generando —de ingresos, despachos y
+  muestras— para reimprimirlos cuando haga falta. Salen exactamente igual que la
+  primera vez.</p>
+
+  <figure data-captura="12-rotulos.png">
+    <figcaption>El listado de rótulos guardados.</figcaption>
+  </figure>
+
+  <h3>El Rotulador</h3>
+  <p>Sirve para rotular el envase de un calado sin registrar nada: es solo la
+  etiqueta. Se cargan los datos y se imprime.</p>
+
+  <figure data-captura="13-rotulador.png">
+    <figcaption>El Rotulador.</figcaption>
+  </figure>
+
+  <div class="nota">
+    <p><strong>La ventana no se cierra al imprimir.</strong> Es a propósito: para
+    rotular varias muestras del mismo tanque, alcanza con cambiar la altura y
+    volver a imprimir, sin reescribir todo.</p>
+  </div>
+
+  <p>En <em>Medida desde</em> hay dos grupos. Si elegís una referencia (AF, DS,
+  AC) la altura va en metros. Si elegís un <strong>punto fijo</strong>
+  —Superficie, Fondo o Cono— esa palabra <em>es</em> la altura del rótulo y el
+  campo de metros se deshabilita, porque no corresponde.</p>
+
+  <h3>Los dos modos de impresión</h3>
+  <table>
+    <thead><tr><th></th><th>Impresión rápida</th><th>Con diseño</th></tr></thead>
+    <tbody>
+      <tr><td>Cómo sale</td><td>Directo a la impresora, sin diálogo</td><td>Abre el diálogo de impresión</td></tr>
+      <tr><td>Velocidad</td><td>Inmediata</td><td>Un paso más</td></tr>
+      <tr><td>Logo</td><td><strong>No</strong></td><td>Sí</td></tr>
+      <tr><td>Dónde funciona</td><td>Solo en la app de escritorio</td><td>En todos lados</td></tr>
+    </tbody>
+  </table>
+  <p>La impresión rápida le manda a la Zebra las instrucciones en su propio
+  idioma: sale nítida y al instante, pero la impresora dibuja solo lo que esas
+  instrucciones describen, y ahí no entra el logo. Si necesitás el logo, usá el
+  modo con diseño.</p>
+</section>
+
+<!-- ============================================================ 8 -->
+<section>
+  <h2>8. Insumos</h2>
+
+  <div class="nota">
+    <p><strong>La idea de fondo.</strong> Acá el stock no es un número que se
+    pisa: es el saldo de todo lo que se fue registrando. Cada movimiento deja
+    quién, cuándo, por qué, cuánto había antes y cuánto quedó. Por eso nunca hay
+    que corregir el número directamente — se registra lo que pasó y el número
+    sale solo.</p>
+  </div>
+
+  <figure data-captura="14-insumos.png">
+    <figcaption>El listado de insumos, con reactivos y material de vidrio.</figcaption>
+  </figure>
+
+  <h3>Buscar y filtrar</h3>
+  <p>Por nombre, ubicación o sustancia; por categoría (reactivos o vidrio); por
+  ubicación; y el botón <strong>Faltantes</strong>, que deja solo lo que está sin
+  stock o bajo el mínimo.</p>
+
+  <h4>Las pastillas de estado</h4>
+  <table>
+    <thead><tr><th>Dice</th><th>Significa</th></tr></thead>
+    <tbody>
+      <tr><td>Sin stock</td><td>Llegó a cero.</td></tr>
+      <tr><td>Bajo mínimo</td><td>Está en el mínimo fijado o por debajo.</td></tr>
+      <tr><td>No se cuenta acá</td><td>Se pide a pañol, o nunca se contó. No avisa aunque esté en cero.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Consumir y Entrada</h3>
+  <p>Los dos botones del día a día. Se pone la cantidad, opcionalmente quién y
+  por qué, y listo.</p>
+
+  <figure data-captura="15-insumo-movimiento.png">
+    <figcaption>Registrar un consumo.</figcaption>
+  </figure>
+
+  <div class="ojo">
+    <p><strong>No se puede descontar más de lo que hay.</strong> Si el sistema
+    dice 5 y querés sacar 6, lo rechaza. No es capricho: si el número guardado
+    está mal, lo que corresponde es corregirlo con un ajuste o un recuento, que
+    deja constancia de la corrección, y no esconderlo dentro de un consumo.</p>
+  </div>
+
+  <h3>Historial</h3>
+  <p>Todo lo que le pasó a ese insumo, con el saldo antes y después de cada
+  movimiento. Es lo que la planilla de Excel no guardaba.</p>
+
+  <figure data-captura="16-insumo-historial.png">
+    <figcaption>El historial de un insumo.</figcaption>
+  </figure>
+
+  <h3>Recuento físico</h3>
+  <p>Para la recorrida de control. Se elige una ubicación y aparece todo lo que
+  debería estar ahí.</p>
+
+  <figure data-captura="17-recuento.png">
+    <figcaption>Recuento de una ubicación.</figcaption>
+  </figure>
+
+  <ul>
+    <li>Se anota lo contado. <strong>Las filas que dejás en blanco no mueven
+    nada</strong>: vacío es «no lo miré», que no es lo mismo que cero.</li>
+    <li>Lo que no coincide queda registrado como ajuste, con tu nombre y la
+    fecha.</li>
+    <li><strong>Lo que coincide también queda marcado como contado.</strong>
+    «Lo contamos y estaba bien» también es información: por eso cada insumo
+    muestra cuándo fue su último recuento.</li>
+  </ul>
+
+  <h4>La planilla en papel</h4>
+  <p>El botón <strong>Imprimir planilla</strong> saca una hoja por ubicación para
+  hacer la recorrida con birome. Sin elegir ubicación, imprime todo el
+  laboratorio, una hoja por puerta y en el orden del recorrido.</p>
+  <p>Viene marcada <strong>«A ciegas»</strong>: sin el stock del sistema
+  impreso. Es a propósito — si el número está a la vista, uno tiende a
+  confirmarlo en vez de contar. Destildalo si es un control de rutina y querés
+  verlo.</p>
+  <p>La planilla se abre primero en pantalla, con una barra arriba que dice
+  cuántas hojas son. Revisá ahí antes de mandarla al papel.</p>
+
+  <h3>Stock mínimo <span class="rol">Solo supervisor</span></h3>
+  <p>Debajo del mínimo, el insumo aparece como faltante y <strong>se crea sola
+  una tarea «Reponer …» en el tablero</strong>.</p>
+
+  <figure data-captura="18-minimos.png">
+    <figcaption>Carga de mínimos, filtrada en reactivos.</figcaption>
+  </figure>
+
+  <div class="ojo">
+    <p><strong>Sin mínimo cargado el aviso recién salta en cero</strong>, que
+    suele ser tarde. No hace falta ponerle mínimo a todo: alcanza con los
+    reactivos que no pueden faltar.</p>
+  </div>
+
+  <p>Mientras tipeás, el campo se marca en amarillo si ese mínimo deja el insumo
+  en falta ahora mismo. Al guardar, esos ya generan su tarea.</p>
+  <p>La tarea <strong>no se cierra sola</strong> cuando reponés: la cierra quien
+  compró, porque cerrar una tarea exige firma.</p>
+
+  <h3>Precursores <span class="rol">Solo supervisor</span></h3>
+  <p>La declaración de precursores químicos (RENPRE/SEDRONAR) de un período. Se
+  eligen las fechas y sale, por sustancia: stock inicial, entradas, salidas,
+  ajustes y stock final, en litros o kilos, con el GTIN al lado para copiarlo al
+  formulario oficial.</p>
+
+  <figure data-captura="19-precursores.png">
+    <figcaption>La declaración de un período.</figcaption>
+  </figure>
+
+  <p>Todo sale de sumar los movimientos registrados, no de restar dos números
+  cargados a mano. Por eso <em>inicial + entradas − salidas + ajustes</em> siempre
+  da el stock final, y un consumo no puede quedar negativo.</p>
+
+  <div class="ojo">
+    <p><strong>Para que esto funcione hay que enlazar cada reactivo con su
+    sustancia</strong>, desde el formulario del insumo: elegir el contenido por
+    envase (cuánto entra en un frasco) y la sustancia controlada. Hasta que lo
+    hagas, la pantalla muestra ceros y lo avisa arriba. Es a propósito: prefiere
+    decir que no hay nada enlazado antes que inventar un número que después
+    firmás.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 9 -->
+<section>
+  <h2>9. Tareas</h2>
+  <p>Un tablero de columnas donde las tarjetas se arrastran de una a otra y se
+  reordenan dentro de cada columna.</p>
+
+  <figure data-captura="20-tareas.png">
+    <figcaption>El tablero de tareas.</figcaption>
+  </figure>
+
+  <p>Cada tarea puede tener prioridad, vencimiento, etiquetas, notas, una lista
+  de control y hasta dos firmas.</p>
+
+  <div class="ojo">
+    <p><strong>Para pasar una tarea a Completado hace falta al menos una
+    firma.</strong> Si la arrastrás sin firmar, el sistema lo avisa; al firmar, se
+    mueve sola.</p>
+  </div>
+
+  <p><span class="rol">Solo supervisor</span> Archivar las completadas para
+  limpiar el tablero, y ver el historial de lo archivado.</p>
+</section>
+
+<!-- ============================================================ 10 -->
+<section>
+  <h2>10. Configuración <span class="rol">Solo supervisor</span></h2>
+
+  <figure data-captura="21-configuracion.png">
+    <figcaption>La pantalla de Configuración.</figcaption>
+  </figure>
+
+  <table>
+    <thead><tr><th>Sección</th><th>Para qué</th></tr></thead>
+    <tbody>
+      <tr><td>Datos de la empresa y logo</td><td>Encabezan los informes y los rótulos con diseño.</td></tr>
+      <tr><td>Medidas de etiqueta</td><td>Ancho, alto y tamaño de letra del rótulo.</td></tr>
+      <tr><td>Productos</td><td>Lo que aparece en los desplegables de producto.</td></tr>
+      <tr><td>Contactos</td><td>Clientes y proveedores.</td></tr>
+      <tr><td>Analistas</td><td>Quiénes firman tareas y cargan análisis.</td></tr>
+      <tr><td>Columnas del tablero</td><td>Las columnas del Kanban.</td></tr>
+      <tr><td>Parámetros</td><td>El catálogo de ensayos, con su método y unidad.</td></tr>
+      <tr><td>Laboratorios</td><td>Internos y externos; los del exterior habilitan el AWB.</td></tr>
+      <tr><td>Perfiles por producto</td><td>Qué ensayos aparecen por defecto. El camión lleva más que el tanque, por eso cada uno tiene su perfil.</td></tr>
+      <tr><td>Especificaciones</td><td>Rangos por producto y ensayo, para tanques.</td></tr>
+      <tr><td>Ubicaciones de insumos</td><td>Dónde se guarda cada cosa.</td></tr>
+      <tr><td>Sustancias controladas</td><td>Los precursores, con su GTIN y la unidad en que se declaran.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="ojo">
+    <p><strong>El método es parte del nombre del ensayo.</strong> «Humedad ·
+    Termobalanza» y «Humedad · Karl Fischer» son dos parámetros distintos y nunca
+    se fusionan, porque miden cosas distintas.</p>
+  </div>
+
+  <div class="ojo">
+    <p><strong>Revisá las unidades de las sustancias controladas.</strong> La
+    planilla original no las traía en la mayoría de los casos y se dedujeron al
+    importar. Un reactivo medido en kilos no se puede enlazar a una sustancia que
+    se declara en litros: sin densidad esa cuenta no existe, y el sistema lo
+    rechaza.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 11 -->
+<section>
+  <h2>11. La app de escritorio</h2>
+  <p>Es la misma aplicación dentro de una ventana propia. Lo único que agrega es
+  la <strong>impresión rápida de rótulos</strong>, que manda las instrucciones
+  directo a la Zebra sin pasar por el diálogo.</p>
+
+  <div class="nota">
+    <p><strong>No hace falta reinstalarla cuando cambia el sistema.</strong> La
+    app carga la versión web, así que las mejoras llegan solas. Solo hay que
+    actualizarla si te avisan expresamente que cambió algo de la app en sí.</p>
+  </div>
+
+  <p>La impresora se elige una vez por PC y la comparten todas las pantallas que
+  imprimen rótulos.</p>
+</section>
+
+<!-- ============================================================ 12 -->
+<section>
+  <h2>12. Si algo no anda</h2>
+
+  <div class="problema">
+    <p class="q">Me sacó la sesión y tuve que entrar de nuevo.</p>
+    <p class="a">Normal: la sesión dura 3 horas. Lo que ya habías guardado está
+    guardado. Si te pasa en medio de un formulario largo, lo que estabas
+    escribiendo sin guardar sí se pierde.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">No veo un botón que otro sí ve.</p>
+    <p class="a">Estás entrado como analista. Lo que el analista no puede hacer no
+    se le muestra, en vez de mostrarlo apagado. Mirá la tabla de roles del
+    capítulo 1.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">No me deja descontar un insumo: dice que no alcanza el stock.</p>
+    <p class="a">El sistema tiene menos de lo que querés sacar. Si en el estante
+    hay más de lo que dice, el número guardado quedó mal: corregilo con un
+    recuento de esa ubicación (o pedile al supervisor un ajuste). Así queda
+    registrado que se corrigió, en vez de tapar la diferencia dentro de un
+    consumo.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">La pantalla de precursores muestra todo en cero.</p>
+    <p class="a">Falta enlazar los reactivos con su sustancia controlada. Se hace
+    desde el formulario de cada insumo, cargando el contenido por envase y
+    eligiendo la sustancia. La pantalla avisa arriba cuáles no tienen nada
+    enlazado.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">El aviso de stock bajo no salta nunca.</p>
+    <p class="a">Probablemente ese insumo no tiene mínimo cargado, y entonces
+    recién avisa en cero. Cargalo en <em>Insumos → Stock mínimo</em>.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">El rótulo salió sin el logo.</p>
+    <p class="a">Se imprimió con la impresión rápida, que manda a la Zebra solo el
+    texto y los códigos. Para que salga el logo, usá el modo con diseño, que abre
+    el diálogo de impresión.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">Al imprimir un rótulo dice «Invalid printer settings».</p>
+    <p class="a">Es el driver de la Zebra rechazando la impresión sin diálogo.
+    Usá el modo con diseño. Verificá también que la impresora elegida esté
+    realmente instalada en esa PC.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">Algo salió impreso gigante o diminuto.</p>
+    <p class="a">Suele ser el escalado de pantalla de Windows (125 %, 150 %)
+    afectando la impresión desde la app de escritorio. Las planillas de recuento
+    ya están corregidas para eso. Si te pasa con otra cosa, avisá qué era y desde
+    dónde imprimiste.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">No puedo hacer el informe del segundo producto de un camión.</p>
+    <p class="a">Se carga un análisis por producto. Desde el ingreso vas a ver un
+    botón por cada producto que trae; si solo ves uno, revisá que el ingreso
+    tenga cargados los dos.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">El campo de materia grasa no me deja escribir.</p>
+    <p class="a">Está calculándose a partir de la humedad y los insolubles. Si es
+    una borra por corte o extracción directa, borrá esos valores y el campo se
+    libera para escribir el medido.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">Hay dos rótulos de la misma muestra en el listado.</p>
+    <p class="a">El rótulo se registra cada vez que se guarda. Si editaste la
+    muestra, quedó uno nuevo con los datos corregidos. Imprimí el último.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">Cargué algo desde el celular y en la PC no aparece.</p>
+    <p class="a">Refrescá la página. Los datos son los mismos para todos, pero la
+    pantalla que ya estaba abierta no se entera sola.</p>
+  </div>
+
+  <div class="problema">
+    <p class="q">Se guardó algo mal y quiero deshacerlo.</p>
+    <p class="a">Los movimientos, ingresos y análisis se editan o se eliminan
+    desde su listado. Los movimientos de insumos <strong>no</strong> se borran a
+    propósito: se corrigen con otro movimiento, para que quede el rastro de qué
+    pasó.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 13 -->
+<section>
+  <h2>13. Glosario</h2>
+  <p>Nombres que se prestan a confusión, sobre todo para quien recién empieza.</p>
+
+  <table>
+    <thead><tr><th>Dice</th><th>Es</th></tr></thead>
+    <tbody>
+      <tr><td><strong>27/3</strong></td><td><strong>No es una fecha.</strong> Es la dilución de 3 ml de Bio en 27 ml de metanol para detectar aceite: transparente está bien, si precipita no. No lo corrijas.</td></tr>
+      <tr><td><strong>AF</strong></td><td>Altura medida desde el fondo.</td></tr>
+      <tr><td><strong>DS</strong></td><td>Altura medida desde la superficie.</td></tr>
+      <tr><td><strong>AC</strong></td><td>Altura medida desde el cono.</td></tr>
+      <tr><td><strong>HA</strong></td><td>«Hacia arriba»: la muestra es un compuesto desde esa altura hacia arriba, no un punto.</td></tr>
+      <tr><td><strong>Superficie, Fondo, Cono</strong></td><td>Puntos fijos. La palabra reemplaza a la altura en metros.</td></tr>
+      <tr><td><strong>HR</strong></td><td>El número de hoja de ruta del movimiento.</td></tr>
+      <tr><td><strong>Perfil de producto</strong></td><td>Qué ensayos aparecen por defecto para ese producto. El del camión y el del tanque son distintos.</td></tr>
+      <tr><td><strong>GTIN</strong></td><td>El código con el que se identifica una sustancia controlada en la declaración oficial.</td></tr>
+      <tr><td><strong>RENPRE / SEDRONAR</strong></td><td>El registro nacional de precursores químicos, ante el que se declara.</td></tr>
+      <tr><td><strong>Precursor</strong></td><td>Sustancia controlada cuyo movimiento hay que declarar.</td></tr>
+      <tr><td><strong>Pañol</strong></td><td>El depósito general de planta. Lo que se pide ahí no se cuenta en el inventario del laboratorio.</td></tr>
+      <tr><td><strong>Ajuste</strong></td><td>Movimiento que fija el stock en lo contado, en vez de sumar o restar. Siempre lleva motivo.</td></tr>
+      <tr><td><strong>Baja</strong></td><td>Salida que no es consumo: se rompió, se venció o se descartó.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</body>
+</html>
