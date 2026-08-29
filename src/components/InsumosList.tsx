@@ -166,15 +166,8 @@ export default function InsumosList({
       const d = await res.json().catch(() => ({}))
       return avisar(d.error || 'No se pudo registrar el movimiento', true)
     }
-    const guardado = await res.json().catch(() => ({}))
     setMoviendo(null)
-    // Si el movimiento dejó el insumo bajo el mínimo, la API creó sola la tarea
-    // de reposición y lo dice acá, para no tener que ir al tablero a mirar.
-    avisar(
-      guardado.aviso
-        ? `Movimiento registrado. Quedó bajo el mínimo: se creó la tarea "${guardado.aviso}"`
-        : `${moviendo.insumo.nombre}: movimiento registrado`,
-    )
+    avisar(`${moviendo.insumo.nombre}: movimiento registrado`)
     router.refresh()
   }
 

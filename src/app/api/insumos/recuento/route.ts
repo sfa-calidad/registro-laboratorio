@@ -6,7 +6,6 @@ import { conManejoDeErrores } from '@/lib/api'
 import { hoyEnLaboratorio, formatDateOnly } from '@/lib/utils'
 import { redondear } from '@/lib/inventario'
 import { fechaCalendario, registrarMovimiento } from '@/lib/movimientosInsumo'
-import { avisarSiFaltaStockDeVarios } from '@/lib/alertaStock'
 
 const schema = z.object({
   ubicacion: z.string().min(1),
@@ -76,15 +75,10 @@ export async function POST(req: NextRequest) {
       { isolationLevel: 'Serializable', timeout: 20000, maxWait: 10000 },
     )
 
-    // Después de cerrar la transacción: un recuento puede dejar varios insumos
-    // bajo el mínimo, y el tablero se entera de todos.
-    const avisos = await avisarSiFaltaStockDeVarios(d.conteos.map((c) => c.insumoId))
-
     return NextResponse.json({
       contados: d.conteos.length,
       sinDiferencia: d.conteos.length - diferencias.length,
       diferencias,
-      avisos,
     })
   })
 }

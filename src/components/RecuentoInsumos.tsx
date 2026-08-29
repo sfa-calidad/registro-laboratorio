@@ -22,7 +22,6 @@ type Resultado = {
   contados: number
   sinDiferencia: number
   diferencias: { nombre: string; esperado: number; contado: number }[]
-  avisos: string[]
 }
 
 export default function RecuentoInsumos({
@@ -205,12 +204,6 @@ export default function RecuentoInsumos({
             </ul>
           ) : (
             <p className="text-sm mt-1">Todo coincidía.</p>
-          )}
-          {resultado.avisos.length > 0 && (
-            <p className="text-sm mt-2">
-              Quedaron bajo el mínimo, así que se crearon estas tareas de reposición:{' '}
-              {resultado.avisos.join(', ')}.
-            </p>
           )}
         </div>
       )}
