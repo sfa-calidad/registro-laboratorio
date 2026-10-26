@@ -163,6 +163,22 @@ copiar de ahí en vez de inventar una variante.
 - **Instalador de escritorio**: el `.exe` solo hay que regenerarlo cuando cambia
   algo dentro de `desktop/`. Todo lo demás es web y le llega al usuario con el
   deploy, sin reinstalar.
+- **Nada queda fuera del proxy "porque Next lo recomienda".** El `matcher` de
+  `src/proxy.ts` deja pasar sin sesión solo `_next/static` y el favicon, que es
+  lo que el login necesita para dibujarse. `_next/image` —el optimizador de
+  imágenes, donde aparecieron las RCE sin autenticación de Next 16— estaba
+  exceptuado por copiar la configuración de ejemplo de la documentación, y se
+  sacó: la app no usa `next/image` en ninguna pantalla (los logos van embebidos
+  y los informes se arman con `<img>` y data URI), así que era superficie de
+  ataque abierta por una función que no se usa. Si alguna vez se usa `<Image>`,
+  hay que volver a exceptuarlo o las imágenes no cargan. `tests/proxy.test.ts`
+  lee el matcher del propio archivo y lo fija.
+- **Subir de versión Next es un `npm install` y un build, no un refactor.** El
+  salto 16.2.11 → 16.4.3 (once avisos de seguridad, tres críticos) no tocó una
+  línea de código de la app. Las versiones de `next` y `eslint-config-next` van
+  clavadas sin `^` a propósito: un deploy no debería cambiar de versión de
+  framework solo. `npm audit` tiene que dar cero; los avisos de `eslint` sobre
+  `<img>` y `window.location.href` son de estilo y no rompen el build.
 - **Cambios de esquema que `prisma db push` no aplica solo**: borrar una columna
   o tabla con datos, y también **cambiar un índice único** sobre una tabla que ya
   tiene filas (no puede saber si hay duplicados). En los dos casos el push aborta
@@ -197,10 +213,11 @@ copiar de ahí en vez de inventar una variante.
   se deja crecer, porque ensancharlo para forzar la proporción achicaría la
   letra. `tests/informe.test.ts` fija eso y el contraste; ver `docs/ESTILOS.md`.
 - **Tests**: `npm test` corre el runner incorporado de Node sobre `tests/`, sin
-  dependencias extra. Son 126 y cubren las funciones puras donde aparecieron
-  bugs: firma de la sesión, estado de las muestras, fechas del laboratorio,
-  rótulos, cálculos de materia grasa, movimientos de inventario, la declaración
-  de precursores, la lista de faltantes y las dos hojas imprimibles. **Si tocás
+  dependencias extra. Son 129 y cubren las funciones puras donde aparecieron
+  bugs: firma de la sesión, qué rutas pasan por el proxy, estado de las
+  muestras, fechas del laboratorio, rótulos, cálculos de materia grasa,
+  movimientos de inventario, la declaración de precursores, la lista de
+  faltantes y las dos hojas imprimibles. **Si tocás
   una de esas, el test tiene que fallar antes de que lo arregles**: la costumbre
   acá es romper la regla a propósito, ver el test en rojo y recién entonces
   escribir el arreglo.

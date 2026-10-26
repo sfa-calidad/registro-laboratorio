@@ -50,6 +50,16 @@ export function proxy(req: NextRequest) {
   return conCabeceras(NextResponse.next())
 }
 
+// Fuera del control de sesión queda solo lo que el login necesita para
+// dibujarse: el JS y el CSS del build, y el favicon.
+//
+// `/_next/image` (el optimizador de imágenes) estaba en esta lista, que es lo
+// que recomienda la documentación de Next, y se sacó a propósito: es el
+// endpoint donde aparecieron las RCE sin autenticación de Next 16 —recibe una
+// ruta por query y la decodifica con sharp— y esta app no usa `next/image` en
+// ninguna pantalla, así que dejarlo abierto era regalar superficie de ataque
+// por una función que no se usa. Si algún día se usa `<Image>`, hay que
+// volver a excluirlo: si no, las imágenes de la pantalla de login no cargan.
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|favicon.ico).*)'],
 }
